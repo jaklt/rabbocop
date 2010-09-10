@@ -1,6 +1,6 @@
 NAME = rabbocop
 
-SRC_Hs = BitRepresenation.hs MyBits.hs
+SRC_Hs = BitRepresenation.hs MyBits.hs BitEval.hs MTDf.hs
 
 LINK_C = clib.c
 LINK_H = clib.h

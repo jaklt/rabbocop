@@ -1,37 +1,82 @@
-module MTDf (
-    search,
-) where
+module MTDf (search, alpha_beta) where
 
+import Data.Time.Clock
 import BitRepresenation
 import BitEval
 
-{-# INLINE mtdf #-}
-mtdf :: Board       -- ^ start position
-     -> Int         -- ^ best value
-     -> Int         -- ^ depth
-     -> (Move, Int) -- ^ (steps to go, best value)
-mtdf board best depth = mtdf' board best depth iNFINITY (-iNFINITY)
+timeIsOk :: UTCTime -> IO Bool
+timeIsOk t = do
+    a <- getCurrentTime
+    return (diffUTCTime a t < 10)
 
-mtdf' :: Board       -- ^ start position
-      -> Int         -- ^ best value
-      -> Int         -- ^ depth
-      -> Int         -- ^ upper bound
-      -> Int         -- ^ lower bound
-      -> (Move, Int) -- ^ (steps to go, best value)
-mtdf' b best d ub lb = if lb' >= ub' then best'
-                      else mtdf' b best' d ub' lb'
+mtdf :: Board       -- ^ start position
+     -> (Move, Int) -- ^ best value with PV from last time
+     -> Int         -- ^ depth
+     -> Player      -- ^ player on move
+     -> Int         -- ^ upper bound
+     -> Int         -- ^ lower bound
+     -> (Move, Int) -- ^ (steps to go, best value)
+mtdf b best@(_, bestValue) depth pl ub lb = if lb' >= ub' then best'
+                                            else mtdf b best' depth pl ub' lb'
     where
-        beta = if best == lb then best + 1 else best
-        best' = alpha_beta b (beta - 1) beta d
-        (ub', lb') = if best < beta then (best, lb) else (ub, best)
+        beta = if bestValue == lb then bestValue + 1 else bestValue
+        best'@(_, bestValue') = alpha_beta b best (beta - 1, beta) depth 0 pl True
+        (ub', lb') = if bestValue' < beta then (bestValue', lb) else (ub, bestValue')
 
 -- | iterative deepening
--- search :: Board -> Time -> IO Move
-search b t = search' 1 0
+search :: Board -> UTCTime -> Player -> IO (Move, Int)
+search b t p = search' 1 ([], 0)
     where
-        search' :: Int -> Int -> IO Move
-        search' depth gues = if (timeIsOk t) then search' (depth+1) (mtdf b gues depth)
-                                             else return gues
+        search' :: Int -> (Move, Int) -> IO (Move, Int)
+        search' depth gues = do
+            timeOk <- timeIsOk t
+            if gues `seq` timeOk
+                then search' (depth+1) (mtdf b gues depth p iNFINITY (-iNFINITY))
+                else return gues
+
+alpha_beta :: Board
+           -> (Move, Int) -- ^ best value with PV so far
+           -> (Int, Int)  -- ^ (alpha, beta)
+           -> Int         -- ^ maximal depth
+           -> Int         -- ^ actual depth
+           -> Player      -- ^ actual player
+           -> Bool        -- ^ is maximalise node
+           -> (Move, Int) -- ^ (steps to go, best value)
+alpha_beta board gues (alpha, beta) depth actualDepth player isMaxNode
+        -- TODO zde transposition table
+        | depth <= actualDepth = ([], eval board player)
+        | isMaxNode = findBest (alpha, beta) ([], -iNFINITY) steps
+        | otherwise = findBest (alpha, beta) ([],  iNFINITY) steps
+    where
+        -- TODO ke steps pridat/preferovat napovedu z gues
+        steps = generateSteps board player (actualDepth `mod` 4 /= 3)
+
+        findBest _ best [] = best
+        findBest bounds@(a,b) best@(_, bestValue) ((s1,s2):ss) =
+                if inBounds bounds best then findBest bounds' best' ss
+                                        else best
+            where
+                -- TODO gues zohlednit
+                s = [s1] ++ [s2 | s2 /= Pass]
+                board' = makeMove board s
+                (player', isMaxNode') = if (actualDepth + 1) `mod` 4 /= 0 then
+                                             (player, isMaxNode)
+                                        else (oponent player, not isMaxNode)
+                actualDepth' = actualDepth + 1 + (if s2 /= Pass then 1 else 0)
+                (childPV, childValue) =
+                    alpha_beta board' gues bounds depth actualDepth' player' isMaxNode'
+
+                bestValue' = cmp bestValue childValue
+                bounds' | isMaxNode = (cmp a childValue, b)
+                        | otherwise = (a, cmp b childValue)
+                best' = if bestValue /= bestValue' then (s ++ childPV, childValue)
+                                                   else best
+
+        inBounds (a,b) (_, best) | isMaxNode = best < b
+                                 | otherwise = best > a
+
+        cmp | isMaxNode = max
+            | otherwise = min
 
 {-
 function AlphaBetaWithMemory(n : node_type; alpha , beta , d : integer) : integer;
