@@ -15,6 +15,7 @@ module BitRepresenation (
     parseBoard,
     oponent,
     makeMove,
+    makeStep,
     generateSteps,
 ) where
 
@@ -31,7 +32,7 @@ data Piece = Rabbit | Cat | Dog | Horse | Camel | Elephant
 type Position = Int -- in [0..63]
 
 type PlayerBoard = Array Piece Int64
-data Board = Board { hash    :: Int64
+data Board = Board { hash    :: !Int64
                    , figures :: Array Player PlayerBoard
                    , whole   :: Array Player Int64} deriving (Eq, Show)
 data Step = Step !Piece !Player {- from: -} !Int64 {- to: -} !Int64 | Pass
@@ -52,7 +53,8 @@ instance Show Step where
              format :: Show a => a -> Char
              format = toLower.head.show
              d = (bitIndex to) - (bitIndex from)
-             dir | d ==  8 = "n"
+             dir | to == 0 = "x"
+                 | d ==  8 = "n"
                  | d == -8 = "s"
                  | d ==  1 = "w"
                  | d == -1 = "e"
@@ -153,25 +155,25 @@ oponent :: Player -> Player
 oponent Gold = Silver
 oponent Silver = Gold
 
--- TODO pomerit, zde treba rychlost, mozna udelat makeStep
---      traps!
-makeMove :: Board -> Move -> Board
-makeMove b [] = b
-makeMove b xs =
-        b { figures = figures b // boardDiff
-          , whole = accum xor (whole b) [(Silver, sWhDiff), (Gold, gWhDiff)]}
-    where
-        boardDiff = [(c, accum xor (figures b ! c)
-                        $ map (\(Step p _ f t) -> (p, f `xor` t))
-                        $ filter (\s -> case s of (Step _ pl _ _) -> pl == c
-                                                  _ -> False)
-                                xs
-                     ) | c <- players]
+makeMove :: Board -> Move -> (Board, Move)
+makeMove b ss = foldl (\(b1, ss1) s -> case makeStep b1 s of (b2, ss2) -> (b2, ss1 ++ ss2)) (b, []) ss
 
-        (sWhDiff, gWhDiff) = foldr (\(Step _ pl f t) (s,g) ->
-                                        if pl == Gold then (s, g `xor` f `xor` t)
-                                                      else (s `xor` f `xor` t, g))
-                                (0,0) xs
+makeStep :: Board -> Step -> (Board, Move)
+makeStep b Pass = (b, [])
+makeStep b s@(Step piece player from to) =
+        (b { figures = figures b // boardDiff
+           , whole = accum xor (whole b) wholeDiff }, steps)
+    where
+        isTrapped p = adjecent p .&. ((whole b ! player) `xor` from) == 0
+        trapped =  [Step piece player to 0 | to .&. traps /= 0, isTrapped to]
+                ++ [Step pie player tr 0 | tr <- bits $ (whole b ! player) .&. traps
+                                         , isTrapped tr, let pie = findPiece (figures b ! player) tr]
+        steps = [s] ++ trapped
+        diffs = [(pie, f `xor` t) | (Step pie _ f t) <- steps]
+
+        boardDiff = [(player, accum xor (figures b ! player) diffs)]
+        wholeDiff = [(player
+                     , foldr (\(Step _ _ f t) x -> x `xor` f `xor` t) 0 steps)]
 
 generateSteps :: Board -> Player -> Bool -> [(Step, Step)]
 generateSteps b activePl canPullPush = gen oWhole (0 :: Int64) pieces
@@ -188,7 +190,7 @@ generateSteps b activePl canPullPush = gen oWhole (0 :: Int64) pieces
 
         gen :: Int64 -> Int64 -> [Piece] -> [(Step, Step)]
         gen _  _ [] = []
-        gen opStrong opWeak (p:ps) = gen' opStrongNew opWeak p (bits $ ap ! p)
+        gen opStrong opWeak (p:ps) = gen' opStrongNew opWeak p (bits $! ap ! p)
                                         ++ gen opStrongNew opWeakNew ps
             where
                 oponentsEqualPiece = oArr ! p
@@ -211,17 +213,17 @@ generateSteps b activePl canPullPush = gen oWhole (0 :: Int64) pieces
                 ++
                 [(cStep w, Step (findPiece oArr pull) oponentPl pull pos)
                     | canPullPush, w <- possibleStepsFromPos
-                    , pull <- bits $ adjecent pos .&. opWeak]
+                    , pull <- bits $! adjecent pos .&. opWeak]
 
                 -- pushs
                 ++
                 [(Step (findPiece oArr w) oponentPl w to, cStep w)
-                    | canPullPush, w <- bits $ opWeak .&. adjecent pos
-                    , to <- bits $ empty .&. adjecent w]
+                    | canPullPush, w <- bits $! opWeak .&. adjecent pos
+                    , to <- bits $! empty .&. adjecent w]
             ) ++
                 gen' opStrong opWeak pie xs
             where
-                possibleStepsFromPos = bits $ empty .&. adjecent pos
+                possibleStepsFromPos = bits $! empty .&. adjecent pos
                 cStep = Step pie activePl pos
 
 

@@ -8,7 +8,7 @@ LINK_H = clib.h
 LINK_O = ${LINK_C:.c=.o}
 SRC = ${SRC_Hs} ${LINK_C} ${LINK_H}
 OBJ = ${SRC_Hs:.hs=.hi} ${SRC_Hs:.hs=.o} Main.hi Main.o Test.hi Test.o ${LINK_O}
-PARAMS = -O2 -Wall # -threaded
+PARAMS = -O2 -Wall -fexcess-precision -fdicts-cheap # -threaded # -funbox-strict-fields 
 CC = gcc
 CFLAGS = -O2 -std=c99 -Wall -pedantic
 

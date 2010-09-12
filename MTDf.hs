@@ -7,7 +7,7 @@ import BitEval
 timeIsOk :: UTCTime -> IO Bool
 timeIsOk t = do
     a <- getCurrentTime
-    return (diffUTCTime a t < 10)
+    return (diffUTCTime a t < 15)
 
 mtdf :: Board       -- ^ start position
      -> (Move, Int) -- ^ best value with PV from last time
@@ -16,8 +16,10 @@ mtdf :: Board       -- ^ start position
      -> Int         -- ^ upper bound
      -> Int         -- ^ lower bound
      -> (Move, Int) -- ^ (steps to go, best value)
-mtdf b best@(_, bestValue) depth pl ub lb = if lb' >= ub' then best'
-                                            else mtdf b best' depth pl ub' lb'
+mtdf b best@(_, bestValue) depth pl ub lb =
+        best' `seq` b `seq` ub `seq` lb `seq`
+                    if lb' >= ub' then best'
+                                  else mtdf b best' depth pl ub' lb'
     where
         beta = if bestValue == lb then bestValue + 1 else bestValue
         best'@(_, bestValue') = alpha_beta b best (beta - 1, beta) depth 0 pl True
@@ -29,10 +31,14 @@ search b t p = search' 1 ([], 0)
     where
         search' :: Int -> (Move, Int) -> IO (Move, Int)
         search' depth gues = do
-            timeOk <- timeIsOk t
-            if gues `seq` timeOk
+            print gues
+            timeOk <- gues `seq` timeIsOk t
+            if timeOk
                 then search' (depth+1) (mtdf b gues depth p iNFINITY (-iNFINITY))
                 else return gues
+
+-- TODO kontrola vyhry a pripadny konec
+--      pri malem poctu figurek nedopocitava tahy (tahne mene figurama)
 
 alpha_beta :: Board
            -> (Move, Int) -- ^ best value with PV so far
@@ -51,17 +57,19 @@ alpha_beta board gues (alpha, beta) depth actualDepth player isMaxNode
         -- TODO ke steps pridat/preferovat napovedu z gues
         steps = generateSteps board player (actualDepth `mod` 4 /= 3)
 
+        findBest :: (Int, Int) -> (Move, Int) -> [(Step, Step)] -> (Move, Int)
         findBest _ best [] = best
         findBest bounds@(a,b) best@(_, bestValue) ((s1,s2):ss) =
-                if inBounds bounds best then findBest bounds' best' ss
-                                        else best
+                bounds `seq` best `seq` (s1,s2) `seq`
+                    if inBounds bounds best then findBest bounds' best' ss
+                                            else best
             where
                 -- TODO gues zohlednit
                 s = [s1] ++ [s2 | s2 /= Pass]
-                board' = makeMove board s
-                (player', isMaxNode') = if (actualDepth + 1) `mod` 4 /= 0 then
-                                             (player, isMaxNode)
-                                        else (oponent player, not isMaxNode)
+                (board', m) = makeMove board s
+                (player', isMaxNode') = if (actualDepth + 1) `mod` 4 /= 0
+                                            then (player, isMaxNode)
+                                            else (oponent player, not isMaxNode)
                 actualDepth' = actualDepth + 1 + (if s2 /= Pass then 1 else 0)
                 (childPV, childValue) =
                     alpha_beta board' gues bounds depth actualDepth' player' isMaxNode'
@@ -69,7 +77,7 @@ alpha_beta board gues (alpha, beta) depth actualDepth player isMaxNode
                 bestValue' = cmp bestValue childValue
                 bounds' | isMaxNode = (cmp a childValue, b)
                         | otherwise = (a, cmp b childValue)
-                best' = if bestValue /= bestValue' then (s ++ childPV, childValue)
+                best' = if bestValue /= bestValue' then (m ++ childPV, childValue)
                                                    else best
 
         inBounds (a,b) (_, best) | isMaxNode = best < b
