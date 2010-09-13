@@ -1,6 +1,9 @@
 #include <stdint.h>
 #include "clib.h"
 
+long int random(void);
+
+
 static char bit_count_table[65536];
 
 void init_bit_count()
@@ -28,15 +31,13 @@ inline int bit_count(uint64_t u)
  *   May be search as Find the log base 2.
  */
 
-#if 1
-static /* const */ char bit_index_table1[65536];
-static /* const */ char bit_index_table2[65536];
-static /* const */ char bit_index_table3[65536];
-static /* const */ char bit_index_table4[65536];
+static char bit_index_table1[65536];
+static char bit_index_table2[65536];
+static char bit_index_table3[65536];
+static char bit_index_table4[65536];
 
 /*
-   TODO inicializace jde provest staticky
-        jen asi 45% zrychleni proti switch verzi, zvazit neco z:
+   TODO jen asi 45% zrychleni proti switch verzi, zvazit neco z:
             http://graphics.stanford.edu/~seander/bithacks.html
 */
 
@@ -78,82 +79,64 @@ int bit_index(uint64_t u)
          + bit_index_table3[p3] + bit_index_table4[p4];
 }
 
-#else
-int bit_index(uint64_t u) // {{{
+
+static uint64_t bit_zobrist_table[2][6][65];
+
+void init_zobrist()
 {
-    switch (u) {
-        case 0x0000000000000001: return 0;
-        case 0x0000000000000002: return 1;
-        case 0x0000000000000004: return 2;
-        case 0x0000000000000008: return 3;
-        case 0x0000000000000010: return 4;
-        case 0x0000000000000020: return 5;
-        case 0x0000000000000040: return 6;
-        case 0x0000000000000080: return 7;
-        case 0x0000000000000100: return 8;
-        case 0x0000000000000200: return 9;
-        case 0x0000000000000400: return 10;
-        case 0x0000000000000800: return 11;
-        case 0x0000000000001000: return 12;
-        case 0x0000000000002000: return 13;
-        case 0x0000000000004000: return 14;
-        case 0x0000000000008000: return 15;
-        case 0x0000000000010000: return 16;
-        case 0x0000000000020000: return 17;
-        case 0x0000000000040000: return 18;
-        case 0x0000000000080000: return 19;
-        case 0x0000000000100000: return 20;
-        case 0x0000000000200000: return 21;
-        case 0x0000000000400000: return 22;
-        case 0x0000000000800000: return 23;
-        case 0x0000000001000000: return 24;
-        case 0x0000000002000000: return 25;
-        case 0x0000000004000000: return 26;
-        case 0x0000000008000000: return 27;
-        case 0x0000000010000000: return 28;
-        case 0x0000000020000000: return 29;
-        case 0x0000000040000000: return 30;
-        case 0x0000000080000000: return 31;
-        case 0x0000000100000000: return 32;
-        case 0x0000000200000000: return 33;
-        case 0x0000000400000000: return 34;
-        case 0x0000000800000000: return 35;
-        case 0x0000001000000000: return 36;
-        case 0x0000002000000000: return 37;
-        case 0x0000004000000000: return 38;
-        case 0x0000008000000000: return 39;
-        case 0x0000010000000000: return 40;
-        case 0x0000020000000000: return 41;
-        case 0x0000040000000000: return 42;
-        case 0x0000080000000000: return 43;
-        case 0x0000100000000000: return 44;
-        case 0x0000200000000000: return 45;
-        case 0x0000400000000000: return 46;
-        case 0x0000800000000000: return 47;
-        case 0x0001000000000000: return 48;
-        case 0x0002000000000000: return 49;
-        case 0x0004000000000000: return 50;
-        case 0x0008000000000000: return 51;
-        case 0x0010000000000000: return 52;
-        case 0x0020000000000000: return 53;
-        case 0x0040000000000000: return 54;
-        case 0x0080000000000000: return 55;
-        case 0x0100000000000000: return 56;
-        case 0x0200000000000000: return 57;
-        case 0x0400000000000000: return 58;
-        case 0x0800000000000000: return 59;
-        case 0x1000000000000000: return 60;
-        case 0x2000000000000000: return 61;
-        case 0x4000000000000000: return 62;
-        case 0x8000000000000000: return 63;
-        default: return -1;
-    }
-} // }}}
-#endif
+    int i, j, k;
+    for (i=0; i<2; i++)
+        for (j=0; j<6; j++)
+            for (k=1; k<=64; k++)
+                bit_zobrist_table[i][j][k] = (((uint64_t) random()) << 40)
+                        ^ (((uint64_t) random()) << 20) ^ ((uint64_t) random());
+}
+
+uint64_t hash_piece(int player, int piece, int position)
+{
+    return bit_zobrist_table[player][piece][position];
+}
+
+
+static int64_t bit_steps_table[2][6][64];
+
+void init_steps_table()
+{
+    int i, j, k;
+    uint64_t x;
+
+    for (i=0; i<2; i++)
+        for (j=0; j<6; j++)
+            for (k=0; k<64; k++) {
+                x = 1LLU << k;
+
+                bit_steps_table[i][j][k] |=
+                    (1LLU << (k + 8)) * ((UPPER_SIDE  & x) == 0) |
+                    (1LLU << (k - 8)) * ((BOTTOM_SIDE & x) == 0) |
+                    (1LLU << (k + 1)) * ((LEFT_SIDE   & x) == 0) |
+                    (1LLU << (k - 1)) * ((RIGHT_SIDE  & x) == 0);
+            }
+
+    for (i=0; i<2; i++)
+        for (k=0; k<64; k++) {
+            x = 1LLU << k;
+
+            bit_steps_table[i][RABBIT][k] ^=
+                (1LLU << (k + 8)) * ((UPPER_SIDE  & x) == 0) * (i == SILVER) |
+                (1LLU << (k - 8)) * ((BOTTOM_SIDE & x) == 0) * (i == GOLD);
+        }
+}
+
+int64_t steps_from_position(int pl, int pie, int pos)
+{
+    return bit_steps_table[pl][pie][pos];
+}
 
 
 void __attribute((constructor)) init()
 {
     init_bit_index();
     init_bit_count();
+    init_steps_table();
+    init_zobrist();
 }

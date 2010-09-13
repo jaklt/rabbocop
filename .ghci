@@ -1,4 +1,4 @@
-:set -w -fwarn-unused-binds -fwarn-unused-imports
+:set -Wall -XForeignFunctionInterface
 :load Main
 
 let cmdTest _ = return ":main test"

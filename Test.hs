@@ -5,8 +5,8 @@ import Data.Time.Clock
 import Prelude
 
 import MyBits
-import BitRepresenation
 -- import BitEval
+import BitRepresenation
 import MTDf
 
 testMyBits :: Bool
@@ -22,8 +22,8 @@ showMove (ss,a) = "( " ++ foldr (\c b -> show c ++ " " ++ b) "" ss ++ ", " ++ sh
 
 main :: IO ()
 main = do
-    -- putStrLn $ "- testMyBits: " ++ show testMyBits
-    -- putStrLn $ "- testMakeMove: " ++ show (fst testBoard3 == testBoard4)
+    putStrLn $ "- testMyBits: " ++ show testMyBits
+    putStrLn $ "- testMakeMove: " ++ show (testBoard3 == testBoard4)
 
     -- putStrLn $ displayBoard testBoard2
     -- putStrLn.show $ foldr seq 0 [bitIndex i | i <- [0..74967296]] -- velmi pomale
@@ -34,10 +34,21 @@ main = do
     t <- getCurrentTime
     res <- search testBoard t Gold
     putStrLn $ showMove res
+
+    {-
+    putStrLn $ displayBoard testBoard5
+    putStrLn $ show $ eval testBoard5 Gold
+
+    putStrLn $ displayBoard testBoard5
+    res <- alpha_beta testBoard5 ([], 0) (-iNFINITY, iNFINITY) 13 0 Gold True
+    putStrLn $ showMove res
+    -}
+
     where
         testBoard  = parseBoard $ startSilver ++ startGold
         testBoard2 = parseBoard "Rb3 Ra3 Mf4 dg4 db2 re8"
-        testBoard3 = makeMove testBoard2 [ Step Rabbit Gold (bit 22) (bit 21)
+        testBoard3 = fst $ makeMove testBoard2
+                                         [ Step Rabbit Gold (bit 22) (bit 21)
                                          , Step Dog Silver (bit 14) (bit 22)]
         testBoard4 = parseBoard "Ra3 Mf4 dg4 db3 re8"
-
+        testBoard5 = parseBoard "Rc1 rf8"

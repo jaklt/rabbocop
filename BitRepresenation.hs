@@ -1,5 +1,5 @@
+{-# LANGUAGE ForeignFunctionInterface #-}
 module BitRepresenation (
-    -- TODO protridit co sem nepatri
     -- TODO vyzkouset unboxed typy http://www.haskell.org/ghc/docs/6.12.2/html/users_guide/primitives.html
     Player(..),
     Piece(..),
@@ -10,7 +10,6 @@ module BitRepresenation (
     Move,
     pieces,
     players,
-    -- piecesRange,
     displayBoard,
     parseBoard,
     oponent,
@@ -26,6 +25,10 @@ import Data.Int (Int64)
 import Data.List (sort)
 import MyBits
 
+foreign import ccall "clib.h hash_piece" c_hashPiece :: Int -> Int -> Int -> Int64
+foreign import ccall "clib.h steps_from_position"
+                            c_stepsFromPosition :: Int -> Int -> Int -> Int64
+
 data Player = Gold | Silver deriving (Eq, Ord, Enum, Ix, Show)
 data Piece = Rabbit | Cat | Dog | Horse | Camel | Elephant
              deriving (Eq, Ord, Enum, Ix, Show)
@@ -39,11 +42,7 @@ data Step = Step !Piece !Player {- from: -} !Int64 {- to: -} !Int64 | Pass
             deriving (Eq)
 type Move = [Step]
 
-rightSide, leftSide, upperSide, bottomSide, traps :: Int64
-rightSide  = 0x0101010101010101
-leftSide   = 0x8080808080808080
-upperSide  = 0xff00000000000000
-bottomSide = 0x00000000000000ff
+traps :: Int64
 traps = 0x0000240000240000
 
 instance Show Step where
@@ -58,9 +57,12 @@ instance Show Step where
                  | d == -8 = "s"
                  | d ==  1 = "w"
                  | d == -1 = "e"
-                 | otherwise = error ("Impossible move from: " ++ pos from ++ " to: " ++ pos to)
+                 | otherwise = error ( "Impossible move from: " ++ pos from
+                                    ++ " to: " ++ pos to ++ " (by: "
+                                    ++ [showPiece player piece] ++ ")")
 
-             pos p = let q = bitIndex p in [['a'..'h'] !! (7 - q `mod` 8), format $ q `div` 8 + 1]
+             pos p = let q = bitIndex p in [ ['a'..'h'] !! (7 - q `mod` 8)
+                                           , format $ q `div` 8 + 1]
 
 players :: [Player]
 players = [Gold, Silver]
@@ -131,22 +133,20 @@ parseBoard inp = createBoard $ sort $ map parse' $ words inp
                 gWh = foldr (\(_,a) b -> a .|. b) 0 gx
                 sPB = accum (.|.) sb sx
                 sWh = foldr (\(_,a) b -> a .|. b) 0 sx
+
+                ha = foldr (\(pl,pie,pos) h -> h `xor` hashPiece pl pie pos) 0 xs
                 fi = array playersRange [(Gold, gPB), (Silver, sPB)]
                 wh = array playersRange [(Gold, gWh), (Silver, sWh)]
             in
-                Board { hash=0, figures=fi, whole=wh}
+                Board { hash=ha, figures=fi, whole=wh}
 
--- TODO pomale? treba casto proto radsi predgenerovat?
+{-# INLINE stepsFromPosition #-}
 -- | third argument: only one bit number
 stepsFromPosition :: Player -> Piece -> Int64 -> Int64
 stepsFromPosition pl pie pos =
-    foldr (.|.) 0 ([bit (bi+8) | upperSide  .&. pos == 0, pl /= Silver || pie /= Rabbit]
-                ++ [bit (bi-8) | bottomSide .&. pos == 0, pl /= Gold   || pie /= Rabbit]
-                ++ [bit (bi+1) | leftSide   .&. pos == 0]
-                ++ [bit (bi-1) | rightSide  .&. pos == 0])
-    where
-        bi = bitIndex pos
+        c_stepsFromPosition (playerToInt pl) (pieceToInt pie) (bitIndex pos)
 
+{-# INLINE adjecent #-}
 -- | argument: only one bit number
 adjecent :: Int64 -> Int64
 adjecent = stepsFromPosition Gold Elephant
@@ -161,7 +161,7 @@ makeMove b ss = foldl (\(b1, ss1) s -> case makeStep b1 s of (b2, ss2) -> (b2, s
 makeStep :: Board -> Step -> (Board, Move)
 makeStep b Pass = (b, [])
 makeStep b s@(Step piece player from to) =
-        (b { figures = figures b // boardDiff
+        (b { hash = hash', figures = figures b // boardDiff
            , whole = accum xor (whole b) wholeDiff }, steps)
     where
         isTrapped p = adjecent p .&. ((whole b ! player) `xor` from) == 0
@@ -170,6 +170,8 @@ makeStep b s@(Step piece player from to) =
                                          , isTrapped tr, let pie = findPiece (figures b ! player) tr]
         steps = [s] ++ trapped
         diffs = [(pie, f `xor` t) | (Step pie _ f t) <- steps]
+        hash' = foldr (\(Step pie pl f t) h -> h `xor` hashPiece pl pie (bitIndex f) `xor`
+                                                 hashPiece pl pie (bitIndex t)) (hash b) steps
 
         boardDiff = [(player, accum xor (figures b ! player) diffs)]
         wholeDiff = [(player
@@ -241,3 +243,14 @@ findPiece a p | a ! Rabbit   .&. p /= 0 = Rabbit
               | a ! Camel    .&. p /= 0 = Camel
               | a ! Elephant .&. p /= 0 = Elephant
 findPiece _ _ = error "Inner error in findPiece"
+
+pieceToInt :: Piece -> Int
+pieceToInt k = index (Rabbit, Elephant) k
+
+playerToInt :: Player -> Int
+playerToInt Gold   = 0
+playerToInt Silver = 1
+
+hashPiece :: Player -> Piece -> Position -> Int64
+-- hashPiece _ _ 0 = 0
+hashPiece pl pie pos = c_hashPiece (playerToInt pl) (pieceToInt pie) pos

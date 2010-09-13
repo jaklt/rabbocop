@@ -17,9 +17,6 @@ pieceValue Dog      = 400
 pieceValue Cat      = 300
 pieceValue Rabbit   = 100
 
-pieceToInt :: Piece -> Int
-pieceToInt k = index (Elephant, Rabbit) k
-
 {-
 .... ....   0 = ....  8 = |...
 .... ....   1 = ...|  9 = |..|
@@ -38,16 +35,18 @@ center3 = 0x007e424242427e00
 center4 = 0xff818181818181ff
 
 upperSide, bottomSide, traps, aroundTraps :: Int64
+-- rightSide   = 0x0101010101010101
+-- leftSide    = 0x8080808080808080
 upperSide   = 0xff00000000000000
 bottomSide  = 0x00000000000000ff
 traps       = 0x0000240000240000
 aroundTraps = 0x00245a24245a2400
 
 {-# INLINE eval #-}
-eval :: Board -> Player -> Int
-eval b player =
+eval :: Board -> Player -> Bool -> Int
+eval b player isMaxNode =
         sum [ ((position m v) + (trapsControl m v) + (winOrLose pl pie m))
-                * (if pl == player then 1 else -1)
+                * (if pl == player' then 1 else -1)
             | pl <- players, pie <- pieces, let m = figures b ! pl ! pie
                                                 v = pieceValue pie]
     where
@@ -58,7 +57,11 @@ eval b player =
 
         winOrLose pl Rabbit m | rabbitWon  /= 0 =  iNFINITY
                               | bitCount m == 0 = -iNFINITY
+                              | rabbitWon' /= 0 = 1000
                               | otherwise       = 0
                 where
-                    rabbitWon = (if pl == Gold then upperSide else bottomSide) .&. m
+                    rabbitWon  = (if pl == Gold then upperSide else bottomSide) .&. m
+                    rabbitWon' = (if pl == Gold then 0x00ff000000000000 else 0x000000000000ff00) .&. m
         winOrLose _ _ _ = 0
+        player' | isMaxNode = player
+                | otherwise = oponent player

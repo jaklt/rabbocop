@@ -1,8 +1,15 @@
+{-# LANGUAGE ForeignFunctionInterface #-}
 module MTDf (search, alpha_beta) where
 
+import Data.Int (Int64)
 import Data.Time.Clock
 import BitRepresenation
 import BitEval
+
+foreign import ccall "clib.h reset_hash" resetHash :: IO ()
+foreign import ccall "clib.h find_hash" findHash:: Int64 -> Int -> Bool
+foreign import ccall "clib.h find_hash"  getHash:: Int64 -> Int
+foreign import ccall "clib.h add_hash" addHash:: Int64 -> Int -> Int -> IO ()
 
 timeIsOk :: UTCTime -> IO Bool
 timeIsOk t = do
@@ -15,15 +22,18 @@ mtdf :: Board       -- ^ start position
      -> Player      -- ^ player on move
      -> Int         -- ^ upper bound
      -> Int         -- ^ lower bound
-     -> (Move, Int) -- ^ (steps to go, best value)
+     -> IO (Move, Int) -- ^ IO (steps to go, best value)
 mtdf b best@(_, bestValue) depth pl ub lb =
-        best' `seq` b `seq` ub `seq` lb `seq`
-                    if lb' >= ub' then best'
-                                  else mtdf b best' depth pl ub' lb'
+        best `seq` b `seq` ub `seq` lb `seq` do
+            best' <- alpha_beta b best (beta - 1, beta) depth 0 pl True
+            (ub', lb') <- newBounds best'
+
+            if lb' >= ub' then return best'
+                          else mtdf b best' depth pl ub' lb'
     where
         beta = if bestValue == lb then bestValue + 1 else bestValue
-        best'@(_, bestValue') = alpha_beta b best (beta - 1, beta) depth 0 pl True
-        (ub', lb') = if bestValue' < beta then (bestValue', lb) else (ub, bestValue')
+        newBounds (_, bestV) | bestV < beta = return (bestV, lb)
+                             | otherwise    = return (ub, bestV)
 
 -- | iterative deepening
 search :: Board -> UTCTime -> Player -> IO (Move, Int)
@@ -32,13 +42,18 @@ search b t p = search' 1 ([], 0)
         search' :: Int -> (Move, Int) -> IO (Move, Int)
         search' depth gues = do
             print gues
+            resetHash
             timeOk <- gues `seq` timeIsOk t
             if timeOk
-                then search' (depth+1) (mtdf b gues depth p iNFINITY (-iNFINITY))
+                then do
+                    m <- mtdf b gues depth p iNFINITY (-iNFINITY)
+                    search' (depth+1) m
                 else return gues
 
 -- TODO kontrola vyhry a pripadny konec
 --      pri malem poctu figurek nedopocitava tahy (tahne mene figurama)
+--
+--      PV v hashi
 
 alpha_beta :: Board
            -> (Move, Int) -- ^ best value with PV so far
@@ -47,44 +62,52 @@ alpha_beta :: Board
            -> Int         -- ^ actual depth
            -> Player      -- ^ actual player
            -> Bool        -- ^ is maximalise node
-           -> (Move, Int) -- ^ (steps to go, best value)
+           -> IO (Move, Int) -- ^ (steps to go, best value)
 alpha_beta board gues (alpha, beta) depth actualDepth player isMaxNode
-        -- TODO zde transposition table
-        | depth <= actualDepth = ([], eval board player)
-        | isMaxNode = findBest (alpha, beta) ([], -iNFINITY) steps
-        | otherwise = findBest (alpha, beta) ([],  iNFINITY) steps
+        | findHash (hash board) actualDepth = return ([Pass], getHash (hash board))
+        | otherwise = do
+            res <- if depth <= actualDepth
+                        then return ([], eval board player isMaxNode)
+                        else findBest (alpha, beta) ([], inf) steps
+            addHash (hash board) actualDepth (snd res)
+            return res
     where
         -- TODO ke steps pridat/preferovat napovedu z gues
         steps = generateSteps board player (actualDepth `mod` 4 /= 3)
 
-        findBest :: (Int, Int) -> (Move, Int) -> [(Step, Step)] -> (Move, Int)
-        findBest _ best [] = best
+        findBest :: (Int, Int) -> (Move, Int) -> [(Step, Step)] -> IO (Move, Int)
+        findBest _ best [] = return best
         findBest bounds@(a,b) best@(_, bestValue) ((s1,s2):ss) =
-                bounds `seq` best `seq` (s1,s2) `seq`
+                bounds `seq` best `seq` (s1,s2) `seq` do
+                    (childPV, childValue) <-
+                        alpha_beta board' gues bounds depth actualDepth' player' isMaxNode'
+
+                    bestValue' <- return $ cmp bestValue childValue
+                    bounds' <- return $ newBounds childValue
+
+                    best' <- if bestValue /= bestValue'
+                                then return (m ++ childPV, childValue)
+                                else return best
                     if inBounds bounds best then findBest bounds' best' ss
-                                            else best
+                                            else return best -- Cut off
             where
-                -- TODO gues zohlednit
                 s = [s1] ++ [s2 | s2 /= Pass]
                 (board', m) = makeMove board s
                 (player', isMaxNode') = if (actualDepth + 1) `mod` 4 /= 0
                                             then (player, isMaxNode)
                                             else (oponent player, not isMaxNode)
-                actualDepth' = actualDepth + 1 + (if s2 /= Pass then 1 else 0)
-                (childPV, childValue) =
-                    alpha_beta board' gues bounds depth actualDepth' player' isMaxNode'
+                actualDepth' = actualDepth + (if s2 /= Pass then 2 else 1)
 
-                bestValue' = cmp bestValue childValue
-                bounds' | isMaxNode = (cmp a childValue, b)
-                        | otherwise = (a, cmp b childValue)
-                best' = if bestValue /= bestValue' then (m ++ childPV, childValue)
-                                                   else best
+                newBounds childV | isMaxNode = (cmp a childV, b)
+                                 | otherwise = (a, cmp b childV)
 
         inBounds (a,b) (_, best) | isMaxNode = best < b
                                  | otherwise = best > a
 
         cmp | isMaxNode = max
             | otherwise = min
+        inf | isMaxNode = -iNFINITY
+            | otherwise =  iNFINITY
 
 {-
 function AlphaBetaWithMemory(n : node_type; alpha , beta , d : integer) : integer;
