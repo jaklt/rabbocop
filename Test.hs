@@ -5,7 +5,7 @@ import Data.Time.Clock
 import Prelude
 
 import MyBits
--- import BitEval
+import BitEval
 import BitRepresenation
 import MTDf
 
@@ -25,22 +25,22 @@ main = do
     putStrLn $ "- testMyBits: " ++ show testMyBits
     putStrLn $ "- testMakeMove: " ++ show (testBoard3 == testBoard4)
 
-    -- putStrLn $ displayBoard testBoard2
-    -- putStrLn.show $ foldr seq 0 [bitIndex i | i <- [0..74967296]] -- velmi pomale
+    -- putStrLn $ displayBoard testBoard2 True
     -- putStrLn.show $ generateSteps testBoard2 Gold
 
     -- putStrLn.show $ alpha_beta testBoard2 ([], 0) (-iNFINITY, iNFINITY) 1 0 Gold True
 
+    putStrLn $ displayBoard testBoard2 True
     t <- getCurrentTime
-    res <- search testBoard t Gold
+    res <- search testBoard2 t Gold
     putStrLn $ showMove res
 
     {-
-    putStrLn $ displayBoard testBoard5
+    putStrLn $ displayBoard testBoard5 True
     putStrLn $ show $ eval testBoard5 Gold
 
-    putStrLn $ displayBoard testBoard5
-    res <- alpha_beta testBoard5 ([], 0) (-iNFINITY, iNFINITY) 13 0 Gold True
+    putStrLn $ displayBoard testBoard5 True
+    res <- alpha_beta testBoard5 ([], 2100) (-iNFINITY, iNFINITY) 14 0 Gold True
     putStrLn $ showMove res
     -}
 

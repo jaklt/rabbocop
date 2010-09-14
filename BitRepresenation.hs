@@ -81,8 +81,8 @@ showPiece Gold Camel   = 'M'
 showPiece Silver Camel = 'm'
 showPiece col piece    = (if col == Gold then id else toLower) $ head $ show piece
 
-displayBoard :: Board -> String
-displayBoard b = format [pp | i <- map bit [63,62..0] :: [Int64]
+displayBoard :: Board -> Bool -> String
+displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
         , let pp | i .&. whole b ! Gold   /= 0 = g Gold i
                  | i .&. whole b ! Silver /= 0 = g Silver i
                  | i .&. traps /= 0 = '×'
@@ -92,8 +92,9 @@ displayBoard b = format [pp | i <- map bit [63,62..0] :: [Int64]
         g pl i = showPiece pl $ head [p | p <- pieces, ((figures b ! pl) ! p) .&. i /= 0]
 
         format :: String -> String
-        format xs = (" ++++++++++\n +"++) $ fst
+        format xs | nonFlat = (" ++++++++++\n +"++) $ fst
             $ foldr (\y (ys,n) -> ((y:[c | c <- "+\n +", n `mod` 8 == 0]) ++ ys, n+1)) ("+++++++++", 0 :: Int) xs
+                  | otherwise = "[" ++ xs ++ "]"
 
 
 parseBoard :: String -> Board
@@ -104,16 +105,6 @@ parseBoard inp = createBoard $ sort $ map parse' $ words inp
                             -- position: (x in [a..h], y in [1..8]) -> y*8 + x
                             , 7 - (index ('a','h') x) + 8*((digitToInt y) - 1))
         parse' p = error ("Wrong position given: " ++ p)
-
-        pieceFromChar :: Char -> Piece
-        pieceFromChar c = case toLower c of
-                'e' -> Elephant; 'm' -> Camel; 'h' -> Horse
-                'd' -> Dog;      'c' -> Cat;   'r' -> Rabbit
-                _ -> error ("Wrong piece character: " ++ [c])
-
-        playerFromChar :: Char -> Player
-        playerFromChar c = if isUpper c || c == 'g' || c == 'w'
-                           then Gold else Silver
 
         fromPosition :: Int -> Int64
         fromPosition = bit
@@ -243,6 +234,16 @@ findPiece a p | a ! Rabbit   .&. p /= 0 = Rabbit
               | a ! Camel    .&. p /= 0 = Camel
               | a ! Elephant .&. p /= 0 = Elephant
 findPiece _ _ = error "Inner error in findPiece"
+
+pieceFromChar :: Char -> Piece
+pieceFromChar c = case toLower c of
+        'e' -> Elephant; 'm' -> Camel; 'h' -> Horse
+        'd' -> Dog;      'c' -> Cat;   'r' -> Rabbit
+        _ -> error ("Wrong piece character: " ++ [c])
+
+playerFromChar :: Char -> Player
+playerFromChar c = if isUpper c || c == 'g' || c == 'w'
+                   then Gold else Silver
 
 pieceToInt :: Piece -> Int
 pieceToInt k = index (Rabbit, Elephant) k

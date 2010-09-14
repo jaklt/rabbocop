@@ -64,7 +64,7 @@ alpha_beta :: Board
            -> Bool        -- ^ is maximalise node
            -> IO (Move, Int) -- ^ (steps to go, best value)
 alpha_beta board gues (alpha, beta) depth actualDepth player isMaxNode
-        | findHash (hash board) actualDepth = return ([Pass], getHash (hash board))
+        -- | findHash (hash board) actualDepth = return ([Pass], getHash (hash board))
         | otherwise = do
             res <- if depth <= actualDepth
                         then return ([], eval board player isMaxNode)
@@ -92,11 +92,12 @@ alpha_beta board gues (alpha, beta) depth actualDepth player isMaxNode
                                             else return best -- Cut off
             where
                 s = [s1] ++ [s2 | s2 /= Pass]
+                actualDepth' = actualDepth + (if s2 /= Pass then 2 else 1)
+
                 (board', m) = makeMove board s
-                (player', isMaxNode') = if (actualDepth + 1) `mod` 4 /= 0
+                (player', isMaxNode') = if actualDepth' `mod` 4 /= 0
                                             then (player, isMaxNode)
                                             else (oponent player, not isMaxNode)
-                actualDepth' = actualDepth + (if s2 /= Pass then 2 else 1)
 
                 newBounds childV | isMaxNode = (cmp a childV, b)
                                  | otherwise = (a, cmp b childV)
