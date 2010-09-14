@@ -7,9 +7,9 @@ import BitRepresenation
 import BitEval
 
 foreign import ccall "clib.h reset_hash" resetHash :: IO ()
-foreign import ccall "clib.h find_hash" findHash:: Int64 -> Int -> Bool
-foreign import ccall "clib.h find_hash"  getHash:: Int64 -> Int
-foreign import ccall "clib.h add_hash" addHash:: Int64 -> Int -> Int -> IO ()
+foreign import ccall "clib.h find_hash" findHash :: Int64 -> Int -> Bool
+foreign import ccall "clib.h get_hash"   getHash :: Int64 -> Int
+foreign import ccall "clib.h add_hash"   addHash :: Int64 -> Int -> Int -> IO ()
 
 timeIsOk :: UTCTime -> IO Bool
 timeIsOk t = do
@@ -42,8 +42,8 @@ search b t p = search' 1 ([], 0)
         search' :: Int -> (Move, Int) -> IO (Move, Int)
         search' depth gues = do
             print gues
-            resetHash
             timeOk <- gues `seq` timeIsOk t
+            resetHash
             if timeOk
                 then do
                     m <- mtdf b gues depth p iNFINITY (-iNFINITY)
@@ -64,7 +64,7 @@ alpha_beta :: Board
            -> Bool        -- ^ is maximalise node
            -> IO (Move, Int) -- ^ (steps to go, best value)
 alpha_beta board gues (alpha, beta) depth actualDepth player isMaxNode
-        -- | findHash (hash board) actualDepth = return ([Pass], getHash (hash board))
+        | findHash (hash board) actualDepth = return ([Pass], getHash (hash board))
         | otherwise = do
             res <- if depth <= actualDepth
                         then return ([], eval board player isMaxNode)

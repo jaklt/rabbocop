@@ -16,6 +16,8 @@ module BitRepresenation (
     makeMove,
     makeStep,
     generateSteps,
+
+    hashPiece,
 ) where
 
 import Data.Array
@@ -252,6 +254,7 @@ playerToInt :: Player -> Int
 playerToInt Gold   = 0
 playerToInt Silver = 1
 
+{-# INLINE hashPiece #-}
 hashPiece :: Player -> Piece -> Position -> Int64
--- hashPiece _ _ 0 = 0
+hashPiece _ _ 0 = 0
 hashPiece pl pie pos = c_hashPiece (playerToInt pl) (pieceToInt pie) pos

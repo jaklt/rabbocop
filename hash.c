@@ -27,7 +27,7 @@ int get_hash(uint64_t hash)
 int find_hash(uint64_t hash, int depth)
 {
     return table[hash % HASH_SIZE].used
-        && table[hash % HASH_SIZE].depth <= depth;
+        && table[hash % HASH_SIZE].depth < depth;
 }
 
 void add_hash(uint64_t hash, int depth, int value)

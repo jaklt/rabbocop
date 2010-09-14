@@ -8,7 +8,7 @@ LINK_H = clib.h
 LINK_O = ${LINK_C:.c=.o}
 SRC = ${SRC_Hs} ${LINK_C} ${LINK_H}
 OBJ = ${SRC_Hs:.hs=.hi} ${SRC_Hs:.hs=.o} Main.hi Main.o Test.hi Test.o ${LINK_O}
-PARAMS = -O2 -Wall -fexcess-precision -fdicts-cheap -prof -auto-all # -threaded # -funbox-strict-fields 
+PARAMS = -O2 -Wall -fexcess-precision -fdicts-cheap -prof -auto-all # -threaded # -funbox-strict-fields
 CC = gcc
 CFLAGS = -O2 -std=c99 -Wall -pedantic
 
@@ -31,6 +31,6 @@ clean:
 
 dist:
 	rm ${NAME}.tar.bz2
-	tar cjvf ${NAME}.tar.bz2 *.hs *.c *.h .vimrc .ghci Makefile # .git .gitignore
+	tar cjvf ${NAME}.tar.bz2 *.hs *.c *.h .vimrc .ghci Makefile .git .gitignore
 
 .PHONY: all clean dist runtest

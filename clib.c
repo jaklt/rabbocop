@@ -80,14 +80,14 @@ int bit_index(uint64_t u)
 }
 
 
-static uint64_t bit_zobrist_table[2][6][65];
+static uint64_t bit_zobrist_table[2][6][64];
 
 void init_zobrist()
 {
     int i, j, k;
     for (i=0; i<2; i++)
         for (j=0; j<6; j++)
-            for (k=1; k<=64; k++)
+            for (k=0; k<64; k++)
                 bit_zobrist_table[i][j][k] = (((uint64_t) random()) << 40)
                         ^ (((uint64_t) random()) << 20) ^ ((uint64_t) random());
 }
