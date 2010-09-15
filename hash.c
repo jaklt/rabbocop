@@ -3,7 +3,7 @@
 
 /* Mozna bude potreba neco jako lock */
 
-#define HASH_SIZE 65000
+#define HASH_SIZE 131072
 
 struct record {
     int hash;

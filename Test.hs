@@ -1,7 +1,6 @@
 module Main where
 
 import Data.Bits
-import Data.Time.Clock
 import Prelude
 
 import MyBits
@@ -31,8 +30,7 @@ main = do
     -- putStrLn.show $ alpha_beta testBoard2 ([], 0) (-iNFINITY, iNFINITY) 1 0 Gold True
 
     putStrLn $ displayBoard testBoard2 True
-    t <- getCurrentTime
-    res <- search testBoard2 t Gold
+    res <- search testBoard2 Gold 60
     putStrLn $ showMove res
 
     {-

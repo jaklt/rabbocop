@@ -11,10 +11,10 @@ foreign import ccall "clib.h find_hash" findHash :: Int64 -> Int -> Bool
 foreign import ccall "clib.h get_hash"   getHash :: Int64 -> Int
 foreign import ccall "clib.h add_hash"   addHash :: Int64 -> Int -> Int -> IO ()
 
-timeIsOk :: UTCTime -> IO Bool
-timeIsOk t = do
+timeIsOk :: UTCTime -> Int -> IO Bool
+timeIsOk t maxTime = do
     a <- getCurrentTime
-    return (diffUTCTime a t < 15)
+    return (diffUTCTime a t < (fromIntegral maxTime))
 
 mtdf :: Board       -- ^ start position
      -> (Move, Int) -- ^ best value with PV from last time
@@ -36,18 +36,19 @@ mtdf b best@(_, bestValue) depth pl ub lb =
                              | otherwise    = return (ub, bestV)
 
 -- | iterative deepening
-search :: Board -> UTCTime -> Player -> IO (Move, Int)
-search b t p = search' 1 ([], 0)
+search :: Board -> Player -> Int -> IO (Move, Int)
+search board player maxTime = do t <- getCurrentTime
+                                 search' 1 ([], 0) t
     where
-        search' :: Int -> (Move, Int) -> IO (Move, Int)
-        search' depth gues = do
-            print gues
-            timeOk <- gues `seq` timeIsOk t
+        search' :: Int -> (Move, Int) -> UTCTime -> IO (Move, Int)
+        search' depth gues time = do
+            putStrLn $ "info actual " ++ show gues
+            timeOk <- gues `seq` timeIsOk time maxTime
             resetHash
             if timeOk
                 then do
-                    m <- mtdf b gues depth p iNFINITY (-iNFINITY)
-                    search' (depth+1) m
+                    m <- mtdf board gues depth player iNFINITY (-iNFINITY)
+                    search' (depth+1) m time
                 else return gues
 
 -- TODO kontrola vyhry a pripadny konec
@@ -64,7 +65,7 @@ alpha_beta :: Board
            -> Bool        -- ^ is maximalise node
            -> IO (Move, Int) -- ^ (steps to go, best value)
 alpha_beta board gues (alpha, beta) depth actualDepth player isMaxNode
-        | findHash (hash board) actualDepth = return ([Pass], getHash (hash board))
+        -- | findHash (hash board) actualDepth = return ([Pass], getHash (hash board))
         | otherwise = do
             res <- if depth <= actualDepth
                         then return ([], eval board player isMaxNode)
@@ -105,10 +106,8 @@ alpha_beta board gues (alpha, beta) depth actualDepth player isMaxNode
         inBounds (a,b) (_, best) | isMaxNode = best < b
                                  | otherwise = best > a
 
-        cmp | isMaxNode = max
-            | otherwise = min
-        inf | isMaxNode = -iNFINITY
-            | otherwise =  iNFINITY
+        (cmp, inf) | isMaxNode = (max, -iNFINITY)
+                   | otherwise = (min,  iNFINITY)
 
 {-
 function AlphaBetaWithMemory(n : node_type; alpha , beta , d : integer) : integer;

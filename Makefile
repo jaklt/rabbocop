@@ -1,24 +1,25 @@
 NAME = rabbocop
 
 SRC_Hs = BitRepresenation.hs MyBits.hs BitEval.hs MTDf.hs
-
 LINK_C = clib.c hash.c
 LINK_H = clib.h
 
 LINK_O = ${LINK_C:.c=.o}
 SRC = ${SRC_Hs} ${LINK_C} ${LINK_H}
 OBJ = ${SRC_Hs:.hs=.hi} ${SRC_Hs:.hs=.o} Main.hi Main.o Test.hi Test.o ${LINK_O}
-PARAMS = -O2 -Wall -fexcess-precision -fdicts-cheap -prof -auto-all # -threaded # -funbox-strict-fields
+
+HC = ghc
+HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap # -prof -auto-all # -threaded # -funbox-strict-fields
 CC = gcc
 CFLAGS = -O2 -std=c99 -Wall -pedantic
 
 all: Main
 
 Main: Main.hs ${SRC} ${LINK_O}
-	ghc --make Main.hs ${LINK_O} ${PARAMS}
+	${HC} --make Main.hs ${LINK_O} ${HFLAGS}
 
 Test: Test.hs ${SRC} ${LINK_O}
-	ghc --make Test.hs ${LINK_O} ${PARAMS}
+	${HC} --make Test.hs ${LINK_O} ${HFLAGS}
 
 runtest: Test
 	./Test # ${RUN_PARAMS}

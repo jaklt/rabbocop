@@ -12,11 +12,16 @@ module BitRepresenation (
     players,
     displayBoard,
     parseBoard,
+    parsePosition,
+    positionToStep,
+    parseStep,
     createBoard,
     oponent,
     makeMove,
     makeStep,
     generateSteps,
+    playerFromChar,
+    pieceFromChar,
 ) where
 
 import Data.Array
@@ -92,17 +97,31 @@ displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
 
 
 parseBoard :: String -> Board
-parseBoard inp = createBoard $ map parse' $ words inp
+parseBoard inp = createBoard $ map parsePosition $ words inp
+
+-- | x in [a..h], y in [1..8] -> y*8 + x
+newPosition :: Char -> Char -> Position
+newPosition x y = 8*((digitToInt y) - 1) + (7 - (index ('a','h') x))
+
+parsePosition :: String -> (Player, Piece, Position)
+parsePosition (p:x:y:[]) = (playerFromChar p, pieceFromChar p, newPosition x y)
+parsePosition p = error ("Wrong position given: " ++ p)
+
+positionToStep :: (Player, Piece, Position) -> Step
+positionToStep (pl,pie,pos) = Step pie pl 0 (bit pos)
+
+parseStep :: String -> Step
+parseStep (p:x:y:o:[]) =
+            Step (pieceFromChar p) (playerFromChar p) (bit pos) (bit pos')
     where
-        parse' :: String -> (Player, Piece, Position)
-        parse' (p:x:y:[]) = (playerFromChar p, pieceFromChar p
-                            -- position: (x in [a..h], y in [1..8]) -> y*8 + x
-                            , 7 - (index ('a','h') x) + 8*((digitToInt y) - 1))
-        parse' p = error ("Wrong position given: " ++ p)
+        pos = newPosition x y
+        pos' = case o of 'n' -> pos+8; 's' -> pos-8; 'x' -> -1
+                         'w' -> pos+1; 'e' -> pos-1
+                         _   -> error "Invalid move direction"
+parseStep s = error ("Wrong step given: " ++ s)
 
 createBoard :: [(Player, Piece, Position)] -> Board
-createBoard xs = fst $ makeMove bo $ map
-                    (\(pl, pie, pos) -> Step pie pl 0 (bit pos)) xs
+createBoard xs = fst $ makeMove bo $ map positionToStep xs
     where
         gb = array (Rabbit, Elephant) [(i,0 :: Int64) | i <- pieces]
         sb = array (Rabbit, Elephant) [(i,0 :: Int64) | i <- pieces]
