@@ -56,8 +56,17 @@ aei_go game | hash (board game) == 0 = do
             | otherwise = do
                 (pv, val) <- search (board game) (playerColor game) (30*(timePerMove game))
                 putStrLn $ "info bestscore " ++ show val
-                putStrLn $ "bestmove " ++ (unwords $ map show pv)
+                putStrLn $ "bestmove " ++ (unwords $ map show $ justOneMove pv 0)
                 return game
+    where
+        -- TODO osetrit hodne specialni pripady, kdy engine neodehraje 4 kroky
+        justOneMove :: Move -> Int -> Move
+        justOneMove []       _ = []
+        justOneMove (Pass:_) _ = []
+        justOneMove (s@(Step _ pl _ to):xs) count
+                | count < 4 && (pl == (playerColor game) || to == 0)
+                    = s:(justOneMove xs (count+1))
+                | otherwise = []
 
 action :: String -> String -> Game -> IO Game
 action str line game = case str of
