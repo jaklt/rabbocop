@@ -1,6 +1,7 @@
 module Main where
 
 import Data.Array ((!))
+import System.IO
 import BitRepresenation
 import MTDf
 
@@ -60,7 +61,7 @@ aei_go game | hash (board game) == 0 = do
 
 action :: String -> String -> Game -> IO Game
 action str line game = case str of
-    "aei" -> putStrLn "protocol-version 1\nid name Rabbocop\nid author JackeLee"
+    "aei" -> putStrLn "protocol-version 1\nid name Rabbocop\nid author JackeLee\naeiok\n"
              >> return game
     "isready" -> putStrLn "readyok" -- TODO init
                  >> return game
@@ -104,20 +105,21 @@ action str line game = case str of
     "quit" -> return $ game { quit = True }
     _ -> putStrLn "log Error: unknown command" >> return game
 
-comunicate :: Game -> IO ()
-comunicate game = do
+communicate :: Game -> IO ()
+communicate game = game `seq` do
+    hFlush stdout
     l <- getLine
     (str, line) <- return $ firstWord l
     game' <- action str line game
     if quit game'
         then return ()
-        else comunicate game'
+        else communicate game'
 
 main :: IO ()
 main = do
-    comunicate game
+    communicate game
     where
-        game = Game { timePerMove = 2, startingReserve = 2
+        game = Game { timePerMove = 1, startingReserve = 2
                     , percentUnusedToReserve = 100, maxReserve = 10
                     , maxLenghtOfGame = -1, maxTurns = -1, maxTurnTime = -1
                     , quit = False, board = parseBoard "", playerColor = Gold}
