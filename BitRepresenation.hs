@@ -12,19 +12,17 @@ module BitRepresenation (
     players,
     displayBoard,
     parseBoard,
+    createBoard,
     oponent,
     makeMove,
     makeStep,
     generateSteps,
-
-    hashPiece,
 ) where
 
 import Data.Array
 import Data.Bits
 import Data.Char (digitToInt, isUpper, toLower)
 import Data.Int (Int64)
-import Data.List (sort)
 import MyBits
 
 foreign import ccall "clib.h hash_piece" c_hashPiece :: Int -> Int -> Int -> Int64
@@ -49,7 +47,7 @@ traps = 0x0000240000240000
 
 instance Show Step where
     show Pass = "Pass"
-    show (Step piece player from to) = (showPiece player piece) : (pos from ++ dir)
+    show (Step piece player from to) = (showPiece player piece):(pos from ++ dir)
         where
              format :: Show a => a -> Char
              format = toLower.head.show
@@ -59,9 +57,9 @@ instance Show Step where
                  | d == -8 = "s"
                  | d ==  1 = "w"
                  | d == -1 = "e"
-                 | otherwise = error ( "Impossible move from: " ++ pos from
-                                    ++ " to: " ++ pos to ++ " (by: "
-                                    ++ [showPiece player piece] ++ ")")
+                 | otherwise = error
+                        ( "Impossible move from: " ++ pos from ++ " to: "
+                        ++ pos to ++ " (with " ++ [showPiece player piece] ++ ")")
 
              pos p = let q = bitIndex p in [ ['a'..'h'] !! (7 - q `mod` 8)
                                            , format $ q `div` 8 + 1]
@@ -69,14 +67,8 @@ instance Show Step where
 players :: [Player]
 players = [Gold, Silver]
 
-playersRange :: (Player, Player)
-playersRange = (Gold, Silver)
-
 pieces :: [Piece]
 pieces = [Rabbit .. Elephant]
-
-piecesRange :: (Piece, Piece)
-piecesRange = (Rabbit, Elephant)
 
 showPiece :: Player -> Piece -> Char
 showPiece Gold Camel   = 'M'
@@ -100,7 +92,7 @@ displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
 
 
 parseBoard :: String -> Board
-parseBoard inp = createBoard $ sort $ map parse' $ words inp
+parseBoard inp = createBoard $ map parse' $ words inp
     where
         parse' :: String -> (Player, Piece, Position)
         parse' (p:x:y:[]) = (playerFromChar p, pieceFromChar p
@@ -108,30 +100,17 @@ parseBoard inp = createBoard $ sort $ map parse' $ words inp
                             , 7 - (index ('a','h') x) + 8*((digitToInt y) - 1))
         parse' p = error ("Wrong position given: " ++ p)
 
-        fromPosition :: Int -> Int64
-        fromPosition = bit
+createBoard :: [(Player, Piece, Position)] -> Board
+createBoard xs = fst $ makeMove bo $ map
+                    (\(pl, pie, pos) -> Step pie pl 0 (bit pos)) xs
+    where
+        gb = array (Rabbit, Elephant) [(i,0 :: Int64) | i <- pieces]
+        sb = array (Rabbit, Elephant) [(i,0 :: Int64) | i <- pieces]
 
-        createBoard :: [(Player, Piece, Position)] -> Board
-        createBoard xs =
-            let gb = array piecesRange [(i,0 :: Int64) | i <- pieces]
-                sb = array piecesRange [(i,0 :: Int64) | i <- pieces]
+        fi = array (Gold, Silver) [(Gold, gb), (Silver, sb)]
+        wh = array (Gold, Silver) [(Gold, 0),  (Silver, 0)]
+        bo = Board { hash=0, figures=fi, whole=wh}
 
-                gp = filter (\(p,_,_) -> p == Gold)   xs
-                sp = filter (\(p,_,_) -> p == Silver) xs
-
-                gx = map (\(_,s,pos) -> (s, fromPosition pos)) gp
-                sx = map (\(_,s,pos) -> (s, fromPosition pos)) sp
-
-                gPB = accum (.|.) gb gx
-                gWh = foldr (\(_,a) b -> a .|. b) 0 gx
-                sPB = accum (.|.) sb sx
-                sWh = foldr (\(_,a) b -> a .|. b) 0 sx
-
-                ha = foldr (\(pl,pie,pos) h -> h `xor` hashPiece pl pie pos) 0 xs
-                fi = array playersRange [(Gold, gPB), (Silver, sPB)]
-                wh = array playersRange [(Gold, gWh), (Silver, sWh)]
-            in
-                Board { hash=ha, figures=fi, whole=wh}
 
 {-# INLINE stepsFromPosition #-}
 -- | third argument: only one bit number
@@ -149,7 +128,8 @@ oponent Gold = Silver
 oponent Silver = Gold
 
 makeMove :: Board -> Move -> (Board, Move)
-makeMove b ss = foldl (\(b1, ss1) s -> case makeStep b1 s of (b2, ss2) -> (b2, ss1 ++ ss2)) (b, []) ss
+makeMove b ss = foldl (\(b1, ss1) s -> case makeStep b1 s of
+                                   (b2, ss2) -> (b2, ss1 ++ ss2)) (b, []) ss
 
 makeStep :: Board -> Step -> (Board, Move)
 makeStep b Pass = (b, [])
