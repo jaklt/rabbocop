@@ -23,18 +23,11 @@ uint64_t hash_piece(int player, int piece, int position);
 int64_t steps_from_position(int pl, int pie, int pos);
 void init();
 
+void info_hash();
 void reset_hash();
 int find_hash(uint64_t hash, int depth);
-int  get_hash(uint64_t hash);
-void add_hash(uint64_t hash, int depth, int value);
+void *get_hash(uint64_t hash);
+void add_hash(uint64_t hash, int depth, void *best);
 void clean();
-
-typedef struct {
-    uint64_t hash;
-    int value;
-    int depth;
-    void *pv;
-    int used;
-} CRecord;
 
 #endif

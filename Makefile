@@ -1,13 +1,11 @@
 NAME = rabbocop
 
-SRC_Hs = BitRepresenation.hs MyBits.hs BitEval.hs MTDf.hs
-SRC_Hsc = Hash.hsc
+SRC_Hs = BitRepresenation.hs MyBits.hs BitEval.hs MTDf.hs Hash.hs
 LINK_C = clib.c hash.c
 LINK_H = clib.h
 
 LINK_O = ${LINK_C:.c=.o}
-SRC_HscHs = ${SRC_Hsc:.hsc=.hs}
-SRC = ${SRC_Hs} ${SRC_HscHs} ${SRC_Hsc} ${LINK_C} ${LINK_H}
+SRC = ${SRC_Hs} ${LINK_C} ${LINK_H}
 
 HC = ghc
 HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap # -prof -auto-all # -threaded # -funbox-strict-fields
@@ -25,14 +23,11 @@ Test: Test.hs ${SRC} ${LINK_O}
 runtest: Test
 	./Test # ${RUN_PARAMS}
 
-${SRC_HscHs}: ${SRC_Hsc}
-	hsc2hs $<
-
 ${LINK_O}: ${LINK_C} ${LINK_H}
 
 clean:
 	@echo Cleaning
-	rm -f *.o *.hi *.prof ${SRC_HscHs}
+	rm -f *.o *.hi *.prof
 
 dist:
 	rm ${NAME}.tar.bz2

@@ -58,21 +58,21 @@ alpha_beta :: Board
            -> IO (Move, Int) -- ^ (steps to go, best value)
 alpha_beta board gues (alpha, beta) depth actualDepth player isMaxNode = do
         inTranspositionTable <- findHash (hash board) actualDepth
-        (alpha', beta', value) <- if inTranspositionTable
+        (alpha', beta', bestGues) <- if inTranspositionTable
             then do
-                ttValue <- getHash (hash board)
-                return (max alpha ttValue, min beta ttValue, ttValue)
+                bestGues@(_,ttValue) <- getHash (hash board)
+                return (max alpha ttValue, min beta ttValue, bestGues)
             else
-                return (alpha, beta, 0)
+                return (alpha, beta, ([],0))
 
         if alpha' > beta'
             then
-                return ([Pass], value)
+                return bestGues
             else do
                 res <- if depth <= actualDepth
                             then return ([], eval board player isMaxNode)
                             else findBest (alpha', beta') ([], inf) steps
-                addHash (hash board) actualDepth (snd res)
+                addHash (hash board) actualDepth res
                 return res
     where
         -- TODO ke steps pridat/preferovat napovedu z gues
