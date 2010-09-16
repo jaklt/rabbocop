@@ -1,15 +1,9 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
 module MTDf (search, alpha_beta) where
 
-import Data.Int (Int64)
 import Data.Time.Clock
 import BitRepresenation
 import BitEval
-
-foreign import ccall "clib.h reset_hash" resetHash :: IO ()
-foreign import ccall "clib.h find_hash" findHash :: Int64 -> Int -> Bool
-foreign import ccall "clib.h get_hash"   getHash :: Int64 -> Int
-foreign import ccall "clib.h add_hash"   addHash :: Int64 -> Int -> Int -> IO ()
+import Hash
 
 timeIsOk :: UTCTime -> Int -> IO Bool
 timeIsOk t maxTime = do
@@ -52,8 +46,6 @@ search board player maxTime = do t <- getCurrentTime
                 else return gues
 
 -- TODO kontrola vyhry a pripadny konec
---      pri malem poctu figurek nedopocitava tahy (tahne mene figurama)
---
 --      PV v hashi
 
 alpha_beta :: Board
@@ -64,14 +56,24 @@ alpha_beta :: Board
            -> Player      -- ^ actual player
            -> Bool        -- ^ is maximalise node
            -> IO (Move, Int) -- ^ (steps to go, best value)
-alpha_beta board gues (alpha, beta) depth actualDepth player isMaxNode
-        -- | findHash (hash board) actualDepth = return ([Pass], getHash (hash board))
-        | otherwise = do
-            res <- if depth <= actualDepth
-                        then return ([], eval board player isMaxNode)
-                        else findBest (alpha, beta) ([], inf) steps
-            addHash (hash board) actualDepth (snd res)
-            return res
+alpha_beta board gues (alpha, beta) depth actualDepth player isMaxNode = do
+        inTranspositionTable <- findHash (hash board) actualDepth
+        (alpha', beta', value) <- if inTranspositionTable
+            then do
+                ttValue <- getHash (hash board)
+                return (max alpha ttValue, min beta ttValue, ttValue)
+            else
+                return (alpha, beta, 0)
+
+        if alpha' > beta'
+            then
+                return ([Pass], value)
+            else do
+                res <- if depth <= actualDepth
+                            then return ([], eval board player isMaxNode)
+                            else findBest (alpha', beta') ([], inf) steps
+                addHash (hash board) actualDepth (snd res)
+                return res
     where
         -- TODO ke steps pridat/preferovat napovedu z gues
         steps = generateSteps board player (actualDepth `mod` 4 /= 3)

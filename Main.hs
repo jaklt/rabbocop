@@ -39,8 +39,11 @@ aei_makemove game move
         | (whole (board game)) ! Silver == 0 = game { board = fst board2 }
         | otherwise =  game { board = fst board1 }
     where
-        board1 = makeMove (board game) $ map parseStep $ words move
+        board1 = makeMove (board game) $ filter notTrapping $ map parseStep $ words move
         board2 = makeMove (board game) $ map (positionToStep.parsePosition) $ words move
+
+        notTrapping (Step _ _ _ to) = to /= 0
+        notTrapping _ = True
 
 startSilver, startGold :: String
 startSilver = "ra8 rb8 rc8 rd8 re8 rf8 rg8 rh8 ha7 db7 cc7 ed7 me7 cf7 dg7 hh7 "
@@ -63,14 +66,14 @@ aei_go game | hash (board game) == 0 = do
         justOneMove :: Move -> Int -> Move
         justOneMove []       _ = []
         justOneMove (Pass:_) _ = []
-        justOneMove (s@(Step _ pl _ to):xs) count
-                | count < 4 && (pl == (playerColor game) || to == 0)
-                    = s:(justOneMove xs (count+1))
+        justOneMove (s@(Step _ _ _ to):xs) count
+                | to == 0   = s:(justOneMove xs count)
+                | count < 4 = s:(justOneMove xs (count+1))
                 | otherwise = []
 
 action :: String -> String -> Game -> IO Game
 action str line game = case str of
-    "aei" -> putStrLn "protocol-version 1\nid name Rabbocop\nid author JackeLee\naeiok\n"
+    "aei" -> putStrLn "protocol-version 1\nid name Rabbocop\nid author JackeLee\naeiok"
              >> return game
     "isready" -> putStrLn "readyok" -- TODO init
                  >> return game
@@ -128,7 +131,7 @@ main :: IO ()
 main = do
     communicate game
     where
-        game = Game { timePerMove = 1, startingReserve = 2
+        game = Game { timePerMove = 4, startingReserve = 2
                     , percentUnusedToReserve = 100, maxReserve = 10
                     , maxLenghtOfGame = -1, maxTurns = -1, maxTurnTime = -1
                     , quit = False, board = parseBoard "", playerColor = Gold}

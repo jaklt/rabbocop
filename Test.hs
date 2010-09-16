@@ -1,5 +1,6 @@
 module Main where
 
+import Control.Monad (forM_)
 import Data.Bits
 import Prelude
 
@@ -8,8 +9,49 @@ import BitEval
 import BitRepresenation
 import MTDf
 
+import Hash
+
 testMyBits :: Bool
 testMyBits = and [bitIndex (bit i) == i | i <- [0..63]] -- && bitIndex 222 == -1
+
+testHash :: IO Bool
+testHash = do
+        arr <- jajxArr
+
+        let ss = [(Step pie pl from to,i) | i    <- [6,5..0]
+                                          , pie  <- pieces,     pl <- players
+                                          , from <- [63,62..0], to <- [63,62..0]]
+
+        forM_ ss (\(s,i) -> do
+                    let b = fst $ makeStep (createBoard []) s
+                    t <- jajxFind arr (hash b) i
+                    if t
+                        then do
+                            (m,v) <- jajxGet arr (hash b)
+                            jajxAdd arr (hash b) i (v+1) (Pass:m)
+                        else jajxAdd arr (hash b) i (i*531 `div` 26000) [Pass]
+                 )
+        return True
+
+testHash2 :: IO Bool
+testHash2 = do
+        resetHash
+
+        let ss = [(Step pie pl from to,i) | i    <- [400,399..0]
+                                          , pie  <- pieces,     pl <- players
+                                          , from <- [63,62..0], to <- [63,62..0]]
+
+        forM_ ss (\(s,i) -> do
+                    let b = fst $ makeStep (createBoard []) s
+                    t <- findHash (hash b) i
+                    if t
+                        then do
+                            v <- getHash (hash b)
+                            addHash (hash b) i (v+1)
+                        else addHash (hash b) i (i*531 `div` 26000)
+                 )
+        resetHash
+        return True
 
 startSilver, startGold :: String
 startSilver = "ra8 rb8 rc8 rd8 re8 rf8 rg8 rh8 ha7 db7 cc7 ed7 me7 cf7 dg7 hh7 "
@@ -23,6 +65,14 @@ main :: IO ()
 main = do
     putStrLn $ "- testMyBits: " ++ show testMyBits
     putStrLn $ "- testMakeMove: " ++ show (testBoard3 == testBoard4)
+    -- hashResult <- testHash
+    -- putStrLn $ "- testHash: " ++ show hashResult
+
+    arr <- jajxArr
+
+    jajxAdd arr (hash testBoard) 1 1000 [Pass, Pass]
+    res <- jajxGet arr (hash testBoard)
+    putStrLn.show $ res
 
     -- putStrLn $ displayBoard testBoard2 True
     -- putStrLn.show $ generateSteps testBoard2 Gold
@@ -30,15 +80,15 @@ main = do
     -- putStrLn.show $ alpha_beta testBoard2 ([], 0) (-iNFINITY, iNFINITY) 1 0 Gold True
 
     putStrLn $ displayBoard testBoard2 True
-    res <- search testBoard2 Gold 60
+    res <- search testBoard2 Gold 20
     putStrLn $ showMove res
 
     {-
     putStrLn $ displayBoard testBoard5 True
     putStrLn $ show $ eval testBoard5 Gold
 
-    putStrLn $ displayBoard testBoard5 True
-    res <- alpha_beta testBoard5 ([], 2100) (-iNFINITY, iNFINITY) 14 0 Gold True
+    putStrLn $ displayBoard testBoard2 True
+    res <- alpha_beta testBoard2 ([], 2100) (-iNFINITY, iNFINITY) 10 0 Gold True
     putStrLn $ showMove res
     -}
 

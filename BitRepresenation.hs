@@ -112,11 +112,11 @@ positionToStep (pl,pie,pos) = Step pie pl 0 (bit pos)
 
 parseStep :: String -> Step
 parseStep (p:x:y:o:[]) =
-            Step (pieceFromChar p) (playerFromChar p) (bit pos) (bit pos')
+            Step (pieceFromChar p) (playerFromChar p) (bit from) (bit to)
     where
-        pos = newPosition x y
-        pos' = case o of 'n' -> pos+8; 's' -> pos-8; 'x' -> -1
-                         'w' -> pos+1; 'e' -> pos-1
+        from = newPosition x y
+        to   = case o of 'n' -> from+8; 's' -> from-8; 'x' -> -1
+                         'w' -> from+1; 'e' -> from-1
                          _   -> error "Invalid move direction"
 parseStep s = error ("Wrong step given: " ++ s)
 
