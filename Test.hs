@@ -30,7 +30,7 @@ main = do
     -- putStrLn.show $ alpha_beta testBoard2 ([], 0) (-iNFINITY, iNFINITY) 1 0 Gold True
 
     putStrLn $ displayBoard testBoard2 True
-    res <- search testBoard2 Gold 20
+    res <- search testBoard2 Gold 30
     putStrLn $ showMove res
 
     {-

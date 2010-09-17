@@ -1,4 +1,3 @@
-{-# OPTIONS -fno-warn-deprecated-flags #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 module Hash (
     infoHash,
@@ -23,7 +22,14 @@ addHash :: Int64 -- ^ hash
         -> (Move, Int) -- ^ (PV, value)
         -> IO ()
 addHash h d best = do
-        -- TODO freeStablePtr
+        isNotEmpty <- findHash h 0
+        if isNotEmpty
+            then do
+                ptr' <- c_getHash h
+                freeStablePtr ptr'
+            else
+                return ()
+
         ptr <- newStablePtr best
         c_addHash h d ptr
         return ()

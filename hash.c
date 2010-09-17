@@ -4,7 +4,7 @@
 
 /* Mozna bude potreba neco jako lock */
 
-#define HASH_SIZE 131072000
+#define HASH_SIZE 13107200
 
 struct record {
     uint64_t hash;
@@ -38,7 +38,7 @@ int find_hash(uint64_t hash, int depth)
 {
     find_count++;
     return table[hash % HASH_SIZE].used
-        && table[hash % HASH_SIZE].depth <= depth
+        && table[hash % HASH_SIZE].depth >= depth
         && table[hash % HASH_SIZE].hash == hash;
 }
 

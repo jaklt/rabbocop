@@ -131,7 +131,7 @@ main :: IO ()
 main = do
     communicate game
     where
-        game = Game { timePerMove = 4, startingReserve = 2
+        game = Game { timePerMove = 1, startingReserve = 2
                     , percentUnusedToReserve = 100, maxReserve = 10
                     , maxLenghtOfGame = -1, maxTurns = -1, maxTurnTime = -1
                     , quit = False, board = parseBoard "", playerColor = Gold}
