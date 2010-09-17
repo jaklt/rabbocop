@@ -57,7 +57,7 @@ alpha_beta :: Board
            -> Bool        -- ^ is maximalise node
            -> IO (Move, Int) -- ^ (steps to go, best value)
 alpha_beta board gues (alpha, beta) depth actualDepth player isMaxNode = do
-        inTranspositionTable <- findHash (hash board) actualDepth
+        inTranspositionTable <- findHash (hash board) (depth-actualDepth)
         (alpha', beta', bestGues) <- if inTranspositionTable
             then do
                 bestGues@(_,ttValue) <- getHash (hash board)
@@ -110,3 +110,4 @@ alpha_beta board gues (alpha, beta) depth actualDepth player isMaxNode = do
 
         (cmp, inf) | isMaxNode = (max, -iNFINITY)
                    | otherwise = (min,  iNFINITY)
+

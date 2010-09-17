@@ -4,9 +4,10 @@ import Data.Bits
 import Prelude
 
 import MyBits
--- import BitEval
+import BitEval
 import BitRepresenation
 import MTDf
+import Hash
 
 testMyBits :: Bool
 testMyBits = and [bitIndex (bit i) == i | i <- [0..63]] -- && bitIndex 222 == -1
@@ -29,19 +30,22 @@ main = do
 
     -- putStrLn.show $ alpha_beta testBoard2 ([], 0) (-iNFINITY, iNFINITY) 1 0 Gold True
 
+    resetHash 500
+
+    {-
     putStrLn $ displayBoard testBoard2 True
     res <- search testBoard2 Gold 30
     putStrLn $ showMove res
 
-    {-
     putStrLn $ displayBoard testBoard5 True
     putStrLn $ show $ eval testBoard5 Gold
-
-    putStrLn $ displayBoard testBoard2 True
-    res <- alpha_beta testBoard2 ([], 2100) (-iNFINITY, iNFINITY) 10 0 Gold True
-    putStrLn $ showMove res
     -}
 
+    putStrLn $ displayBoard testBoard5 True
+    res <- alpha_beta testBoard5 ([], 0) (-iNFINITY, iNFINITY) 9 0 Gold True
+    putStrLn $ showMove res
+
+    infoHash
     where
         testBoard  = parseBoard $ startSilver ++ startGold
         testBoard2 = parseBoard "Rb3 Ra3 Mf4 dg4 db2 re8"
@@ -49,4 +53,4 @@ main = do
                                          [ Step Rabbit Gold (bit 22) (bit 21)
                                          , Step Dog Silver (bit 14) (bit 22)]
         testBoard4 = parseBoard "Ra3 Mf4 dg4 db3 re8"
-        testBoard5 = parseBoard "Rc1 rf8"
+        testBoard5 = parseBoard "Rc1 Rf1 rf8"

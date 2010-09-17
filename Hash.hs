@@ -12,7 +12,7 @@ import Foreign.StablePtr
 import BitRepresenation (Move)
 
 foreign import ccall "clib.h info_hash"   infoHash :: IO ()
-foreign import ccall "clib.h reset_hash" resetHash :: IO ()
+foreign import ccall "clib.h reset_hash" resetHash :: Int -> IO ()
 foreign import ccall "clib.h find_hash"   findHash :: Int64 -> Int -> IO Bool
 foreign import ccall "clib.h get_hash"  c_getHash  :: Int64 -> IO (StablePtr (Move, Int))
 foreign import ccall "clib.h add_hash"  c_addHash  :: Int64 -> Int -> StablePtr (Move, Int) -> IO ()

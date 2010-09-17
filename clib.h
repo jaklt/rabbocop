@@ -24,7 +24,7 @@ int64_t steps_from_position(int pl, int pie, int pos);
 void init();
 
 void info_hash();
-void reset_hash();
+void reset_hash(int size);
 int find_hash(uint64_t hash, int depth);
 void *get_hash(uint64_t hash);
 void add_hash(uint64_t hash, int depth, void *best);

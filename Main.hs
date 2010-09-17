@@ -3,6 +3,7 @@ module Main where
 import Data.Array ((!))
 import System.IO
 import BitRepresenation
+import Hash (resetHash)
 import MTDf
 
 ltrim :: String -> String
@@ -15,10 +16,16 @@ firstWord str = f [] $ ltrim str
         f word (s:ss) | s == ' '  = (word, ss)
                       | otherwise = f (word ++ [s]) ss
 
+getValue :: Read a => String -> a
+getValue str = case firstWord str of
+                    ("value", rest) -> read rest
+                    _ -> read str
+
 data Game = Game { timePerMove :: Int, startingReserve :: Int
                  , percentUnusedToReserve :: Int, maxReserve :: Int
                  , maxLenghtOfGame :: Int, maxTurns :: Int, maxTurnTime :: Int
-                 , quit :: Bool, board :: Board, playerColor :: Player }
+                 , quit :: Bool, board :: Board, playerColor :: Player
+                 , hashSize :: Int}
                  deriving (Show)
 
 
@@ -81,14 +88,20 @@ action str line game = case str of
         case firstWord line of
             ("name", line') ->
                 case firstWord line' of
-                    ("tcmove", time)    -> return game { timePerMove = read time }
-                    ("tcreserve", time) -> return game { startingReserve = read time}
-                    ("tcpercent", time) -> return game { percentUnusedToReserve = read time }
-                    ("tcmax", time)     -> return game { maxReserve = read time }
-                    ("tctotal", time)   -> return game { maxLenghtOfGame = read time }
-                    ("tcturns", turns)  -> return game { maxTurns = read turns }
-                    ("tcturntime", time)-> return game { maxTurnTime = read time }
+                    ("tcmove", time)    -> return game { timePerMove = getValue time }
+                    ("tcreserve", time) -> return game { startingReserve = getValue time}
+                    ("tcpercent", time) -> return game { percentUnusedToReserve = getValue time }
+                    ("tcmax", time)     -> return game { maxReserve = getValue time }
+                    ("tctotal", time)   -> return game { maxLenghtOfGame = getValue time }
+                    ("tcturns", turns)  -> return game { maxTurns = getValue turns }
+                    ("tcturntime", time)-> return game { maxTurnTime = getValue time }
 
+                    ("hash",size) -> do
+                            let size' = getValue size
+                            resetHash size'
+                            putStrLn ("log Set transposition table size to "
+                                        ++ show size' ++ "MB")
+                            return game { hashSize = size' }
                     {-
                     ("greserve",_) -> return game
                     ("sreserve",_) -> return game
@@ -101,7 +114,6 @@ action str line game = case str of
                     ("rating",_) -> return game
                     ("rated",_) -> return game
                     ("event",_) -> return game
-                    ("hash",_) -> return game
                     ("depth",_) -> return game
                     -}
                     _ -> putStrLn "log Warning: unsupported setoption" >> return game
@@ -129,9 +141,11 @@ communicate game = game `seq` do
 
 main :: IO ()
 main = do
+    resetHash 0
     communicate game
     where
         game = Game { timePerMove = 1, startingReserve = 2
                     , percentUnusedToReserve = 100, maxReserve = 10
                     , maxLenghtOfGame = -1, maxTurns = -1, maxTurnTime = -1
-                    , quit = False, board = parseBoard "", playerColor = Gold}
+                    , quit = False, board = parseBoard "", playerColor = Gold
+                    , hashSize = 100 }

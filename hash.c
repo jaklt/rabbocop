@@ -1,10 +1,11 @@
 #include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include "clib.h"
 
 /* Mozna bude potreba neco jako lock */
 
-#define HASH_SIZE 13107200
+static unsigned int HASH_SIZE = 13107200;
 
 struct record {
     uint64_t hash;
@@ -13,19 +14,27 @@ struct record {
     unsigned int used:1;
 };
 
-static struct record table[HASH_SIZE];
+static struct record *table;
 
 static int reset_count=0, get_count=0, find_count=0, add_count=0, overwritten_count=0;
 
 void info_hash()
 {
     printf("info hashtable - reset: %d, get: %d, find: %d, add: %d, ow: %d\n",
-            ++reset_count, get_count, find_count, add_count, overwritten_count);
+            reset_count, get_count, find_count, add_count, overwritten_count);
 }
 
-void reset_hash()
+void reset_hash(int size)
 {
-    memset(table, 0, sizeof(struct record)*HASH_SIZE);
+    reset_count++;
+    get_count = find_count = add_count = overwritten_count = 0;
+    if (table) free(table);
+
+    if (size > 0)
+        HASH_SIZE = size * 1000000 / sizeof(struct record);
+
+    table = (struct record *) calloc(HASH_SIZE, sizeof(struct record));
+    if (!table) exit(2);
 }
 
 void *get_hash(uint64_t hash)
