@@ -64,7 +64,7 @@ aei_go game | hash (board game) == 0 = do
                 putStrLn ("bestmove " ++ startSilver)
                 return game { playerColor = Silver }
             | otherwise = do
-                (pv, val) <- search (board game) (playerColor game) (30*(timePerMove game))
+                (pv, val) <- search (board game) (playerColor game) time
                 putStrLn $ "info bestscore " ++ show val
                 putStrLn $ "bestmove " ++ (unwords $ map show $ justOneMove pv 0)
                 return game
@@ -77,6 +77,9 @@ aei_go game | hash (board game) == 0 = do
                 | to == 0   = s:(justOneMove xs count)
                 | count < 4 = s:(justOneMove xs (count+1))
                 | otherwise = []
+
+        time | (timePerMove game) < 20 = (timePerMove game) `div` 2
+             | otherwise               = 3*(timePerMove game) `div` 4
 
 action :: String -> String -> Game -> IO Game
 action str line game = case str of
@@ -99,8 +102,6 @@ action str line game = case str of
                     ("hash",size) -> do
                             let size' = getValue size
                             resetHash size'
-                            putStrLn ("log Set transposition table size to "
-                                        ++ show size' ++ "MB")
                             return game { hashSize = size' }
                     {-
                     ("greserve",_) -> return game
@@ -144,7 +145,7 @@ main = do
     resetHash 0
     communicate game
     where
-        game = Game { timePerMove = 1, startingReserve = 2
+        game = Game { timePerMove = 20, startingReserve = 20
                     , percentUnusedToReserve = 100, maxReserve = 10
                     , maxLenghtOfGame = -1, maxTurns = -1, maxTurnTime = -1
                     , quit = False, board = parseBoard "", playerColor = Gold

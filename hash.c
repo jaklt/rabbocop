@@ -35,6 +35,9 @@ void reset_hash(int size)
 
     table = (struct record *) calloc(HASH_SIZE, sizeof(struct record));
     if (!table) exit(2);
+    if (size > 0)
+        printf("log Set transposition table size to %dMB (%u entries)\n",
+                size, HASH_SIZE);
 }
 
 void *get_hash(uint64_t hash)

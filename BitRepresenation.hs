@@ -84,15 +84,19 @@ displayBoard :: Board -> Bool -> String
 displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
         , let pp | i .&. whole b ! Gold   /= 0 = g Gold i
                  | i .&. whole b ! Silver /= 0 = g Silver i
-                 | i .&. traps /= 0 = '×'
+                 | i .&. traps /= 0 = 'x'
                  | otherwise = ' ']
     where
+        -- players piece on i position
         g :: Player -> Int64 -> Char
         g pl i = showPiece pl $ head [p | p <- pieces, ((figures b ! pl) ! p) .&. i /= 0]
 
         format :: String -> String
-        format xs | nonFlat = (" ++++++++++\n +"++) $ fst
-            $ foldr (\y (ys,n) -> ((y:[c | c <- "+\n +", n `mod` 8 == 0]) ++ ys, n+1)) ("+++++++++", 0 :: Int) xs
+        format xs | nonFlat = (" +------------------------+\n"++) $ fst
+            $ foldr (\y (ys,n) -> ([c| c <- show ((n+1) `div` 8) ++ "|", n `mod` 8 == 7]
+                                    ++ ' ':y:" "
+                                    ++ [c| c <- "|\n", n `mod` 8 == 0] ++ ys, n+1))
+                    (" +------------------------+\n   a  b  c  d  e  f  g  h", 0 :: Int) xs
                   | otherwise = "[" ++ xs ++ "]"
 
 
@@ -170,7 +174,8 @@ makeStep b s@(Step piece player from to) =
                      , foldr (\(Step _ _ f t) x -> x `xor` f `xor` t) 0 steps)]
 
 generateSteps :: Board -> Player -> Bool -> [(Step, Step)]
-generateSteps b activePl canPullPush = gen oWhole (0 :: Int64) pieces
+generateSteps b activePl canPullPush =
+            gen (0 :: Int64) oWhole [Elephant,Camel .. Rabbit]
     where
         -- a* are for active player, o* are for his oponent
         oponentPl = oponent activePl -- his oponent
@@ -184,7 +189,7 @@ generateSteps b activePl canPullPush = gen oWhole (0 :: Int64) pieces
 
         gen :: Int64 -> Int64 -> [Piece] -> [(Step, Step)]
         gen _  _ [] = []
-        gen opStrong opWeak (p:ps) = gen' opStrongNew opWeak p (bits $! ap ! p)
+        gen opStrong opWeak (p:ps) = gen' opStrong opWeakNew p (bits $! ap ! p)
                                         ++ gen opStrongNew opWeakNew ps
             where
                 oponentsEqualPiece = oArr ! p
