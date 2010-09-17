@@ -66,17 +66,25 @@ aei_go game | hash (board game) == 0 = do
             | otherwise = do
                 (pv, val) <- search (board game) (playerColor game) time
                 putStrLn $ "info bestscore " ++ show val
-                putStrLn $ "bestmove " ++ (unwords $ map show $ justOneMove pv 0)
+                putStrLn $ "bestmove " ++ (unwords $ map show $ justOneMove pv)
                 return game
     where
-        -- TODO osetrit hodne specialni pripady, kdy engine neodehraje 4 kroky
-        justOneMove :: Move -> Int -> Move
-        justOneMove []       _ = []
-        justOneMove (Pass:_) _ = []
-        justOneMove (s@(Step _ _ _ to):xs) count
-                | to == 0   = s:(justOneMove xs count)
-                | count < 4 = s:(justOneMove xs (count+1))
-                | otherwise = []
+        justOneMove :: DMove -> Move
+        justOneMove pv = snd $ makeMove (board game) $ justOneMove' pv 4
+
+        justOneMove' :: DMove -> Int -> Move
+        justOneMove' [] _ = []
+        justOneMove' (s:ss) n
+            | n <= 0 = []
+            | otherwise = case s of
+                 (s1, Pass) -> s1 : (justOneMove' ss (n-1))
+                 (s1@(Step pie1 pl1 _ _), s2@(Step pie2 _ _ _)) ->
+                    if (pl1 == pl && pie1 > pie2) || (pl1 /= pl && pie1 < pie2)
+                        then [s1,s2] ++ justOneMove' ss (n-2)
+                        else []
+                 _ -> error "Inner error in aei_go"
+
+        pl = playerColor game
 
         time | (timePerMove game) < 20 = (timePerMove game) `div` 2
              | otherwise               = 3*(timePerMove game) `div` 4

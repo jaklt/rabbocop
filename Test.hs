@@ -16,9 +16,11 @@ startSilver, startGold :: String
 startSilver = "ra8 rb8 rc8 rd8 re8 rf8 rg8 rh8 ha7 db7 cc7 ed7 me7 cf7 dg7 hh7 "
 startGold   = "Ra1 Rb1 Rc1 Rd1 Re1 Rf1 Rg1 Rh1 Ha2 Db2 Cc2 Md2 Ee2 Cf2 Dg2 Hh2 "
 
-showMove :: (Show a, Show b) => ([a], b) -> String
+showMove :: Show b => ([(Step,Step)], b) -> String
 showMove ([],a) = show ("Empty Move",a)
-showMove (ss,a) = "( " ++ foldr (\c b -> show c ++ " " ++ b) "" ss ++ ", " ++ show a ++ ")"
+showMove (ss,a) = "( " ++ foldr (\c b -> show c ++ " " ++ b) "" ss' ++ ", " ++ show a ++ ")"
+    where
+        ss' = foldr (\(s1,s2) b -> if s2 /= Pass then s1:s2:b else s1:b) [] ss
 
 main :: IO ()
 main = do
@@ -42,7 +44,7 @@ main = do
     -}
 
     putStrLn $ displayBoard testBoard5 True
-    res <- alpha_beta testBoard5 ([], 0) (-iNFINITY, iNFINITY) 9 0 Gold True
+    res <- alpha_beta testBoard5 [] (-iNFINITY, iNFINITY) 8 0 Gold True
     putStrLn $ showMove res
 
     infoHash

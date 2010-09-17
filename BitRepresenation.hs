@@ -8,6 +8,7 @@ module BitRepresenation (
     Board(..),
     Step(..),
     Move,
+    DMove,
     pieces,
     players,
     displayBoard,
@@ -46,6 +47,7 @@ data Board = Board { hash    :: !Int64
 data Step = Step !Piece !Player {- from: -} !Int64 {- to: -} !Int64 | Pass
             deriving (Eq)
 type Move = [Step]
+type DMove = [(Step,Step)]
 
 traps :: Int64
 traps = 0x0000240000240000
@@ -173,7 +175,7 @@ makeStep b s@(Step piece player from to) =
         wholeDiff = [(player
                      , foldr (\(Step _ _ f t) x -> x `xor` f `xor` t) 0 steps)]
 
-generateSteps :: Board -> Player -> Bool -> [(Step, Step)]
+generateSteps :: Board -> Player -> Bool -> DMove
 generateSteps b activePl canPullPush =
             gen (0 :: Int64) oWhole [Elephant,Camel .. Rabbit]
     where
@@ -187,7 +189,7 @@ generateSteps b activePl canPullPush =
         allWhole = aWhole .|. oWhole -- all used squares
         empty = complement allWhole
 
-        gen :: Int64 -> Int64 -> [Piece] -> [(Step, Step)]
+        gen :: Int64 -> Int64 -> [Piece] -> DMove
         gen _  _ [] = []
         gen opStrong opWeak (p:ps) = gen' opStrong opWeakNew p (bits $! ap ! p)
                                         ++ gen opStrongNew opWeakNew ps
@@ -196,7 +198,7 @@ generateSteps b activePl canPullPush =
                 opStrongNew  = opStrong `xor` oponentsEqualPiece
                 opWeakNew = opWeak `xor` oponentsEqualPiece
 
-        gen' :: Int64 -> Int64 -> Piece -> [Int64] -> [(Step, Step)]
+        gen' :: Int64 -> Int64 -> Piece -> [Int64] -> DMove
         gen' _ _ _ [] = []
         gen' opStrong opWeak pie (pos:xs) =
             (if immobilised aWhole opStrong pos

@@ -11,13 +11,13 @@ timeIsOk t maxTime = do
     return (diffUTCTime a t < (fromIntegral maxTime))
 
 mtdf :: Board       -- ^ start position
-     -> (Move, Int) -- ^ best value with PV from last time
+     -> (DMove, Int) -- ^ best value with PV from last time
      -> Int         -- ^ depth
      -> Player      -- ^ player on move
      -> Int         -- ^ upper bound
      -> Int         -- ^ lower bound
-     -> IO (Move, Int) -- ^ IO (steps to go, best value)
-mtdf b best@(_, bestValue) depth pl ub lb =
+     -> IO (DMove, Int) -- ^ IO (steps to go, best value)
+mtdf b (best, bestValue) depth pl ub lb =
         best `seq` b `seq` ub `seq` lb `seq` do
             best' <- alpha_beta b best (beta - 1, beta) depth 0 pl True
             (ub', lb') <- newBounds best'
@@ -30,11 +30,11 @@ mtdf b best@(_, bestValue) depth pl ub lb =
                              | otherwise    = return (ub, bestV)
 
 -- | iterative deepening
-search :: Board -> Player -> Int -> IO (Move, Int)
+search :: Board -> Player -> Int -> IO (DMove, Int)
 search board player maxTime = do t <- getCurrentTime
                                  search' 1 ([], 0) t
     where
-        search' :: Int -> (Move, Int) -> UTCTime -> IO (Move, Int)
+        search' :: Int -> (DMove, Int) -> UTCTime -> IO (DMove, Int)
         search' depth gues time = do
             putStrLn $ "info actual " ++ show gues
             timeOk <- gues `seq` timeIsOk time maxTime
@@ -49,14 +49,14 @@ search board player maxTime = do t <- getCurrentTime
 --      PV v hashi
 
 alpha_beta :: Board
-           -> (Move, Int) -- ^ best value with PV so far
+           -> DMove       -- ^ best PV so far
            -> (Int, Int)  -- ^ (alpha, beta)
            -> Int         -- ^ maximal depth
            -> Int         -- ^ actual depth
            -> Player      -- ^ actual player
            -> Bool        -- ^ is maximalise node
-           -> IO (Move, Int) -- ^ (steps to go, best value)
-alpha_beta board gues (alpha, beta) depth actualDepth player isMaxNode = do
+           -> IO (DMove, Int) -- ^ (steps to go, best value)
+alpha_beta board pv (alpha, beta) depth actualDepth player isMaxNode = do
         inTranspositionTable <- findHash (hash board) (depth-actualDepth)
         (alpha', beta', bestGues) <- if inTranspositionTable
             then do
@@ -75,29 +75,30 @@ alpha_beta board gues (alpha, beta) depth actualDepth player isMaxNode = do
                 addHash (hash board) (depth-actualDepth) res
                 return res
     where
-        -- TODO ke steps pridat/preferovat napovedu z gues
-        steps = generateSteps board player (actualDepth `mod` 4 /= 3)
+        (headPV,tailPV) = case pv of (h:t) -> ([h],t); _ -> ([],[])
+        steps = headPV ++ generateSteps board player (actualDepth `mod` 4 /= 3)
 
-        findBest :: (Int, Int) -> (Move, Int) -> [(Step, Step)] -> IO (Move, Int)
+        findBest :: (Int, Int) -> (DMove, Int) -> DMove -> IO (DMove, Int)
         findBest _ best [] = return best
         findBest bounds@(a,b) best@(_, bestValue) ((s1,s2):ss) =
                 bounds `seq` best `seq` (s1,s2) `seq` do
                     (childPV, childValue) <-
-                        alpha_beta board' gues bounds depth actualDepth' player' isMaxNode'
+                        alpha_beta board' tailPV' bounds depth actualDepth' player' isMaxNode'
 
                     bestValue' <- return $ cmp bestValue childValue
                     bounds' <- return $ newBounds childValue
 
                     best' <- if bestValue /= bestValue'
-                                then return (m ++ childPV, childValue)
+                                then return ((s1,s2):childPV, childValue)
                                 else return best
                     if inBounds bounds best then findBest bounds' best' ss
                                             else return best -- Cut off
             where
                 s = [s1] ++ [s2 | s2 /= Pass]
                 actualDepth' = actualDepth + (if s2 /= Pass then 2 else 1)
+                tailPV' = if [(s1,s2)] == headPV then tailPV else []
 
-                (board', m) = makeMove board s
+                (board', _) = makeMove board s
                 (player', isMaxNode') = if actualDepth' `mod` 4 /= 0
                                             then (player, isMaxNode)
                                             else (oponent player, not isMaxNode)
