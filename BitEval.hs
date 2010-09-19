@@ -1,4 +1,5 @@
-module BitEval (eval, iNFINITY) where
+{-# LANGUAGE ForeignFunctionInterface #-}
+module BitEval (eval, eval2, iNFINITY) where
 
 import BitRepresenation
 import MyBits
@@ -6,8 +7,12 @@ import Data.Array
 import Data.Bits
 import Data.Int (Int64)
 
+foreign import ccall "clib.h eval"
+    c_eval :: Int64 -> Int64 -> Int64 -> Int64 -> Int64 -> Int64
+           -> Int64 -> Int64 -> Int64 -> Int64 -> Int64 -> Int64 -> IO Int
+
 iNFINITY :: Int
-iNFINITY = 26000 -- az petinasobek kazdy figury
+iNFINITY = 100000
 
 pieceValue :: Piece -> Int
 pieceValue Elephant = 800
@@ -43,8 +48,8 @@ traps       = 0x0000240000240000
 aroundTraps = 0x00245a24245a2400
 
 {-# INLINE eval #-}
-eval :: Board -> Player -> Bool -> Int
-eval b player isMaxNode =
+eval2 :: Board -> Player -> Bool -> IO Int
+eval2 b player isMaxNode = return $
         sum [ ((position m v) + (trapsControl m v) + (winOrLose pl pie m))
                 * (if pl == player' then 1 else -1)
             | pl <- players, pie <- pieces, let m = figures b ! pl ! pie
@@ -65,3 +70,17 @@ eval b player isMaxNode =
         winOrLose _ _ _ = 0
         player' | isMaxNode = player
                 | otherwise = oponent player
+
+
+eval :: Board -> Player -> Bool -> IO Int
+eval b player isMaxNode = do
+        e <- (c_eval (fg ! Rabbit) (fg ! Cat)   (fg ! Dog)
+                                  (fg ! Horse)  (fg ! Camel) (fg ! Elephant)
+                                  (fs ! Rabbit) (fs ! Cat)   (fs ! Dog)
+                                  (fs ! Horse)  (fs ! Camel) (fs ! Elephant))
+        return $ (if (player == Gold && isMaxNode) || (player == Silver && not isMaxNode)
+                    then 1 else -1) * e
+
+    where
+        fg = figures b ! Gold
+        fs = figures b ! Silver

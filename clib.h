@@ -30,4 +30,9 @@ void *get_hash(uint64_t hash, int player);
 void add_hash(uint64_t hash, int depth, int player, void *best);
 void clean();
 
+int eval(uint64_t gr, uint64_t gc, uint64_t gd,
+         uint64_t gh, uint64_t gm, uint64_t ge,
+         uint64_t sr, uint64_t sc, uint64_t sd,
+         uint64_t sh, uint64_t sm, uint64_t se);
+
 #endif

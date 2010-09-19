@@ -56,6 +56,7 @@ int find_hash(uint64_t hash, int depth, int player)
 
     return table[ix].used
         && table[ix].depth >= depth
+        && table[ix].player == player
         && table[ix].hash  == hash;
 }
 

@@ -132,6 +132,7 @@ int64_t steps_from_position(int pl, int pie, int pos)
     return bit_steps_table[pl][pie][pos];
 }
 
+extern void init_eval();
 
 void __attribute((constructor)) init()
 {
@@ -139,4 +140,5 @@ void __attribute((constructor)) init()
     init_bit_count();
     init_steps_table();
     init_zobrist();
+    init_eval();
 }

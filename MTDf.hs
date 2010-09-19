@@ -73,7 +73,9 @@ alpha_beta board pv (alpha, beta) depth actualDepth player isMaxNode = do
                 return bestGues
             else do
                 res <- if depth <= actualDepth
-                            then return ([], eval board player isMaxNode)
+                            then do
+                                e <- eval board player isMaxNode
+                                return ([], e)
                             else findBest (alpha', beta') ([], inf) steps
                 addHash (hash board) (depth-actualDepth) player res
                 return res
