@@ -44,7 +44,7 @@ main = do
     -}
 
     putStrLn $ displayBoard testBoard5 True
-    res <- alpha_beta testBoard5 [] (-iNFINITY, iNFINITY) 8 0 Gold True
+    res <- alpha_beta testBoard5 [] (-iNFINITY, iNFINITY) 18 0 Gold True
     putStrLn $ showMove res
 
     infoHash

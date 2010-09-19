@@ -1,9 +1,11 @@
 module MTDf (search, alpha_beta) where
 
 import Data.Time.Clock
+import System.IO
 import BitRepresenation
 import BitEval
 import Hash
+
 
 timeIsOk :: UTCTime -> Int -> IO Bool
 timeIsOk t maxTime = do
@@ -36,9 +38,10 @@ search board player maxTime = do t <- getCurrentTime
     where
         search' :: Int -> (DMove, Int) -> UTCTime -> IO (DMove, Int)
         search' depth gues time = do
-            putStrLn $ "info actual " ++ show gues
             timeOk <- gues `seq` timeIsOk time maxTime
+            putStrLn $ "info actual " ++ show gues
             infoHash
+            hFlush stdout
             if timeOk
                 then do
                     m <- mtdf board gues depth player iNFINITY (-iNFINITY)
@@ -57,10 +60,10 @@ alpha_beta :: Board
            -> Bool        -- ^ is maximalise node
            -> IO (DMove, Int) -- ^ (steps to go, best value)
 alpha_beta board pv (alpha, beta) depth actualDepth player isMaxNode = do
-        inTranspositionTable <- findHash (hash board) (depth-actualDepth)
+        inTranspositionTable <- findHash (hash board) (depth-actualDepth) player
         (alpha', beta', bestGues) <- if inTranspositionTable
             then do
-                bestGues@(_,ttValue) <- getHash (hash board)
+                bestGues@(_,ttValue) <- getHash (hash board) player
                 return (max alpha ttValue, min beta ttValue, bestGues)
             else
                 return (alpha, beta, ([],0))
@@ -72,7 +75,7 @@ alpha_beta board pv (alpha, beta) depth actualDepth player isMaxNode = do
                 res <- if depth <= actualDepth
                             then return ([], eval board player isMaxNode)
                             else findBest (alpha', beta') ([], inf) steps
-                addHash (hash board) (depth-actualDepth) res
+                addHash (hash board) (depth-actualDepth) player res
                 return res
     where
         (headPV,tailPV) = case pv of (h:t) -> ([h],t); _ -> ([],[])

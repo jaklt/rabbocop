@@ -25,9 +25,9 @@ void init();
 
 void info_hash();
 void reset_hash(int size);
-int find_hash(uint64_t hash, int depth);
-void *get_hash(uint64_t hash);
-void add_hash(uint64_t hash, int depth, void *best);
+int find_hash(uint64_t hash, int depth, int player);
+void *get_hash(uint64_t hash, int player);
+void add_hash(uint64_t hash, int depth, int player, void *best);
 void clean();
 
 #endif

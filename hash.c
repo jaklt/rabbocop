@@ -10,7 +10,8 @@ static unsigned int HASH_SIZE = 13107200;
 struct record {
     uint64_t hash;
     void *best;
-    int depth:7;
+    int depth:6;
+    unsigned int player:1;
     unsigned int used:1;
 };
 
@@ -40,25 +41,28 @@ void reset_hash(int size)
                 size, HASH_SIZE);
 }
 
-void *get_hash(uint64_t hash)
+#define ix ((hash ^ player) % HASH_SIZE)
+
+void *get_hash(uint64_t hash, int player)
 {
     get_count++;
-    return table[hash % HASH_SIZE].best;
+
+    return table[ix].best;
 }
 
-int find_hash(uint64_t hash, int depth)
+int find_hash(uint64_t hash, int depth, int player)
 {
     find_count++;
-    return table[hash % HASH_SIZE].used
-        && table[hash % HASH_SIZE].depth >= depth
-        && table[hash % HASH_SIZE].hash == hash;
+
+    return table[ix].used
+        && table[ix].depth >= depth
+        && table[ix].hash  == hash;
 }
 
-void add_hash(uint64_t hash, int depth, void *best)
+void add_hash(uint64_t hash, int depth, int player, void *best)
 {
     add_count++;
-    overwritten_count += table[hash % HASH_SIZE].used;
-    table[hash % HASH_SIZE] = (struct record) {
-        hash, best, depth, 1
-    };
+
+    overwritten_count += table[ix].used;
+    table[ix] = (struct record) {hash, best, depth, player, 1};
 }

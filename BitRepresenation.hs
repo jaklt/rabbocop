@@ -1,6 +1,5 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 module BitRepresenation (
-    -- TODO vyzkouset unboxed typy http://www.haskell.org/ghc/docs/6.12.2/html/users_guide/primitives.html
     Player(..),
     Piece(..),
     Position,
@@ -23,6 +22,7 @@ module BitRepresenation (
     generateSteps,
     playerFromChar,
     pieceFromChar,
+    playerToInt,
 ) where
 
 import Data.Array

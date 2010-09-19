@@ -37,8 +37,11 @@ aei_setposition game flatBoard = game { playerColor = playerFromChar $ head col
         -- tail to skip '['
         newBoard = createBoard.fst $ foldr f ([],-1) $ tail $ ltrim flatBoard'
 
-        f char (steps, count) = if char == ']' then ([],-1) else
-            ((playerFromChar char, pieceFromChar char, count+1):steps, count+1)
+        f char (steps, count)
+            | char == ']' = ([],-1)
+            | char == ' ' = (steps, count+1)
+            | otherwise =
+                ((playerFromChar char, pieceFromChar char, count+1):steps, count+1)
 
 aei_makemove :: Game -> String -> Game
 aei_makemove game move
@@ -125,7 +128,7 @@ action str line game = case str of
                     ("event",_) -> return game
                     ("depth",_) -> return game
                     -}
-                    _ -> putStrLn "log Warning: unsupported setoption" >> return game
+                    _ -> {- putStrLn "log Warning: unsupported setoption" >> -} return game
             _ -> putStrLn "log Error: corrupted 'setoption name <id> [value <x>]' command"
                  >> return game
     "newgame"     -> return game { board = parseBoard "", playerColor = Gold }
@@ -135,6 +138,11 @@ action str line game = case str of
                 then return game
                 else aei_go game
     -- "stop" -> -- jak?
+    "debug" -> case firstWord line of
+                ("board",_) -> do
+                    putStrLn $ unlines $ map ("info board "++) $ lines $ displayBoard (board game) False
+                    return game
+                _ -> return game
     "quit" -> return $ game { quit = True }
     _ -> putStrLn "log Error: unknown command" >> return game
 

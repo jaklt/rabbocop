@@ -33,6 +33,6 @@ void bit_index_test()
 int main(int argc, char *argv[])
 {
     bit_index_test();
-	return 0;
+    return 0;
 }
 
