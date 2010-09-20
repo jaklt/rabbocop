@@ -2,6 +2,7 @@ module Main where
 
 import Data.Array ((!))
 import System.IO
+import System.Mem
 import BitRepresenation
 import Hash (resetHash)
 import MTDf
@@ -135,7 +136,9 @@ action str line game = case str of
     "setposition" -> return $ aei_setposition game line
     "makemove"    -> return $ aei_makemove game line
     "go" -> if (fst.firstWord) line == "ponder"
-                then return game
+                then do
+                    performGC
+                    return game
                 else aei_go game
     -- "stop" -> -- jak?
     "debug" -> case firstWord line of
@@ -149,6 +152,7 @@ action str line game = case str of
 communicate :: Game -> IO ()
 communicate game = game `seq` do
     hFlush stdout
+    performGC
     l <- getLine
     (str, line) <- return $ firstWord l
     game' <- action str line game
