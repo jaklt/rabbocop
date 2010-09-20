@@ -42,8 +42,8 @@ type Position = Int -- in [0..63]
 
 type PlayerBoard = Array Piece Int64
 data Board = Board { hash    :: !Int64
-                   , figures :: Array Player PlayerBoard
-                   , whole   :: Array Player Int64} deriving (Eq, Show)
+                   , figures :: (Array Player PlayerBoard)
+                   , whole   :: (Array Player Int64)} deriving (Eq, Show)
 data Step = Step !Piece !Player {- from: -} !Int64 {- to: -} !Int64 | Pass
             deriving (Eq)
 type Move = [Step]
@@ -153,8 +153,8 @@ oponent Gold = Silver
 oponent Silver = Gold
 
 makeMove :: Board -> Move -> (Board, Move)
-makeMove b ss = foldl (\(b1, ss1) s -> case makeStep b1 s of
-                                   (b2, ss2) -> (b2, ss1 ++ ss2)) (b, []) ss
+makeMove b = foldl (\(b1, ss1) s -> case makeStep b1 s of
+                                   (b2, ss2) -> (b2, ss1 ++ ss2)) (b, [])
 
 makeStep :: Board -> Step -> (Board, Move)
 makeStep b Pass = (b, [])
@@ -166,7 +166,7 @@ makeStep b s@(Step piece player from to) =
         trapped =  [Step piece player to 0 | to .&. traps /= 0, isTrapped to]
                 ++ [Step pie player tr 0 | tr <- bits $ (whole b ! player) .&. traps
                                          , isTrapped tr, let pie = findPiece (figures b ! player) tr]
-        steps = [s] ++ trapped
+        steps = s : trapped
         diffs = [(pie, f `xor` t) | (Step pie _ f t) <- steps]
         hash' = foldr (\(Step pie pl f t) h -> h `xor` hashPiece pl pie (bitIndex f) `xor`
                                                  hashPiece pl pie (bitIndex t)) (hash b) steps
@@ -254,7 +254,7 @@ playerFromChar c = if isUpper c || c == 'g' || c == 'w'
                    then Gold else Silver
 
 pieceToInt :: Piece -> Int
-pieceToInt k = index (Rabbit, Elephant) k
+pieceToInt = index (Rabbit, Elephant)
 
 playerToInt :: Player -> Int
 playerToInt Gold   = 0

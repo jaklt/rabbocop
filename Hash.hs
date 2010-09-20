@@ -40,8 +40,7 @@ getHash :: Int64 -> Player -> IO (DMove, Int)
 getHash h pl = do
         let plNum = playerToInt pl
         bestPtr <- c_getHash h plNum
-        best <- deRefStablePtr bestPtr
-        return best
+        deRefStablePtr bestPtr
 
 findHash :: Int64 -> Int -> Player -> IO Bool
 findHash h d pl = c_findHash h d plNum

@@ -1,6 +1,9 @@
 #include <stdint.h>
 #include "clib.h"
 
+long int random(void);
+
+
 static int weight_table[6] = {
       90 /* rabbit   */,
      200 /* cat      */,
@@ -28,6 +31,12 @@ static int weight_table[6] = {
 void init_eval()
 {
     /* random change pieces weight */
+    weight_table[0] += random() % 9;
+    weight_table[1] += random() % 20;
+    weight_table[2] += random() % 40;
+    weight_table[3] += random() % 70;
+    weight_table[4] += random() % 110;
+    weight_table[5] += random() % 160;
 }
 
 static inline int material_and_position(
@@ -116,14 +125,14 @@ static inline int material_and_position(
         + 0.5 * bit_count(d & 0x7e8100000000817eLLU)
         + 1.0 * bit_count(d & 0x005a18e7e7185a00LLU)
         + 1.5 * bit_count(d & 0x0024420000422400LLU)
-        - 1.0 * bit_count(d & TRAPS);
+        - 1.5 * bit_count(d & TRAPS);
     sum += tmp * weight_table[DOG];
 
     tmp = 0.1 * bit_count(c & 0x8100001818000081LLU)
         + 0.5 * bit_count(c & 0x7e8100000000817eLLU)
         + 1.0 * bit_count(c & 0x005a18e7e7185a00LLU)
         + 1.5 * bit_count(c & 0x0024420000422400LLU)
-        - 1.0 * bit_count(c & TRAPS);
+        - 1.5 * bit_count(c & TRAPS);
     sum += tmp * weight_table[CAT];
 
     /* Rabbit:
@@ -143,7 +152,7 @@ static inline int material_and_position(
         + 0.4 * bit_count(r & 0x0000998181990000LLU)
         + 1.0 * bit_count(r & 0x00ff42000042ff00LLU)
         + 2.0 * bit_count(r & 0xff000000000000ffLLU)
-        - 1.0 * bit_count(r & TRAPS);
+        - 1.5 * bit_count(r & TRAPS);
     sum += tmp * rabbit_weight;
 
     return sum;
@@ -162,6 +171,8 @@ static inline uint64_t adjecent(uint64_t pos)
     return res;
 }
 
+#define adjecentOne(b) steps_from_position(0,1, bit_index(b))
+
 int eval(uint64_t gr, uint64_t gc, uint64_t gd,
          uint64_t gh, uint64_t gm, uint64_t ge,
          uint64_t sr, uint64_t sc, uint64_t sd,
@@ -171,7 +182,7 @@ int eval(uint64_t gr, uint64_t gc, uint64_t gd,
     uint64_t figs[2][6] = {{gr, gc, gd, gh, gm, ge}, {sr, sc, sd, sh, sm, se}};
     uint64_t whole[2] = {gr|gc|gd|gh|gm|ge, sr|sc|sd|sh|sm|se};
     uint64_t tmpG, tmpS, tmpG2, tmpS2, tmp1, tmp2;
-    const int trap_control[5] = {0, 1000, 1800, 1000, 200};
+    const int trap_control[5] = {0, 600, 900, 500, 200};
 
     /* Win or Loose */
     if ((gr &  UPPER_SIDE) || !sr) return  INFINITY;
@@ -212,17 +223,18 @@ int eval(uint64_t gr, uint64_t gc, uint64_t gd,
         /* Possibility to push/pull pieces */
         sum += bit_count(adjecent(figs[  GOLD][i]) & tmpS) * weight_table[i] / 3
              - bit_count(adjecent(figs[SILVER][i]) & tmpG) * weight_table[i] / 3;
-        /* Imobilization */
+
+        /* Cannot move */
         tmp1 = adjecent(tmpG2) & figs[  GOLD][i];
         tmp2 = adjecent(tmpG2) & figs[SILVER][i];
 
         while (tmp1) {
-            sum -= (!(adjecent(tmp1 & (-tmp1)) & tmpG)) * weight_table[i] / 2;
+            sum -= (!(adjecentOne(tmp1 & (-tmp1)) & tmpG)) * weight_table[i] / 2;
             tmp1 ^= tmp1 & (-tmp1);
         }
 
         while (tmp2) {
-            sum += (!(adjecent(tmp2 & (-tmp2)) & tmpS)) * weight_table[i] / 2;
+            sum += (!(adjecentOne(tmp2 & (-tmp2)) & tmpS)) * weight_table[i] / 2;
             tmp2 ^= tmp2 & (-tmp2);
         }
         /* b & (-b) is right most bit */

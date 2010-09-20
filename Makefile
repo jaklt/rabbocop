@@ -31,6 +31,6 @@ clean:
 
 dist:
 	rm ${NAME}.tar.bz2
-	tar cjvf ${NAME}.tar.bz2 *.hs *.hsc *.c *.h .vimrc .ghci Makefile .git .gitignore
+	tar cjvf ${NAME}.tar.bz2 *.hs *.c *.h .vimrc .ghci Makefile .git .gitignore
 
 .PHONY: all clean dist runtest

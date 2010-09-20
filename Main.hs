@@ -56,8 +56,8 @@ aei_makemove game move
         notTrapping _ = True
 
 startSilver, startGold :: String
-startSilver = "ra8 rb8 rc8 rd8 re8 rf8 rg8 rh8 ha7 db7 cc7 ed7 me7 cf7 dg7 hh7 "
-startGold   = "Ra1 Rb1 Rc1 Rd1 Re1 Rf1 Rg1 Rh1 Ha2 Db2 Cc2 Md2 Ee2 Cf2 Dg2 Hh2 "
+startSilver = "ra8 db8 rc8 cd8 ce8 rf8 dg8 rh8 ra7 hb7 rc7 ed7 me7 rf7 hg7 rh7 "
+startGold   = "Ra1 Db1 Rc1 Cd1 Ce1 Rf1 Dg1 Rh1 Ra2 Hb2 Rc2 Md2 Ee2 Rf2 Hg2 Rh2 "
 
 aei_go :: Game -> IO Game
 aei_go game | hash (board game) == 0 = do
@@ -89,14 +89,14 @@ aei_go game | hash (board game) == 0 = do
 
         pl = playerColor game
 
-        time | (timePerMove game) < 20 = (timePerMove game) `div` 2
-             | otherwise               = 3*(timePerMove game) `div` 4
+        time | (timePerMove game) < 30 = (timePerMove game) `div` 4
+             | otherwise               = (timePerMove game) `div` 3
 
 action :: String -> String -> Game -> IO Game
 action str line game = case str of
     "aei" -> putStrLn "protocol-version 1\nid name Rabbocop\nid author JackeLee\naeiok"
              >> return game
-    "isready" -> putStrLn "readyok" -- TODO init
+    "isready" -> putStrLn "readyok"
                  >> return game
     "setoption" ->
         case firstWord line of

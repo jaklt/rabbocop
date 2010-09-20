@@ -34,18 +34,18 @@ main = do
 
     resetHash 500
 
-    {-
     putStrLn $ displayBoard testBoard2 True
-    res <- search testBoard2 Gold 30
+    res <- search testBoard2 Gold 20
     putStrLn $ showMove res
 
+    {-
     putStrLn $ displayBoard testBoard5 True
     putStrLn $ show $ eval testBoard5 Gold
-    -}
 
-    putStrLn $ displayBoard testBoard5 True
-    res <- alpha_beta testBoard5 [] (-iNFINITY, iNFINITY) 18 0 Gold True
+    putStrLn $ displayBoard testBoard2 True
+    res <- alpha_beta testBoard2 [] (-iNFINITY, iNFINITY) 10 0 Gold True
     putStrLn $ showMove res
+    -}
 
     infoHash
     where

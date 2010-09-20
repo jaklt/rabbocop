@@ -60,7 +60,7 @@ alpha_beta :: Board
            -> Bool        -- ^ is maximalise node
            -> IO (DMove, Int) -- ^ (steps to go, best value)
 alpha_beta board pv (alpha, beta) depth actualDepth player isMaxNode = do
-        inTranspositionTable <- findHash (hash board) (depth-actualDepth) player
+        inTranspositionTable <- findHash (hash board) inverseDepth player
         (alpha', beta', bestGues) <- if inTranspositionTable
             then do
                 bestGues@(_,ttValue) <- getHash (hash board) player
@@ -77,9 +77,10 @@ alpha_beta board pv (alpha, beta) depth actualDepth player isMaxNode = do
                                 e <- eval board player isMaxNode
                                 return ([], e)
                             else findBest (alpha', beta') ([], inf) steps
-                addHash (hash board) (depth-actualDepth) player res
+                addHash (hash board) inverseDepth player res
                 return res
     where
+        inverseDepth = depth - actualDepth
         (headPV,tailPV) = case pv of (h:t) -> ([h],t); _ -> ([],[])
         steps = headPV ++ generateSteps board player (actualDepth `mod` 4 /= 3)
 
@@ -90,8 +91,8 @@ alpha_beta board pv (alpha, beta) depth actualDepth player isMaxNode = do
                     (childPV, childValue) <-
                         alpha_beta board' tailPV' bounds depth actualDepth' player' isMaxNode'
 
-                    bestValue' <- return $ cmp bestValue childValue
-                    bounds' <- return $ newBounds childValue
+                    let bestValue' = cmp bestValue childValue
+                    let bounds' = newBounds childValue
 
                     best' <- if bestValue /= bestValue'
                                 then return ((s1,s2):childPV, childValue)
@@ -99,7 +100,7 @@ alpha_beta board pv (alpha, beta) depth actualDepth player isMaxNode = do
                     if inBounds bounds best then findBest bounds' best' ss
                                             else return best -- Cut off
             where
-                s = [s1] ++ [s2 | s2 /= Pass]
+                s = s1 : [s2 | s2 /= Pass]
                 actualDepth' = actualDepth + (if s2 /= Pass then 2 else 1)
                 tailPV' = if [(s1,s2)] == headPV then tailPV else []
 
