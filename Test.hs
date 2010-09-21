@@ -1,6 +1,7 @@
 module Main where
 
 import Data.Bits
+import Control.Concurrent
 import Prelude
 
 import MyBits
@@ -11,6 +12,16 @@ import Hash
 
 testMyBits :: Bool
 testMyBits = and [bitIndex (bit i) == i | i <- [0..63]] -- && bitIndex 222 == -1
+
+testTiming :: IO ()
+testTiming = do
+    putStrLn "testTiming"
+    mvar <- newMVar ([],0)
+    thread <- forkOS $ search testBoard Gold mvar
+    threadDelay 5000000
+    (pv, val) <- takeMVar mvar
+    print (pv, val)
+    killThread thread
 
 startSilver, startGold :: String
 startSilver = "ra8 rb8 rc8 rd8 re8 rf8 rg8 rh8 ha7 db7 cc7 ed7 me7 cf7 dg7 hh7 "
@@ -34,11 +45,13 @@ main = do
 
     resetHash 500
 
+    testTiming
+
+    {-
     putStrLn $ displayBoard testBoard2 True
     res <- search testBoard2 Gold 20
     putStrLn $ showMove res
 
-    {-
     putStrLn $ displayBoard testBoard5 True
     putStrLn $ show $ eval testBoard5 Gold
 
@@ -56,3 +69,4 @@ main = do
                                          , Step Dog Silver (bit 14) (bit 22)]
         testBoard4 = parseBoard "Ra3 Mf4 dg4 db3 re8"
         testBoard5 = parseBoard "Rc1 Rf1 rf8"
+

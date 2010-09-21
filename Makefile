@@ -8,7 +8,7 @@ LINK_O = ${LINK_C:.c=.o}
 SRC = ${SRC_Hs} ${LINK_C} ${LINK_H}
 
 HC = ghc
-HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap # -prof -auto-all # -threaded # -funbox-strict-fields
+HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap -threaded # -fhpc -prof -auto-all # -funbox-strict-fields
 CC = gcc
 CFLAGS = -O2 -std=c99 -Wall -pedantic
 
