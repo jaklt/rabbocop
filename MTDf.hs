@@ -1,16 +1,11 @@
 module MTDf (search, alpha_beta) where
 
-import Data.Time.Clock
+import Control.Concurrent
 import System.IO
 import BitRepresenation
 import BitEval
 import Hash
 
-
-timeIsOk :: UTCTime -> Int -> IO Bool
-timeIsOk t maxTime = do
-    a <- getCurrentTime
-    return (diffUTCTime a t < (fromIntegral maxTime))
 
 mtdf :: Board       -- ^ start position
      -> (DMove, Int) -- ^ best value with PV from last time
@@ -32,24 +27,19 @@ mtdf b (best, bestValue) depth pl ub lb =
                              | otherwise    = return (ub, bestV)
 
 -- | iterative deepening
-search :: Board -> Player -> Int -> IO (DMove, Int)
-search board player maxTime = do t <- getCurrentTime
-                                 search' 1 ([], 0) t
+search :: Board -> Player -> MVar (DMove, Int) -> IO ()
+search board player mvar = search' 1 ([], 0)
     where
-        search' :: Int -> (DMove, Int) -> UTCTime -> IO (DMove, Int)
-        search' depth gues time = do
-            timeOk <- gues `seq` timeIsOk time maxTime
+        search' :: Int -> (DMove, Int) -> IO ()
+        search' depth gues = do
             putStrLn $ "info actual " ++ show gues
             infoHash
             hFlush stdout
-            if timeOk
-                then do
-                    m <- mtdf board gues depth player iNFINITY (-iNFINITY)
-                    search' (depth+1) m time
-                else return gues
+            m <- mtdf board gues depth player iNFINITY (-iNFINITY)
+            m `seq` swapMVar mvar m
+            search' (depth+1) m
 
 -- TODO kontrola vyhry a pripadny konec
---      PV v hashi
 
 alpha_beta :: Board
            -> DMove       -- ^ best PV so far

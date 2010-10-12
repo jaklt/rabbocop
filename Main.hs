@@ -1,5 +1,6 @@
 module Main where
 
+import Control.Concurrent
 import Data.Array ((!))
 import System.IO
 import System.Mem
@@ -68,7 +69,12 @@ aei_go game | hash (board game) == 0 = do
                 putStrLn ("bestmove " ++ startSilver)
                 return game { playerColor = Silver }
             | otherwise = do
-                (pv, val) <- search (board game) (playerColor game) time
+                mvar <- newMVar ([],0)
+                thread <- forkOS $ search (board game) (playerColor game) mvar
+                threadDelay (3000000 * (timePerMove game) `div` 4)
+                (pv, val) <- takeMVar mvar
+                killThread thread
+
                 putStrLn $ "info bestscore " ++ show val
                 putStrLn $ "bestmove " ++ (unwords $ map show $ justOneMove pv)
                 return game
@@ -89,9 +95,6 @@ aei_go game | hash (board game) == 0 = do
                  _ -> error "Inner error in aei_go"
 
         pl = playerColor game
-
-        time | (timePerMove game) < 30 = (timePerMove game) `div` 4
-             | otherwise               = (timePerMove game) `div` 3
 
 action :: String -> String -> Game -> IO Game
 action str line game = case str of
@@ -142,8 +145,9 @@ action str line game = case str of
                 else aei_go game
     -- "stop" -> -- jak?
     "debug" -> case firstWord line of
-                ("board",_) -> do
-                    putStrLn $ unlines $ map ("info board "++) $ lines $ displayBoard (board game) False
+                ("board",kind) -> do
+                    putStrLn $ unlines $ map ("info board "++)
+                             $ lines $ displayBoard (board game) (kind /= "flat")
                     return game
                 _ -> return game
     "quit" -> return $ game { quit = True }
