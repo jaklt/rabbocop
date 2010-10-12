@@ -29,6 +29,9 @@ int find_hash(uint64_t hash, int depth, int player);
 void *get_hash(uint64_t hash, int player);
 void add_hash(uint64_t hash, int depth, int player, void *best);
 void clean();
+int get_hash_size();
+void *get_by_index(int i);
+int empty_by_index(int i);
 
 int eval(uint64_t gr, uint64_t gc, uint64_t gd,
          uint64_t gh, uint64_t gm, uint64_t ge,

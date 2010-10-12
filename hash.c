@@ -67,3 +67,18 @@ void add_hash(uint64_t hash, int depth, int player, void *best)
     overwritten_count += table[ix].used;
     table[ix] = (struct record) {hash, best, depth, player, 1};
 }
+
+int get_hash_size()
+{
+    return HASH_SIZE;
+}
+
+void *get_by_index(int i)
+{
+    return table[i].best;
+}
+
+int empty_by_index(int i)
+{
+    return table && table[i].best;
+}

@@ -205,13 +205,7 @@ generateSteps b activePl canPullPush =
             then
                 []
             else
-                -- simple steps
-                zip
-                    (map cStep possibleStepsFromPos)
-                    [Pass, Pass, Pass, Pass]
-
                 -- pulls
-                ++
                 [(cStep w, Step (findPiece oArr pull) oponentPl pull pos)
                     | canPullPush, w <- possibleStepsFromPos
                     , pull <- bits $! adjecent pos .&. opWeak]
@@ -221,6 +215,12 @@ generateSteps b activePl canPullPush =
                 [(Step (findPiece oArr w) oponentPl w to, cStep w)
                     | canPullPush, w <- bits $! opWeak .&. adjecent pos
                     , to <- bits $! empty .&. adjecent w]
+
+                -- simple steps
+                ++
+                zip
+                    (map cStep possibleStepsFromPos)
+                    [Pass, Pass, Pass, Pass]
             ) ++
                 gen' opStrong opWeak pie xs
             where

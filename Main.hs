@@ -116,7 +116,7 @@ action str line game = case str of
 
                     ("hash",size) -> do
                             let size' = getValue size
-                            resetHash size'
+                            resetHash (size' `div` 5)
                             return game { hashSize = size' }
                     {-
                     ("greserve",_) -> return game

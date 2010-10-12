@@ -36,7 +36,7 @@ search board player mvar = search' 1 ([], 0)
             infoHash
             hFlush stdout
             m <- mtdf board gues depth player iNFINITY (-iNFINITY)
-            m `seq` swapMVar mvar m
+            _ <- m `seq` swapMVar mvar m
             search' (depth+1) m
 
 -- TODO kontrola vyhry a pripadny konec
