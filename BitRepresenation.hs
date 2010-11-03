@@ -150,16 +150,16 @@ createBoard xs = fst $ makeMove bo $ map positionToStep xs
         bo = Board { hash=0, figures=fi, whole=wh}
 
 
-{-# INLINE stepsFromPosition #-}
 -- | third argument: only one bit number
 stepsFromPosition :: Player -> Piece -> Int64 -> Int64
 stepsFromPosition pl pie pos =
         c_stepsFromPosition (playerToInt pl) (pieceToInt pie) (bitIndex pos)
+{-# INLINE stepsFromPosition #-}
 
-{-# INLINE adjecent #-}
 -- | argument: only one bit number
 adjecent :: Int64 -> Int64
 adjecent = stepsFromPosition Gold Elephant
+{-# INLINE adjecent #-}
 
 oponent :: Player -> Player
 oponent Gold = Silver
@@ -273,7 +273,7 @@ playerToInt :: Player -> Int
 playerToInt Gold   = 0
 playerToInt Silver = 1
 
-{-# INLINE hashPiece #-}
 hashPiece :: Player -> Piece -> Position -> Int64
 hashPiece _ _ 0 = 0
 hashPiece pl pie pos = c_hashPiece (playerToInt pl) (pieceToInt pie) pos
+{-# INLINE hashPiece #-}

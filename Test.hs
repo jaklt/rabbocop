@@ -4,10 +4,11 @@ import Data.Bits
 import Control.Concurrent
 import Prelude
 
-import MyBits
+import AlphaBeta
 import BitEval
 import BitRepresenation
 import MTDf
+import MyBits
 import Hash
 
 testMyBits :: Bool
@@ -49,7 +50,7 @@ main = do
     -- putStrLn $ displayBoard testBoard2 True
     -- putStrLn.show $ generateSteps testBoard2 Gold
 
-    -- putStrLn.show $ alpha_beta testBoard2 ([], 0) (-iNFINITY, iNFINITY) 1 0 Gold True
+    -- putStrLn.show $ alphaBeta testBoard2 ([], 0) (-iNFINITY, iNFINITY) 1 0 Gold True
 
     resetHash 500
 
@@ -64,7 +65,7 @@ main = do
     putStrLn $ show $ eval testBoard5 Gold
 
     putStrLn $ displayBoard testBoard2 True
-    res <- alpha_beta testBoard2 [] (-iNFINITY, iNFINITY) 10 0 Gold True
+    res <- alphaBeta testBoard2 [] (-iNFINITY, iNFINITY) 10 0 Gold True
     putStrLn $ showMove res
     -}
 
