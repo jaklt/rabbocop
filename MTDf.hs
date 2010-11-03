@@ -1,4 +1,5 @@
-module MTDf (search, alpha_beta) where
+{-# LANGUAGE BangPatterns #-}
+module MTDf (search, alphaBeta) where
 
 import Control.Concurrent
 import System.IO
@@ -14,12 +15,11 @@ mtdf :: Board       -- ^ start position
      -> Int         -- ^ upper bound
      -> Int         -- ^ lower bound
      -> IO (DMove, Int) -- ^ IO (steps to go, best value)
-mtdf b (best, bestValue) depth pl ub lb =
-        best `seq` b `seq` ub `seq` lb `seq` do
-            best' <- alpha_beta b best (beta - 1, beta) depth 0 pl True
-            (ub', lb') <- newBounds best'
+mtdf !b (!best, bestValue) depth pl !ub !lb = do
+        best' <- alphaBeta b best (beta - 1, beta) depth 0 pl True
+        (ub', lb') <- newBounds best'
 
-            if lb' >= ub' then return best'
+        if lb' >= ub' then return best'
                           else mtdf b best' depth pl ub' lb'
     where
         beta = if bestValue == lb then bestValue + 1 else bestValue
@@ -41,7 +41,7 @@ search board player mvar = search' 1 ([], 0)
 
 -- TODO kontrola vyhry a pripadny konec
 
-alpha_beta :: Board
+alphaBeta :: Board
            -> DMove       -- ^ best PV so far
            -> (Int, Int)  -- ^ (alpha, beta)
            -> Int         -- ^ maximal depth
@@ -49,7 +49,7 @@ alpha_beta :: Board
            -> Player      -- ^ actual player
            -> Bool        -- ^ is maximalise node
            -> IO (DMove, Int) -- ^ (steps to go, best value)
-alpha_beta board pv (alpha, beta) depth actualDepth player isMaxNode = do
+alphaBeta board pv (alpha, beta) depth actualDepth player isMaxNode = do
         inTranspositionTable <- findHash (hash board) inverseDepth player
         (alpha', beta', bestGues) <- if inTranspositionTable
             then do
@@ -76,19 +76,18 @@ alpha_beta board pv (alpha, beta) depth actualDepth player isMaxNode = do
 
         findBest :: (Int, Int) -> (DMove, Int) -> DMove -> IO (DMove, Int)
         findBest _ best [] = return best
-        findBest bounds@(a,b) best@(_, bestValue) ((s1,s2):ss) =
-                bounds `seq` best `seq` (s1,s2) `seq` do
-                    (childPV, childValue) <-
-                        alpha_beta board' tailPV' bounds depth actualDepth' player' isMaxNode'
+        findBest !bounds@(a,b) !best@(_, bestValue) ((!s1,!s2):ss) = do
+                (childPV, childValue) <-
+                    alphaBeta board' tailPV' bounds depth actualDepth' player' isMaxNode'
 
-                    let bestValue' = cmp bestValue childValue
-                    let bounds' = newBounds childValue
+                let bestValue' = cmp bestValue childValue
+                let bounds' = newBounds childValue
 
-                    best' <- if bestValue /= bestValue'
-                                then return ((s1,s2):childPV, childValue)
-                                else return best
-                    if inBounds bounds best then findBest bounds' best' ss
-                                            else return best -- Cut off
+                best' <- if bestValue /= bestValue'
+                            then return ((s1,s2):childPV, childValue)
+                            else return best
+                if inBounds bounds best then findBest bounds' best' ss
+                                        else return best -- Cut off
             where
                 s = s1 : [s2 | s2 /= Pass]
                 actualDepth' = actualDepth + (if s2 /= Pass then 2 else 1)

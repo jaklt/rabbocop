@@ -31,22 +31,15 @@ data Game = Game { timePerMove :: Int, startingReserve :: Int
                  deriving (Show)
 
 
-aei_setposition :: Game -> String -> Game
-aei_setposition game flatBoard = game { playerColor = playerFromChar $ head col
+aeiSetposition :: Game -> String -> Game
+aeiSetposition game flatBoard = game { playerColor = playerFromChar $ head col
                                       , board = newBoard }
     where
         (col, flatBoard') = firstWord flatBoard
-        -- tail to skip '['
-        newBoard = createBoard.fst $ foldr f ([],-1) $ tail $ ltrim flatBoard'
+        newBoard = parseFlatBoard $ ltrim flatBoard'
 
-        f char (steps, count)
-            | char == ']' = ([],-1)
-            | char == ' ' = (steps, count+1)
-            | otherwise =
-                ((playerFromChar char, pieceFromChar char, count+1):steps, count+1)
-
-aei_makemove :: Game -> String -> Game
-aei_makemove game move
+aeiMakemove :: Game -> String -> Game
+aeiMakemove game move
         | (hash.board) game == 0 = game { board = parseBoard move }
         | (whole (board game)) ! Silver == 0 = game { board = fst board2 }
         | otherwise =  game { board = fst board1 }
@@ -61,14 +54,14 @@ startSilver, startGold :: String
 startSilver = "ra8 db8 rc8 cd8 ce8 rf8 dg8 rh8 ra7 hb7 rc7 ed7 me7 rf7 hg7 rh7 "
 startGold   = "Ra1 Db1 Rc1 Cd1 Ce1 Rf1 Dg1 Rh1 Ra2 Hb2 Rc2 Md2 Ee2 Rf2 Hg2 Rh2 "
 
-aei_go :: Game -> IO Game
-aei_go game | hash (board game) == 0 = do
+aeiGo :: Game -> IO Game
+aeiGo game | hash (board game) == 0 = do
                 putStrLn ("bestmove " ++ startGold)
                 return game
-            | (whole (board game)) ! Silver == 0 = do
+           | (whole (board game)) ! Silver == 0 = do
                 putStrLn ("bestmove " ++ startSilver)
                 return game { playerColor = Silver }
-            | otherwise = do
+           | otherwise = do
                 mvar <- newMVar ([],0)
                 thread <- forkOS $ search (board game) (playerColor game) mvar
                 threadDelay (3000000 * (timePerMove game) `div` 4)
@@ -92,7 +85,7 @@ aei_go game | hash (board game) == 0 = do
                     if (pl1 == pl && pie1 > pie2) || (pl1 /= pl && pie1 < pie2)
                         then [s1,s2] ++ justOneMove' ss (n-2)
                         else []
-                 _ -> error "Inner error in aei_go"
+                 _ -> error "Inner error in aeiGo"
 
         pl = playerColor game
 
@@ -136,13 +129,13 @@ action str line game = case str of
             _ -> putStrLn "log Error: corrupted 'setoption name <id> [value <x>]' command"
                  >> return game
     "newgame"     -> return game { board = parseBoard "", playerColor = Gold }
-    "setposition" -> return $ aei_setposition game line
-    "makemove"    -> return $ aei_makemove game line
+    "setposition" -> return $ aeiSetposition game line
+    "makemove"    -> return $ aeiMakemove game line
     "go" -> if (fst.firstWord) line == "ponder"
                 then do
                     performGC
                     return game
-                else aei_go game
+                else aeiGo game
     -- "stop" -> -- jak?
     "debug" -> case firstWord line of
                 ("board",kind) -> do

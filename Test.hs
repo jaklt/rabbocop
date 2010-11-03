@@ -15,13 +15,21 @@ testMyBits = and [bitIndex (bit i) == i | i <- [0..63]] -- && bitIndex 222 == -1
 
 testTiming :: IO ()
 testTiming = do
-    putStrLn "testTiming"
-    mvar <- newMVar ([],0)
-    thread <- forkOS $ search testBoard Gold mvar
-    threadDelay 5000000
-    (pv, val) <- takeMVar mvar
-    print (pv, val)
-    killThread thread
+        putStrLn "testTiming"
+        {-
+        mvar <- newMVar ([],0)
+        thread <- forkOS $ search testBoard Gold mvar
+        threadDelay 30000000
+        (pv, val) <- takeMVar mvar
+        print (pv, val)
+        killThread thread
+        -- -}
+        -- {-
+        best <- alphaBeta testBoard [] (-iNFINITY, iNFINITY) 5 0 Gold True
+        print best
+        -- -}
+    where
+        testBoard = parseFlatBoard "[r r  r r drc rdrrh  c mh   eE      H     D    HRRR C RR R RC  DR]"
 
 startSilver, startGold :: String
 startSilver = "ra8 rb8 rc8 rd8 re8 rf8 rg8 rh8 ha7 db7 cc7 ed7 me7 cf7 dg7 hh7 "

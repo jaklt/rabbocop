@@ -12,6 +12,7 @@ module BitRepresenation (
     players,
     displayBoard,
     parseBoard,
+    parseFlatBoard,
     parsePosition,
     positionToStep,
     parseStep,
@@ -87,7 +88,7 @@ displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
         , let pp | i .&. whole b ! Gold   /= 0 = g Gold i
                  | i .&. whole b ! Silver /= 0 = g Silver i
                  | i .&. traps /= 0 = 'x'
-                 | otherwise = ' ']
+                 | otherwise = '.']
     where
         -- players piece on i position
         g :: Player -> Int64 -> Char
@@ -104,6 +105,18 @@ displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
 
 parseBoard :: String -> Board
 parseBoard inp = createBoard $ map parsePosition $ words inp
+
+-- | format: "[a8 ... h1]"
+parseFlatBoard :: String -> Board
+parseFlatBoard s = createBoard.fst $ foldr flatBoardToPositions ([],-1) $ tail s
+    -- tail to skip '['
+
+flatBoardToPositions :: Char -> ([(Player, Piece, Position)], Int) -> ([(Player, Piece, Position)], Int)
+flatBoardToPositions char (steps, count)
+    | char == ']'  = ([],-1)
+    | char `elem` " x" = (steps, count+1)
+    | otherwise =
+        ((playerFromChar char, pieceFromChar char, count+1):steps, count+1)
 
 -- | x in [a..h], y in [1..8] -> y*8 + x
 newPosition :: Char -> Char -> Position

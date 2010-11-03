@@ -44,7 +44,8 @@ getHash h pl = do
 
 findHash :: Int64 -> Int -> Player -> IO Bool
 findHash h d pl = c_findHash h d plNum
-        where plNum = playerToInt pl
+    where
+        plNum = playerToInt pl
 
 resetHash :: Int -> IO ()
 resetHash size = do
