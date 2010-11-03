@@ -1,7 +1,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 module MyBits (bitIndex, bitCount, rightMostBit, bits) where
 
-import Data.Bits ((.&.), xor)
+import Data.Bits ((.&.))
 import Data.Int  (Int64)
 
 foreign import ccall "clib.h bit_index" bitIndex :: Int64 -> Int
