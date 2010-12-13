@@ -44,7 +44,8 @@ type Position = Int -- in [0..63]
 type PlayerBoard = Array Piece Int64
 data Board = Board { hash    :: !Int64
                    , figures :: (Array Player PlayerBoard)
-                   , whole   :: (Array Player Int64)} deriving (Eq, Show)
+                   , whole   :: (Array Player Int64)}
+           | EmptyBoard deriving (Eq, Show)
 data Step = Step !Piece !Player {- from: -} !Int64 {- to: -} !Int64 | Pass
             deriving (Eq)
 type Move = [Step]
