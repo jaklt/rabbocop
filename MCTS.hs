@@ -39,7 +39,7 @@ findAndRemoveBest :: [MMTree] -> (MMTree, [MMTree])
 findAndRemoveBest [] = error "Empty children list"
 findAndRemoveBest (r:rs) = go (r, rs) (descendByUCB1 r)
     where
-        go :: (MMTree, [MMTree]) -> Float -> (MMTree, [MMTree])
+        go :: (MMTree, [MMTree]) -> Double -> (MMTree, [MMTree])
         go (_, []) _ = error "Empty children list"
         go (best, (t:ts)) bestValue =
                 if bestValue < tValue
@@ -64,14 +64,14 @@ leafFromStep b (s1,s2) = Leaf $ fst $ makeMove b [s1,s2]
 
 -- TODO meaningful magic constant (even 0s)
 --      first 0 is wrong
-descendByUCB1 :: MMTree -> Float
+descendByUCB1 :: MMTree -> Double
 descendByUCB1 (Leaf _) = 42
 descendByUCB1 node0 = val
     where
         childrenNodes = children node0
         (_,val,count) = foldr f (emptyLeaf,0,0) childrenNodes
 
-        f :: MMTree -> (MMTree, Float, Int) -> (MMTree, Float, Int)
+        f :: MMTree -> (MMTree, Double, Int) -> (MMTree, Double, Int)
         f node (best,bestVal,s) | bestVal < nodeVal = (node,nodeVal,s+1)
                                 | otherwise         = (best,bestVal,s+1)
             where
