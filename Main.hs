@@ -8,6 +8,14 @@ import BitRepresenation
 import Hash (resetHash)
 import MTDf
 
+data Game = Game { timePerMove :: Int, startingReserve :: Int
+                 , percentUnusedToReserve :: Int, maxReserve :: Int
+                 , maxLenghtOfGame :: Int, maxTurns :: Int, maxTurnTime :: Int
+                 , quit :: Bool, board :: Board, playerColor :: Player
+                 , hashSize :: Int}
+                 deriving (Show)
+
+
 ltrim :: String -> String
 ltrim = dropWhile (== ' ')
 
@@ -22,14 +30,6 @@ getValue :: Read a => String -> a
 getValue str = case firstWord str of
                     ("value", rest) -> read rest
                     _ -> read str
-
-data Game = Game { timePerMove :: Int, startingReserve :: Int
-                 , percentUnusedToReserve :: Int, maxReserve :: Int
-                 , maxLenghtOfGame :: Int, maxTurns :: Int, maxTurnTime :: Int
-                 , quit :: Bool, board :: Board, playerColor :: Player
-                 , hashSize :: Int}
-                 deriving (Show)
-
 
 aeiSetposition :: Game -> String -> Game
 aeiSetposition game flatBoard = game { playerColor = playerFromChar $ head col

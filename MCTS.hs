@@ -10,29 +10,34 @@ import BitRepresenation
 --      empty DMove (win for oponent)
 
 -- | Mini-Max Tree representation
-data MMTree = Leaf Board
-            | Node { boardState :: Board  -- ^ board state
-                   , children :: [MMTree] -- ^ possible steps from this
-                   , value  :: Int        -- ^ actual value of this node
-                   , number :: Int        -- ^ how many times this node has been visited
-                   }
+data MMTree = MMTree Board Player Int TreeNode
+
+data TreeNode = Leaf
+              | Node { children :: [MMTree] -- ^ possible steps from this
+                     , value    :: Int      -- ^ actual value of this node
+                     , number   :: Int      -- ^ how many times this node has been visited
+                     }
+
 
 search :: Board -> Player -> MVar (DMove, Int) -> IO ()
 search board pl mvar = return ()
 
-emptyLeaf :: MMTree
-emptyLeaf = Leaf EmptyBoard
-
 improveTree :: MMTree -> IO (MMTree, Int)
-improveTree (Leaf b) = createNode b
-improveTree rootNode = do
-    let (node, rest) = findAndRemoveBest (children rootNode)
-    (nodeNew, improved) <- improveTree node
+improveTree (MMTree b pl stepCount root) =
+    case root of
+        Leaf -> do
+            val <- getValueByMC b
+            return (createNode b val pl stepCount, val)
+        _ -> do
+            let (node, rest) = findAndRemoveBest (children root)
+            (nodeNew, improved) <- improveTree node
+            let improved' = (if stepCount == 3 then -1 else 1) * improved
 
-    return ( rootNode{ value = (value rootNode) + improved
-                     , number = (number rootNode) + 1
-                     , children = nodeNew : children rootNode}
-           , -improved)
+            return ( MMTree b pl stepCount $
+                        root { value    = (value root) + improved'
+                             , number   = (number root) + 1
+                             , children = nodeNew : rest }
+                   , improved')
 
 -- TODO co kdyz je vstupni seznam prazdny?
 findAndRemoveBest :: [MMTree] -> (MMTree, [MMTree])
@@ -51,34 +56,42 @@ findAndRemoveBest (r:rs) = go (r, rs) (descendByUCB1 r)
 addToSnd :: a -> (b, [a]) -> (b, [a])
 addToSnd a (b, c) = (b, a:c)
 
-createNode :: Board -> IO (MMTree, Int)
-createNode b = do
-    val <- getValueByMC b
-    return ( Node { boardState = b
-                  , children = map (leafFromStep b) (generateSteps b Gold True)
-                  , value = val, number = 1}
-           , -val)
+createNode :: Board -> Int -> Player -> Int -> MMTree
+createNode b val pl stepCount = MMTree b pl stepCount $
+        Node { children = map leafFromStep (generateSteps b pl (stepCount < 3))
+             , value = val
+             , number = 1 }
+    where
+        leafFromStep (s1,s2) =
+                MMTree (fst $ makeMove b [s1,s2]) pl' stepCount' Leaf
 
-leafFromStep :: Board -> (Step,Step) -> MMTree
-leafFromStep b (s1,s2) = Leaf $ fst $ makeMove b [s1,s2]
+        stepCount' = stepCount + 1 `mod` 4
+
+        pl' = if stepCount' == 0 then oponent pl
+                                 else pl
 
 -- TODO meaningful magic constant (even 0s)
 --      first 0 is wrong
 descendByUCB1 :: MMTree -> Double
-descendByUCB1 (Leaf _) = 42
-descendByUCB1 node0 = val
+descendByUCB1 (MMTree _ _ _ Leaf) = 42
+descendByUCB1 (MMTree _ _ _ root) = val
     where
-        childrenNodes = children node0
-        (_,val,count) = foldr f (emptyLeaf,0,0) childrenNodes
+        childrenNodes = children root
+        (_,val,count) = foldr f (MMTree EmptyBoard Gold 0 Leaf,0,0) childrenNodes
 
         f :: MMTree -> (MMTree, Double, Int) -> (MMTree, Double, Int)
         f node (best,bestVal,s) | bestVal < nodeVal = (node,nodeVal,s+1)
                                 | otherwise         = (best,bestVal,s+1)
             where
                 nodeVal = case node of
-                            (Leaf _) -> 42
+                            MMTree _ _ _ Leaf -> 42
                             _ -> - (vl / nb) + (sqrt (2 * (log cn) / nb))
-                [vl,nb,cn] = map fromIntegral [value node, number node, count]
+                tn = treeNode node
+                [vl,nb,cn] = map fromIntegral [value tn, number tn, count]
+
+
+treeNode :: MMTree -> TreeNode
+treeNode (MMTree _ _ _ n) = n
 
 getValueByMC :: Board -> IO Int
 getValueByMC _ = return 1
