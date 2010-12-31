@@ -148,7 +148,7 @@ createBoard xs = fst $ makeMove bo $ map positionToStep xs
 
         fi = array (Gold, Silver) [(Gold, gb), (Silver, sb)]
         wh = array (Gold, Silver) [(Gold, 0),  (Silver, 0)]
-        bo = Board { hash=0, figures=fi, whole=wh}
+        bo = Board { hash=0, figures=fi, whole=wh }
 
 
 -- | third argument: only one bit number
@@ -169,6 +169,7 @@ oponent Silver = Gold
 makeMove :: Board -> Move -> (Board, Move)
 makeMove b = foldl (\(b1, ss1) s -> case makeStep b1 s of
                                    (b2, ss2) -> (b2, ss1 ++ ss2)) (b, [])
+{-# INLINE makeMove #-}
 
 makeStep :: Board -> Step -> (Board, Move)
 makeStep b Pass = (b, [])
