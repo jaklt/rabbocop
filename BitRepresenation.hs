@@ -44,7 +44,8 @@ type Position = Int -- in [0..63]
 type PlayerBoard = Array Piece Int64
 data Board = Board { hash    :: !Int64
                    , figures :: (Array Player PlayerBoard)
-                   , whole   :: (Array Player Int64)}
+                   , whole   :: (Array Player Int64)
+                   , mySide  :: Player }
            | EmptyBoard deriving (Eq, Show)
 data Step = Step !Piece !Player {- from: -} !Int64 {- to: -} !Int64 | Pass
             deriving (Eq)
@@ -72,6 +73,7 @@ instance Show Step where
 
              pos p = let q = bitIndex p in [ ['a'..'h'] !! (7 - q `mod` 8)
                                            , format $ q `div` 8 + 1]
+
 
 players :: [Player]
 players = [Gold, Silver]
@@ -104,12 +106,13 @@ displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
                   | otherwise = "[" ++ xs ++ "]"
 
 
-parseBoard :: String -> Board
-parseBoard inp = createBoard $ map parsePosition $ words inp
+parseBoard :: Player -> String -> Board
+parseBoard pl inp = createBoard pl $ map parsePosition $ words inp
 
 -- | format: "[a8 ... h1]"
-parseFlatBoard :: String -> Board
-parseFlatBoard s = createBoard.fst $ foldr flatBoardToPositions ([],-1) $ tail s
+parseFlatBoard :: Player -> String -> Board
+parseFlatBoard pl s =
+        (createBoard pl).fst $ foldr flatBoardToPositions ([],-1) $ tail s
     -- tail to skip '['
 
 flatBoardToPositions :: Char -> ([(Player, Piece, Position)], Int) -> ([(Player, Piece, Position)], Int)
@@ -140,15 +143,15 @@ parseStep (p:x:y:o:[]) =
                          _   -> error "Invalid move direction"
 parseStep s = error ("Wrong step given: " ++ s)
 
-createBoard :: [(Player, Piece, Position)] -> Board
-createBoard xs = fst $ makeMove bo $ map positionToStep xs
+createBoard :: Player -> [(Player, Piece, Position)] -> Board
+createBoard pl xs = fst $ makeMove bo $ map positionToStep xs
     where
         gb = array (Rabbit, Elephant) [(i,0 :: Int64) | i <- pieces]
         sb = array (Rabbit, Elephant) [(i,0 :: Int64) | i <- pieces]
 
         fi = array (Gold, Silver) [(Gold, gb), (Silver, sb)]
         wh = array (Gold, Silver) [(Gold, 0),  (Silver, 0)]
-        bo = Board { hash=0, figures=fi, whole=wh }
+        bo = Board { hash=0, figures=fi, whole=wh, mySide=pl }
 
 
 -- | third argument: only one bit number

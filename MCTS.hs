@@ -21,10 +21,9 @@ data TreeNode = Leaf
 
 
 search :: Board             -- ^ starting position
-       -> Player            -- ^ starting player
        -> MVar (DMove, Int) -- ^ best results to store here
        -> IO ()
-search board pl mvar = return ()
+search board mvar = return ()
 
 improveTree :: MMTree -> IO (MMTree, Int)
 improveTree (MMTree b mp@(_,stepCount) root) =
@@ -109,7 +108,7 @@ getValueByMC b mp = do
     return $ sum s
 
 randomSimulation :: MovePhase -> Int -> Board -> IO Int
-randomSimulation (pl,_) 0 b = eval b pl False -- TODO zrusit isMaxNode
+randomSimulation (pl,_) 0 b = eval b pl
 randomSimulation mp@(pl,sc) d b = do
     (s1,s2) <- chooseRandomly $ generateSteps b pl (sc < 2)
     randomSimulation (stepInMove mp s2) (d-1) (fst $ makeMove b [s1,s2])
