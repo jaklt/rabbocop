@@ -1,4 +1,7 @@
 *.o
 *.hi
+*.hp
 *.swp
+Main
+Test
 rabbocop.tar.bz2
