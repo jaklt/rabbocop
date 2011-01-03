@@ -43,8 +43,8 @@ type Position = Int -- in [0..63]
 
 type PlayerBoard = Array Piece Int64
 data Board = Board { hash    :: !Int64
-                   , figures :: (Array Player PlayerBoard)
-                   , whole   :: (Array Player Int64)
+                   , figures :: Array Player PlayerBoard
+                   , whole   :: Array Player Int64
                    , mySide  :: Player }
            | EmptyBoard deriving (Eq, Show)
 data Step = Step !Piece !Player {- from: -} !Int64 {- to: -} !Int64 | Pass
@@ -57,11 +57,11 @@ traps = 0x0000240000240000
 
 instance Show Step where
     show Pass = "Pass"
-    show (Step piece player from to) = (showPiece player piece):(pos from ++ dir)
+    show (Step piece player from to) = showPiece player piece : (pos from ++ dir)
         where
              format :: Show a => a -> Char
              format = toLower.head.show
-             d = (bitIndex to) - (bitIndex from)
+             d = bitIndex to - bitIndex from
              dir | to == 0 = "x"
                  | d ==  8 = "n"
                  | d == -8 = "s"
@@ -112,10 +112,12 @@ parseBoard pl inp = createBoard pl $ map parsePosition $ words inp
 -- | format: "[a8 ... h1]"
 parseFlatBoard :: Player -> String -> Board
 parseFlatBoard pl s =
-        (createBoard pl).fst $ foldr flatBoardToPositions ([],-1) $ tail s
+        createBoard pl . fst $ foldr flatBoardToPositions ([],-1) $ tail s
     -- tail to skip '['
 
-flatBoardToPositions :: Char -> ([(Player, Piece, Position)], Int) -> ([(Player, Piece, Position)], Int)
+flatBoardToPositions :: Char
+                     -> ([(Player, Piece, Position)], Int)
+                     -> ([(Player, Piece, Position)], Int)
 flatBoardToPositions char (steps, count)
     | char == ']'  = ([],-1)
     | char `elem` " x" = (steps, count+1)
@@ -124,7 +126,7 @@ flatBoardToPositions char (steps, count)
 
 -- | x in [a..h], y in [1..8] -> y*8 + x
 newPosition :: Char -> Char -> Position
-newPosition x y = 8*((digitToInt y) - 1) + (7 - (index ('a','h') x))
+newPosition x y = 8 * (digitToInt y - 1) + (7 - index ('a','h') x)
 
 parsePosition :: String -> (Player, Piece, Position)
 parsePosition (p:x:y:[]) = (playerFromChar p, pieceFromChar p, newPosition x y)
@@ -268,7 +270,7 @@ pieceFromChar c = case toLower c of
         _ -> error ("Wrong piece character: " ++ [c])
 
 playerFromChar :: Char -> Player
-playerFromChar c = if isUpper c || c == 'g' || c == 'w'
+playerFromChar c = if isUpper c || c `elem` "gw"
                    then Gold else Silver
 
 pieceToInt :: Piece -> Int

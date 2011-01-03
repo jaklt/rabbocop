@@ -1,6 +1,7 @@
 module Main (main) where
 
 import Control.Concurrent
+import Control.Monad (unless)
 import Data.Array ((!))
 import System.IO
 import System.Mem
@@ -43,7 +44,7 @@ aeiMakemove :: Game -> String -> Game
 aeiMakemove game move
         | board game == EmptyBoard = game { board = parseBoard Silver move }
         | (hash.board) game == 0   = game { board = parseBoard   Gold move }
-        | (whole (board game)) ! Silver == 0 = game { board = fst board2 }
+        | whole (board game) ! Silver == 0 = game { board = fst board2 }
         | otherwise =  game { board = fst board1 }
     where
         board1 = makeMove (board game) $ filter notTrapping $ map parseStep $ words move
@@ -61,18 +62,18 @@ aeiGo :: Game -> IO Game
 aeiGo game | board game == EmptyBoard  = do
                 putStrLn ("bestmove " ++ startGold)
                 return game { board = parseBoard Gold "" }
-           | (whole (board game)) ! Silver == 0 = do
+           | whole (board game) ! Silver == 0 = do
                 putStrLn ("bestmove " ++ startSilver)
                 return game
            | otherwise = do
                 mvar <- newMVar ([],0)
                 thread <- forkOS $ search (board game) mvar
-                threadDelay (3000000 * (timePerMove game) `div` 4)
+                threadDelay (3000000 * timePerMove game `div` 4)
                 (pv, val) <- takeMVar mvar
                 killThread thread
 
                 putStrLn $ "info bestscore " ++ show val
-                putStrLn $ "bestmove " ++ (unwords $ map show $ justOneMove pv)
+                putStrLn $ "bestmove " ++ unwords (map show $ justOneMove pv)
                 return game
     where
         justOneMove :: DMove -> Move
@@ -83,7 +84,7 @@ aeiGo game | board game == EmptyBoard  = do
         justOneMove' (s:ss) n
             | n <= 0 = []
             | otherwise = case s of
-                 (s1, Pass) -> s1 : (justOneMove' ss (n-1))
+                 (s1, Pass) -> s1 : justOneMove' ss (n-1)
                  (s1@(Step pie1 pl1 _ _), s2@(Step pie2 _ _ _)) ->
                     if (pl1 == pl && pie1 > pie2) || (pl1 /= pl && pie1 < pie2)
                         then [s1,s2] ++ justOneMove' ss (n-2)
@@ -156,9 +157,7 @@ communicate game = game `seq` do
     l <- getLine
     (str, line) <- return $ firstWord l
     game' <- action str line game
-    if quit game'
-        then return ()
-        else communicate game'
+    unless (quit game') $ communicate game'
 
 main :: IO ()
 main = do

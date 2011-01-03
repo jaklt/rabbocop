@@ -65,8 +65,8 @@ improveTree mt =
             let improved' = (if stepCount mt == 3 then -1 else 1) * improved
 
             return ( mt { treeNode = Node
-                            { value    = (value root) + improved'
-                            , number   = (number root) + 1
+                            { value    = value root + improved'
+                            , number   = number root + 1
                             , children = nodeNew : rest
                             }
                         }
@@ -79,7 +79,7 @@ findAndRemoveBest (r:rs) = go (r, rs) (descendByUCB1 r)
     where
         go :: (MMTree, [MMTree]) -> Double -> (MMTree, [MMTree])
         go (_, []) _ = error "Empty children list"
-        go (best, (t:ts)) bestValue =
+        go (best, t:ts) bestValue =
                 if bestValue < tValue
                     then addToSnd best $ go (   t, ts) tValue
                     else addToSnd    t $ go (best, ts) bestValue
@@ -131,7 +131,7 @@ descendByUCB1 mt = case treeNode mt of Leaf -> 42
             where
                 nodeVal = case tn of
                             Leaf -> 42
-                            _ -> - (vl / nb) + (sqrt (2 * (log cn) / nb))
+                            _ -> - (vl / nb) + sqrt (2 * log cn / nb)
                 tn = treeNode node
                 [vl,nb,cn] = map fromIntegral [value tn, number tn, count]
 
