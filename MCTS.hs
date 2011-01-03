@@ -10,9 +10,13 @@ import BitEval
 --      empty DMove (win for oponent)
 
 -- | Mini-Max Tree representation
-data MMTree = MMTree Board MovePhase TreeNode
+data MMTree = MT { board     :: Board
+                 , movePhase :: MovePhase
+                 , treeNode  :: TreeNode
+                 , step :: (Step, Step)
+                 }
 
-type MovePhase = (Player, Int)
+type MovePhase = (Player, Int) -- ^ (active player, number of steps played in move)
 data TreeNode = Leaf
               | Node { children :: [MMTree] -- ^ possible steps from this
                      , value    :: Int      -- ^ actual value of this node
@@ -20,26 +24,52 @@ data TreeNode = Leaf
                      }
 
 
+stepCount :: MMTree -> Int
+stepCount = snd . movePhase
+
+player :: MMTree -> Player
+player = fst . movePhase
+
 search :: Board             -- ^ starting position
        -> MVar (DMove, Int) -- ^ best results to store here
        -> IO ()
-search board mvar = return ()
+search b = search' MT { board = b
+                      , movePhase = (mySide b, 0)
+                      , treeNode = Leaf
+                      , step = (Pass, Pass)
+                      }
+
+search' :: MMTree -> MVar (DMove, Int) -> IO ()
+search' mt mvar = do
+        (mt',_) <- improveTree mt
+        _ <- aj `seq` swapMVar mvar (aj, 0)
+        search' mt' mvar
+    where
+        aj = constructMove mt 4
+
+constructMove :: MMTree -> Int -> DMove
+constructMove _ 0 = []
+constructMove mt n = step mt' : constructMove mt' (n-1)
+    where
+        mt' = fst $ findAndRemoveBest (children $ treeNode mt)
 
 improveTree :: MMTree -> IO (MMTree, Int)
-improveTree (MMTree b mp@(_,stepCount) root) =
-    case root of
+improveTree mt =
+    case treeNode mt of
         Leaf -> do
-            val <- getValueByMC b mp
-            return (createNode b val mp, val)
-        _ -> do
-            let (node, rest) = findAndRemoveBest (children root)
+            val <- getValueByMC (board mt) (movePhase mt)
+            return (createNode mt val, val)
+        root -> do
+            let (node, rest) = findAndRemoveBest (children $ treeNode mt)
             (nodeNew, improved) <- improveTree node
-            let improved' = (if stepCount == 3 then -1 else 1) * improved
+            let improved' = (if stepCount mt == 3 then -1 else 1) * improved
 
-            return ( MMTree b mp $
-                        root { value    = (value root) + improved'
-                             , number   = (number root) + 1
-                             , children = nodeNew : rest }
+            return ( mt { treeNode = Node
+                            { value    = (value root) + improved'
+                            , number   = (number root) + 1
+                            , children = nodeNew : rest
+                            }
+                        }
                    , improved')
 
 -- TODO co kdyz je vstupni seznam prazdny?
@@ -59,44 +89,51 @@ findAndRemoveBest (r:rs) = go (r, rs) (descendByUCB1 r)
 addToSnd :: a -> (b, [a]) -> (b, [a])
 addToSnd a (b, c) = (b, a:c)
 
-createNode :: Board -> Int -> MovePhase -> MMTree
-createNode b val mp@(pl,stepCount) = MMTree b mp $
-        Node { children = map leafFromStep (generateSteps b pl (stepCount < 2))
-             , value = val
-             , number = 1 }
+createNode :: MMTree -> Int -> MMTree
+createNode mt val =
+        mt { treeNode = Node { children = map leafFromStep steps
+                             , value = val
+                             , number = 1
+                             }
+           }
     where
-        leafFromStep (s1,s2) =
-            MMTree (fst $ makeMove b [s1,s2]) (stepInMove mp s2) Leaf
+        b = board mt
+
+        leafFromStep s@(s1,s2) =
+            MT { board = fst $ makeMove b [s1,s2]
+               , movePhase = stepInMove (movePhase mt) s2
+               , treeNode = Leaf
+               , step = s
+               }
+
+        steps = generateSteps b (player mt) (stepCount mt < 2)
 
 stepInMove :: MovePhase -> Step -> MovePhase
-stepInMove (pl,stepCount) s = (pl',stepCount')
+stepInMove (pl,steps) s = (pl',steps')
     where
-        stepCount' = stepCount + (if s == Pass then 1 else 2) `mod` 4
+        steps' = steps + (if s == Pass then 1 else 2) `mod` 4
 
-        pl' = if stepCount' == 0 then oponent pl
+        pl' = if steps' == 0 then oponent pl
                                  else pl
 
 -- TODO meaningful magic constant (even 0s)
 --      first 0 is wrong
 descendByUCB1 :: MMTree -> Double
-descendByUCB1 (MMTree _ _ Leaf) = 42
-descendByUCB1 (MMTree _ _ root) = val
+descendByUCB1 mt = case treeNode mt of Leaf -> 42
+                                       _    -> val
     where
-        childrenNodes = children root
-        (_,val,count) = foldr f (MMTree EmptyBoard (Gold,0) Leaf,0,0) childrenNodes
+        childrenNodes = children $ treeNode mt
+        (val,count) = foldr f (0,0) childrenNodes
 
-        f :: MMTree -> (MMTree, Double, Int) -> (MMTree, Double, Int)
-        f node (best,bestVal,s) | bestVal < nodeVal = (node,nodeVal,s+1)
-                                | otherwise         = (best,bestVal,s+1)
+        f :: MMTree -> (Double, Int) -> (Double, Int)
+        f node (bestVal,s) | bestVal < nodeVal = (nodeVal,s+1)
+                           | otherwise         = (bestVal,s+1)
             where
-                nodeVal = case node of
-                            MMTree _ _ Leaf -> 42
+                nodeVal = case tn of
+                            Leaf -> 42
                             _ -> - (vl / nb) + (sqrt (2 * (log cn) / nb))
                 tn = treeNode node
                 [vl,nb,cn] = map fromIntegral [value tn, number tn, count]
-
-treeNode :: MMTree -> TreeNode
-treeNode (MMTree _ _ n) = n
 
 depth, simulations :: Int
 depth = 100       -- ^ simulation depth
