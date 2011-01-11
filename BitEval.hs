@@ -9,7 +9,7 @@ foreign import ccall "clib.h eval"
     c_eval :: Int64 -> Int64 -> Int64 -> Int64 -> Int64 -> Int64
            -> Int64 -> Int64 -> Int64 -> Int64 -> Int64 -> Int64 -> IO Int
 
-iNFINITY :: Int
+iNFINITY :: Num a => a
 iNFINITY = 100000
 
 eval :: Board -> Player -> IO Int

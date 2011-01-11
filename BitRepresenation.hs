@@ -8,8 +8,10 @@ module BitRepresenation (
     Step(..),
     Move,
     DMove,
+    MovePhase,
     pieces,
     players,
+    (<#>),
     displayBoard,
     parseBoard,
     parseFlatBoard,
@@ -18,6 +20,7 @@ module BitRepresenation (
     parseStep,
     createBoard,
     oponent,
+    stepInMove,
     makeMove,
     makeStep,
     generateSteps,
@@ -36,21 +39,27 @@ foreign import ccall "clib.h hash_piece" c_hashPiece :: Int -> Int -> Int -> Int
 foreign import ccall "clib.h steps_from_position"
                             c_stepsFromPosition :: Int -> Int -> Int -> Int64
 
-data Player = Gold | Silver deriving (Eq, Ord, Enum, Ix, Show)
+data Player = Gold | Silver
+              deriving (Eq, Ord, Enum, Ix, Show)
+
 data Piece = Rabbit | Cat | Dog | Horse | Camel | Elephant
              deriving (Eq, Ord, Enum, Ix, Show)
-type Position = Int -- in [0..63]
 
+type Position = Int -- in [0..63]
 type PlayerBoard = Array Piece Int64
+
 data Board = Board { hash    :: !Int64
                    , figures :: Array Player PlayerBoard
                    , whole   :: Array Player Int64
                    , mySide  :: Player }
            | EmptyBoard deriving (Eq, Show)
+
 data Step = Step !Piece !Player {- from: -} !Int64 {- to: -} !Int64 | Pass
             deriving (Eq)
+
 type Move = [Step]
 type DMove = [(Step,Step)]
+type MovePhase = (Player, Int) -- ^ (active player, number of steps played in move)
 
 traps :: Int64
 traps = 0x0000240000240000
@@ -80,6 +89,10 @@ players = [Gold, Silver]
 
 pieces :: [Piece]
 pieces = [Rabbit .. Elephant]
+
+(<#>) :: Num a => Player -> Player -> a
+p1 <#> p2 | p1 == p2  =  1
+          | otherwise = -1
 
 showPiece :: Player -> Piece -> Char
 showPiece Gold Camel   = 'M'
@@ -170,6 +183,14 @@ adjecent = stepsFromPosition Gold Elephant
 oponent :: Player -> Player
 oponent Gold = Silver
 oponent Silver = Gold
+
+stepInMove :: MovePhase -> Step -> MovePhase
+stepInMove (pl,steps) s = (pl', steps' `mod` 4)
+    where
+        steps' = steps + if s == Pass then 1 else 2
+
+        pl' = if steps' > 3 then oponent pl
+                            else pl
 
 makeMove :: Board -> Move -> (Board, Move)
 makeMove b = foldl (\(b1, ss1) s -> case makeStep b1 s of

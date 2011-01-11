@@ -5,7 +5,7 @@
 
 /* Mozna bude potreba neco jako lock */
 
-static unsigned int HASH_SIZE = 13107200;
+static unsigned int HASH_SIZE = 100000; // 13107200;
 
 struct record {
     uint64_t hash;

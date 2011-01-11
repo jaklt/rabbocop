@@ -20,7 +20,7 @@ mtdf !b (!best, bestValue) depth !ub !lb = do
         (ub', lb') <- newBounds best'
 
         if lb' >= ub' then return best'
-                          else mtdf b best' depth ub' lb'
+                      else mtdf b best' depth ub' lb'
     where
         pl = mySide b
         beta = if bestValue == lb then bestValue + 1 else bestValue

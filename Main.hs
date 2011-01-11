@@ -7,8 +7,8 @@ import System.IO
 import System.Mem
 import BitRepresenation
 import Hash (resetHash)
-import MTDf
--- import MCTS
+-- import MTDf (search)
+import MCTS (search)
 
 data Game = Game { timePerMove :: Int, startingReserve :: Int
                  , percentUnusedToReserve :: Int, maxReserve :: Int
