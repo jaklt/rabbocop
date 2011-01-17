@@ -2,11 +2,11 @@ module Main where
 
 import Control.Concurrent
 import Data.Array ((!))
-import System.IO
-import System.Mem
+import System.IO (hFlush, stdout)
+import System.Mem (performGC)
 import BitRepresenation
 import Hash (resetHash)
-import MTDf
+import MTDf (search)
 
 ltrim :: String -> String
 ltrim = dropWhile (== ' ')

@@ -8,9 +8,9 @@ module Hash (
 ) where
 
 import Data.Int (Int64)
-import Foreign.StablePtr
+import Foreign.StablePtr (StablePtr, newStablePtr, freeStablePtr, deRefStablePtr)
 import BitRepresenation (DMove, Player, playerToInt)
-import Control.Monad
+import Control.Monad (forM_, when)
 
 foreign import ccall "clib.h info_hash"   infoHash :: IO ()
 foreign import ccall "clib.h reset_hash" c_resetHash :: Int -> IO ()

@@ -27,7 +27,7 @@ module BitRepresenation (
 ) where
 
 import Data.Array
-import Data.Bits
+import Data.Bits ((.&.), (.|.), xor, complement, bit)
 import Data.Char (digitToInt, isUpper, toLower)
 import Data.Int (Int64)
 import MyBits

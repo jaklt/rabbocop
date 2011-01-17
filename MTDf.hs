@@ -1,11 +1,11 @@
 {-# LANGUAGE BangPatterns #-}
 module MTDf (search) where
 
-import Control.Concurrent
-import System.IO
+import Control.Concurrent (MVar, swapMVar)
+import System.IO (hFlush, stdout)
 import AlphaBeta
-import BitRepresenation
-import BitEval
+import BitRepresenation (Board, Player, DMove)
+import BitEval (iNFINITY)
 import Hash (infoHash)
 
 
