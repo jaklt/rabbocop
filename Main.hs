@@ -1,12 +1,22 @@
-module Main where
+module Main (main) where
 
 import Control.Concurrent
+import Control.Monad (unless)
 import Data.Array ((!))
 import System.IO (hFlush, stdout)
 import System.Mem (performGC)
 import BitRepresenation
 import Hash (resetHash)
-import MTDf (search)
+-- import MTDf (search)
+import MCTS (search)
+
+data Game = Game { timePerMove :: Int, startingReserve :: Int
+                 , percentUnusedToReserve :: Int, maxReserve :: Int
+                 , maxLenghtOfGame :: Int, maxTurns :: Int, maxTurnTime :: Int
+                 , quit :: Bool, board :: Board
+                 , hashSize :: Int }
+                 deriving (Show)
+
 
 ltrim :: String -> String
 ltrim = dropWhile (== ' ')
@@ -23,25 +33,18 @@ getValue str = case firstWord str of
                     ("value", rest) -> read rest
                     _ -> read str
 
-data Game = Game { timePerMove :: Int, startingReserve :: Int
-                 , percentUnusedToReserve :: Int, maxReserve :: Int
-                 , maxLenghtOfGame :: Int, maxTurns :: Int, maxTurnTime :: Int
-                 , quit :: Bool, board :: Board, playerColor :: Player
-                 , hashSize :: Int}
-                 deriving (Show)
-
-
 aeiSetposition :: Game -> String -> Game
-aeiSetposition game flatBoard = game { playerColor = playerFromChar $ head col
-                                      , board = newBoard }
+aeiSetposition game flatBoard = game { board = newBoard }
     where
         (col, flatBoard') = firstWord flatBoard
-        newBoard = parseFlatBoard $ ltrim flatBoard'
+        plCol = playerFromChar $ head col
+        newBoard = parseFlatBoard plCol $ ltrim flatBoard'
 
 aeiMakemove :: Game -> String -> Game
 aeiMakemove game move
-        | (hash.board) game == 0 = game { board = parseBoard move }
-        | (whole (board game)) ! Silver == 0 = game { board = fst board2 }
+        | board game == EmptyBoard = game { board = parseBoard Silver move }
+        | (hash.board) game == 0   = game { board = parseBoard   Gold move }
+        | whole (board game) ! Silver == 0 = game { board = fst board2 }
         | otherwise =  game { board = fst board1 }
     where
         board1 = makeMove (board game) $ filter notTrapping $ map parseStep $ words move
@@ -50,26 +53,27 @@ aeiMakemove game move
         notTrapping (Step _ _ _ to) = to /= 0
         notTrapping _ = True
 
+-- TODO zmenit startovni pozici
 startSilver, startGold :: String
 startSilver = "ra8 db8 rc8 cd8 ce8 rf8 dg8 rh8 ra7 hb7 rc7 ed7 me7 rf7 hg7 rh7 "
 startGold   = "Ra1 Db1 Rc1 Cd1 Ce1 Rf1 Dg1 Rh1 Ra2 Hb2 Rc2 Md2 Ee2 Rf2 Hg2 Rh2 "
 
 aeiGo :: Game -> IO Game
-aeiGo game | hash (board game) == 0 = do
+aeiGo game | board game == EmptyBoard  = do
                 putStrLn ("bestmove " ++ startGold)
-                return game
-           | (whole (board game)) ! Silver == 0 = do
+                return game { board = parseBoard Gold "" }
+           | whole (board game) ! Silver == 0 = do
                 putStrLn ("bestmove " ++ startSilver)
-                return game { playerColor = Silver }
+                return game
            | otherwise = do
                 mvar <- newMVar ([],0)
-                thread <- forkOS $ search (board game) (playerColor game) mvar
-                threadDelay (3000000 * (timePerMove game) `div` 4)
+                thread <- forkOS $ search (board game) mvar
+                threadDelay (3000000 * timePerMove game `div` 4)
                 (pv, val) <- takeMVar mvar
                 killThread thread
 
                 putStrLn $ "info bestscore " ++ show val
-                putStrLn $ "bestmove " ++ (unwords $ map show $ justOneMove pv)
+                putStrLn $ "bestmove " ++ unwords (map show $ justOneMove pv)
                 return game
     where
         justOneMove :: DMove -> Move
@@ -80,14 +84,14 @@ aeiGo game | hash (board game) == 0 = do
         justOneMove' (s:ss) n
             | n <= 0 = []
             | otherwise = case s of
-                 (s1, Pass) -> s1 : (justOneMove' ss (n-1))
+                 (s1, Pass) -> s1 : justOneMove' ss (n-1)
                  (s1@(Step pie1 pl1 _ _), s2@(Step pie2 _ _ _)) ->
                     if (pl1 == pl && pie1 > pie2) || (pl1 /= pl && pie1 < pie2)
                         then [s1,s2] ++ justOneMove' ss (n-2)
                         else []
                  _ -> error "Inner error in aeiGo"
 
-        pl = playerColor game
+        pl = mySide $ board game
 
 action :: String -> String -> Game -> IO Game
 action str line game = case str of
@@ -107,7 +111,7 @@ action str line game = case str of
                     ("tcturns", turns)  -> return game { maxTurns = getValue turns }
                     ("tcturntime", time)-> return game { maxTurnTime = getValue time }
 
-                    ("hash",size) -> do
+                    ("hash", size) -> do
                             let size' = getValue size
                             resetHash (size' `div` 5)
                             return game { hashSize = size' }
@@ -128,7 +132,7 @@ action str line game = case str of
                     _ -> {- putStrLn "log Warning: unsupported setoption" >> -} return game
             _ -> putStrLn "log Error: corrupted 'setoption name <id> [value <x>]' command"
                  >> return game
-    "newgame"     -> return game { board = parseBoard "", playerColor = Gold }
+    "newgame"     -> return game { board = EmptyBoard }
     "setposition" -> return $ aeiSetposition game line
     "makemove"    -> return $ aeiMakemove game line
     "go" -> if (fst.firstWord) line == "ponder"
@@ -153,9 +157,7 @@ communicate game = game `seq` do
     l <- getLine
     (str, line) <- return $ firstWord l
     game' <- action str line game
-    if quit game'
-        then return ()
-        else communicate game'
+    unless (quit game') $ communicate game'
 
 main :: IO ()
 main = do
@@ -165,5 +167,5 @@ main = do
         game = Game { timePerMove = 20, startingReserve = 20
                     , percentUnusedToReserve = 100, maxReserve = 10
                     , maxLenghtOfGame = -1, maxTurns = -1, maxTurnTime = -1
-                    , quit = False, board = parseBoard "", playerColor = Gold
+                    , quit = False, board = EmptyBoard
                     , hashSize = 100 }

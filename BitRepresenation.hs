@@ -8,8 +8,10 @@ module BitRepresenation (
     Step(..),
     Move,
     DMove,
+    MovePhase,
     pieces,
     players,
+    (<#>),
     displayBoard,
     parseBoard,
     parseFlatBoard,
@@ -18,6 +20,7 @@ module BitRepresenation (
     parseStep,
     createBoard,
     oponent,
+    stepInMove,
     makeMove,
     makeStep,
     generateSteps,
@@ -36,30 +39,38 @@ foreign import ccall "clib.h hash_piece" c_hashPiece :: Int -> Int -> Int -> Int
 foreign import ccall "clib.h steps_from_position"
                             c_stepsFromPosition :: Int -> Int -> Int -> Int64
 
-data Player = Gold | Silver deriving (Eq, Ord, Enum, Ix, Show)
+data Player = Gold | Silver
+              deriving (Eq, Ord, Enum, Ix, Show)
+
 data Piece = Rabbit | Cat | Dog | Horse | Camel | Elephant
              deriving (Eq, Ord, Enum, Ix, Show)
-type Position = Int -- in [0..63]
 
+type Position = Int -- in [0..63]
 type PlayerBoard = Array Piece Int64
+
 data Board = Board { hash    :: !Int64
-                   , figures :: (Array Player PlayerBoard)
-                   , whole   :: (Array Player Int64)} deriving (Eq, Show)
+                   , figures :: Array Player PlayerBoard
+                   , whole   :: Array Player Int64
+                   , mySide  :: Player }
+           | EmptyBoard deriving (Eq, Show)
+
 data Step = Step !Piece !Player {- from: -} !Int64 {- to: -} !Int64 | Pass
             deriving (Eq)
+
 type Move = [Step]
 type DMove = [(Step,Step)]
+type MovePhase = (Player, Int) -- ^ (active player, number of steps played in move)
 
 traps :: Int64
 traps = 0x0000240000240000
 
 instance Show Step where
     show Pass = "Pass"
-    show (Step piece player from to) = (showPiece player piece):(pos from ++ dir)
+    show (Step piece player from to) = showPiece player piece : (pos from ++ dir)
         where
              format :: Show a => a -> Char
              format = toLower.head.show
-             d = (bitIndex to) - (bitIndex from)
+             d = bitIndex to - bitIndex from
              dir | to == 0 = "x"
                  | d ==  8 = "n"
                  | d == -8 = "s"
@@ -72,11 +83,16 @@ instance Show Step where
              pos p = let q = bitIndex p in [ ['a'..'h'] !! (7 - q `mod` 8)
                                            , format $ q `div` 8 + 1]
 
+
 players :: [Player]
 players = [Gold, Silver]
 
 pieces :: [Piece]
 pieces = [Rabbit .. Elephant]
+
+(<#>) :: Num a => Player -> Player -> a
+p1 <#> p2 | p1 == p2  =  1
+          | otherwise = -1
 
 showPiece :: Player -> Piece -> Char
 showPiece Gold Camel   = 'M'
@@ -103,15 +119,18 @@ displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
                   | otherwise = "[" ++ xs ++ "]"
 
 
-parseBoard :: String -> Board
-parseBoard inp = createBoard $ map parsePosition $ words inp
+parseBoard :: Player -> String -> Board
+parseBoard pl inp = createBoard pl $ map parsePosition $ words inp
 
 -- | format: "[a8 ... h1]"
-parseFlatBoard :: String -> Board
-parseFlatBoard s = createBoard.fst $ foldr flatBoardToPositions ([],-1) $ tail s
+parseFlatBoard :: Player -> String -> Board
+parseFlatBoard pl s =
+        createBoard pl . fst $ foldr flatBoardToPositions ([],-1) $ tail s
     -- tail to skip '['
 
-flatBoardToPositions :: Char -> ([(Player, Piece, Position)], Int) -> ([(Player, Piece, Position)], Int)
+flatBoardToPositions :: Char
+                     -> ([(Player, Piece, Position)], Int)
+                     -> ([(Player, Piece, Position)], Int)
 flatBoardToPositions char (steps, count)
     | char == ']'  = ([],-1)
     | char `elem` " x" = (steps, count+1)
@@ -120,7 +139,7 @@ flatBoardToPositions char (steps, count)
 
 -- | x in [a..h], y in [1..8] -> y*8 + x
 newPosition :: Char -> Char -> Position
-newPosition x y = 8*((digitToInt y) - 1) + (7 - (index ('a','h') x))
+newPosition x y = 8 * (digitToInt y - 1) + (7 - index ('a','h') x)
 
 parsePosition :: String -> (Player, Piece, Position)
 parsePosition (p:x:y:[]) = (playerFromChar p, pieceFromChar p, newPosition x y)
@@ -139,15 +158,15 @@ parseStep (p:x:y:o:[]) =
                          _   -> error "Invalid move direction"
 parseStep s = error ("Wrong step given: " ++ s)
 
-createBoard :: [(Player, Piece, Position)] -> Board
-createBoard xs = fst $ makeMove bo $ map positionToStep xs
+createBoard :: Player -> [(Player, Piece, Position)] -> Board
+createBoard pl xs = fst $ makeMove bo $ map positionToStep xs
     where
         gb = array (Rabbit, Elephant) [(i,0 :: Int64) | i <- pieces]
         sb = array (Rabbit, Elephant) [(i,0 :: Int64) | i <- pieces]
 
         fi = array (Gold, Silver) [(Gold, gb), (Silver, sb)]
         wh = array (Gold, Silver) [(Gold, 0),  (Silver, 0)]
-        bo = Board { hash=0, figures=fi, whole=wh}
+        bo = Board { hash=0, figures=fi, whole=wh, mySide=pl }
 
 
 -- | third argument: only one bit number
@@ -165,9 +184,18 @@ oponent :: Player -> Player
 oponent Gold = Silver
 oponent Silver = Gold
 
+stepInMove :: MovePhase -> Step -> MovePhase
+stepInMove (pl,steps) s = (pl', steps' `mod` 4)
+    where
+        steps' = steps + if s == Pass then 1 else 2
+
+        pl' = if steps' > 3 then oponent pl
+                            else pl
+
 makeMove :: Board -> Move -> (Board, Move)
 makeMove b = foldl (\(b1, ss1) s -> case makeStep b1 s of
                                    (b2, ss2) -> (b2, ss1 ++ ss2)) (b, [])
+{-# INLINE makeMove #-}
 
 makeStep :: Board -> Step -> (Board, Move)
 makeStep b Pass = (b, [])
@@ -263,7 +291,7 @@ pieceFromChar c = case toLower c of
         _ -> error ("Wrong piece character: " ++ [c])
 
 playerFromChar :: Char -> Player
-playerFromChar c = if isUpper c || c == 'g' || c == 'w'
+playerFromChar c = if isUpper c || c `elem` "gw"
                    then Gold else Silver
 
 pieceToInt :: Piece -> Int

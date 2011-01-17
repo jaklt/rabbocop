@@ -185,6 +185,7 @@ int eval(uint64_t gr, uint64_t gc, uint64_t gd,
     const int trap_control[5] = {0, 600, 900, 500, 200};
 
     /* Win or Loose */
+    /* TODO consider active player */
     if ((gr &  UPPER_SIDE) || !sr) return  INFINITY;
     if ((sr & BOTTOM_SIDE) || !gr) return -INFINITY;
 
@@ -239,8 +240,8 @@ int eval(uint64_t gr, uint64_t gc, uint64_t gd,
         }
         /* b & (-b) is right most bit */
 
-        tmpG  |= figs[  GOLD][i];
-        tmpS  |= figs[SILVER][i];
+        tmpG |= figs[  GOLD][i];
+        tmpS |= figs[SILVER][i];
     }
 
     return sum;

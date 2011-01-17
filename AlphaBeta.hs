@@ -11,9 +11,8 @@ alphaBeta :: Board
           -> Int         -- ^ maximal depth
           -> Int         -- ^ actual depth
           -> Player      -- ^ actual player
-          -> Bool        -- ^ is maximalise node
           -> IO (DMove, Int) -- ^ (steps to go, best value)
-alphaBeta board pv (alpha, beta) depth actualDepth player isMaxNode = do
+alphaBeta board pv (alpha, beta) depth actualDepth player = do
         inTranspositionTable <- findHash (hash board) inverseDepth player
         (alpha', beta', bestGues) <- if inTranspositionTable
             then do
@@ -28,7 +27,7 @@ alphaBeta board pv (alpha, beta) depth actualDepth player isMaxNode = do
             else do
                 res <- if depth <= actualDepth
                             then do
-                                e <- eval board player isMaxNode
+                                e <- eval board player
                                 return ([], e)
                             else findBest (alpha', beta') ([], inf) steps
                 addHash (hash board) inverseDepth player res
@@ -43,7 +42,7 @@ alphaBeta board pv (alpha, beta) depth actualDepth player isMaxNode = do
         findBest bounds@(a,b) best@(_, bestValue) ((s1,s2):ss) =
                 bounds `seq` best `seq` (s1,s2) `seq` do
                     (childPV, childValue) <-
-                        alphaBeta board' tailPV' bounds depth actualDepth' player' isMaxNode'
+                        alphaBeta board' tailPV' bounds depth actualDepth' player'
 
                     let bestValue' = cmp bestValue childValue
                     let bounds' = newBounds childValue
@@ -59,12 +58,13 @@ alphaBeta board pv (alpha, beta) depth actualDepth player isMaxNode = do
                 tailPV' = if [(s1,s2)] == headPV then tailPV else []
 
                 (board', _) = makeMove board s
-                (player', isMaxNode') = if actualDepth' `mod` 4 /= 0
-                                            then (player, isMaxNode)
-                                            else (oponent player, not isMaxNode)
+                player' = if actualDepth' `mod` 4 /= 0 then player
+                                                       else oponent player
 
                 newBounds childV | isMaxNode = (cmp a childV, b)
                                  | otherwise = (a, cmp b childV)
+
+        isMaxNode = mySide board == player
 
         inBounds (a,b) (_, best) | isMaxNode = best < b
                                  | otherwise = best > a
