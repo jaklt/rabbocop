@@ -52,7 +52,7 @@ data Board = Board { hash    :: !Int64
                    , figures :: Array Player PlayerBoard
                    , whole   :: Array Player Int64
                    , mySide  :: Player }
-           | EmptyBoard deriving (Eq, Show)
+           | EmptyBoard deriving (Eq)
 
 data Step = Step !Piece !Player {- from: -} !Int64 {- to: -} !Int64 | Pass
             deriving (Eq)
@@ -82,6 +82,9 @@ instance Show Step where
 
              pos p = let q = bitIndex p in [ ['a'..'h'] !! (7 - q `mod` 8)
                                            , format $ q `div` 8 + 1]
+
+instance Show Board where
+    show = ("\n" ++) . (++ "\n") . flip displayBoard True
 
 
 players :: [Player]
@@ -122,7 +125,7 @@ displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
 parseBoard :: Player -> String -> Board
 parseBoard pl inp = createBoard pl $ map parsePosition $ words inp
 
--- | format: "[a8 ... h1]"
+-- | input string format: "[a8 ... h1]"
 parseFlatBoard :: Player -> String -> Board
 parseFlatBoard pl s =
         createBoard pl . fst $ foldr flatBoardToPositions ([],-1) $ tail s

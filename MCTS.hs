@@ -29,7 +29,6 @@ data TreeNode = Leaf
                      , number   :: !Int     -- ^ how many times this node has been visited
                      } deriving (Show)
 
-
 stepCount :: MMTree -> Int
 stepCount = snd . movePhase
 
@@ -46,7 +45,7 @@ search b = search' MT { board = b
                       }
 
 search' :: MMTree -> MVar (DMove, Int) -> IO ()
-search' mt mvar = do
+search' !mt mvar = do
         (mt',score) <- improveTree mt
         _ <- move `seq` swapMVar mvar (move,score)
         search' mt' mvar
@@ -56,7 +55,7 @@ search' mt mvar = do
 constructMove :: MMTree -> Int -> DMove
 constructMove _ 0 = []
 constructMove (MT { treeNode = Leaf }) _ = []
-constructMove mt n = (s `seq` subTreeMove) `seq` s : subTreeMove
+constructMove !mt !n = (s `seq` subTreeMove) `seq` s : subTreeMove
     where
         mt' = fst $ findAndRemoveBest (children $ treeNode mt)
         s = step mt'
@@ -70,17 +69,17 @@ improveTree mt =
             return (createNode mt val, val)
         root -> do
             let (node, rest) = findAndRemoveBest (children $ treeNode mt)
-            (nodeNew, improved) <- improveTree node
+            (nodeNew, improvement) <- improveTree node
             -- TODO asi problem - vytvari se stromecek dobre?
-            let improved' = player mt <#> player node * improved
+            let improvement' = player mt <#> player node * improvement
 
             return ( mt { treeNode = Node
-                            { value    = value root + improved'
+                            { value    = value root + improvement'
                             , number   = number root + 1
                             , children = nodeNew : rest
                             }
                         }
-                   , improved')
+                   , improvement')
 
 -- TODO co kdyz je vstupni seznam prazdny?
 findAndRemoveBest :: [MMTree] -> (MMTree, [MMTree])
@@ -120,17 +119,19 @@ leafFromStep mt s@(s1,s2) =
 
 -- TODO first 0 is wrong
 --      +/- iNFINITYs discussion
+--      improve speed (compute in one walk)
 descendByUCB1 :: MMTree -> Double
 descendByUCB1 mt = case treeNode mt of Leaf -> iNFINITY
                                        _    -> val
     where
         childrenNodes = children $ treeNode mt
-        (!val,count) = foldr (accumNodes count) (0,0) childrenNodes
+        count = length childrenNodes
+        val = foldr (accumNodes count) 0 childrenNodes
 
-accumNodes :: Int -> MMTree -> (Double, Int) -> (Double, Int)
-accumNodes count node (bestVal,s)
-        | bestVal < nodeVal = (nodeVal,s+1)
-        | otherwise         = (bestVal,s+1)
+accumNodes :: Int -> MMTree -> Double -> Double
+accumNodes count node bestVal
+        | bestVal < nodeVal = nodeVal
+        | otherwise         = bestVal
     where
         tn = treeNode node
         nodeVal = case tn of

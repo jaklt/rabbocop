@@ -7,8 +7,8 @@ import Prelude
 import AlphaBeta
 import BitEval
 import BitRepresenation
-import qualified MTDf as MTDf
-import qualified MCTS as MCTS
+import MTDf
+import MCTS
 import MyBits
 import Hash
 import MonteCarloEval
@@ -40,12 +40,49 @@ testTiming = do
     where
         testBoard' = parseFlatBoard Gold "[r r  r r drc rdrrh  c mh   eE      H     D    HRRR C RR R RC  DR]"
 
+{- -------------------------------------------------------
+ - Testing MCTS
+ - ------------------------------------------------------- -}
+data Show a => CTree a = CT a [CTree a]
+
+instance Show a => Show (CTree a) where
+    show = ("CalculTree\n" ++) . s 0 where
+        s :: Show a => Int -> CTree a -> String
+        s i (CT a subtrs) = replicate (4*i) ' ' ++ show a
+                          ++ "\n" ++ (concat $ map (s (i+1)) subtrs)
+
+mm2c :: MMTree -> CTree (MovePhase, Int, Int)
+mm2c mt = CT (movePhase mt, val,num) subtrees
+    where
+        (val,num,subtrees) = case treeNode mt of
+                                Leaf -> (0,0,[])
+                                tn -> (value tn, number tn, map mm2c $ children tn)
+
+simpleMMTree :: Board -> MMTree
+simpleMMTree b =
+    MT { board = b
+       , movePhase = (mySide b, 0)
+       , treeNode = Leaf
+       , step = (Pass, Pass)
+       }
 
 testMCTS :: IO ()
 testMCTS = do
-        showHeader "starting MCTS test:"
-
+        showHeader "starting MonteCarlo test:"
         getValueByMC testBoard3 (Gold, 0) >>= putStrLn.("MC: "++).show
+
+        showHeader "starting MCTS test:"
+        (mt1,_) <- improveTree $ simpleMMTree testBoard
+        print $ mm2c mt1
+        (mt2,_) <- improveTree mt1
+        print $ mm2c mt2
+        (mt3,_) <- improveTree mt2
+        print $ mm2c mt3
+        (mt4,_) <- improveTree mt3
+        print $ mm2c mt4
+        print $ descendByUCB1 mt4
+
+{- ------------------------------------------------------- -}
 
 showMove :: Show b => ([(Step,Step)], b) -> String
 showMove ([],a) = show ("Empty Move",a)
