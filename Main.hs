@@ -3,8 +3,8 @@ module Main (main) where
 import Control.Concurrent
 import Control.Monad (unless)
 import Data.Array ((!))
-import System.IO
-import System.Mem
+import System.IO (hFlush, stdout)
+import System.Mem (performGC)
 import BitRepresenation
 import Hash (resetHash)
 -- import MTDf (search)
