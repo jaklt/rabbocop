@@ -4,7 +4,7 @@ import Data.Word
 import Data.Bits
 import System.Environment
 import Data.Char
-import Data.List
+import Data.List hiding (find)
 import Numeric
 
 tab :: String
@@ -14,7 +14,7 @@ trim :: String -> String
 trim = filter (`notElem` [' ', '\n', '\t'])
 
 split :: Eq a => a -> [a] -> [[a]]
-split c xs = go xs []
+split c ys = go ys []
     where
         go [] [] = []
         go [] a  = [reverse a]
@@ -40,6 +40,7 @@ parseDefinition definition@(name:defs:_:table) =
         code = unlines . indent $ generatedTables ++ [generatedSums]
         generatedTables = map (makeTable table defs . toLower) $ filter (`elem` ['A'..'Z']) name
         generatedSums   = makeSums name
+parseDefinition _ = error "Parse error"
 
 makeTable :: [String] -> String -> Char -> String
 makeTable table defs c = ("\n" ++) $ unlines $ reverse $ addSemicolon $ reverse $ indent res
@@ -68,8 +69,8 @@ combine defs ch = foldr cmb []
 makeDefs :: String -> [(Char, Double)]
 makeDefs s = map (make . split '=') $ split ',' s
     where
-        make :: [String] -> (Char, Double)
         make [symb, koef] = (head $ trim symb, read koef)
+        make _ = error "Parse error"
 
 makeBits :: String -> [(Char, Word64)]
 makeBits s = snd $ foldr accum (0,[]) s
@@ -77,6 +78,7 @@ makeBits s = snd $ foldr accum (0,[]) s
         accum :: Char -> (Int, [(Char, Word64)]) -> (Int, [(Char, Word64)])
         accum c (n,res) = (n+1, repRes c n res)
 
+repRes :: Char -> Int -> [(Char, Word64)] -> [(Char, Word64)]
 repRes c n res
     | null res = [(c, bit n)]
     | c == fst (head res) = (c, snd (head res) .|. bit n) : tail res
@@ -88,10 +90,12 @@ makeSums name = "sum += tmp * " ++ weights
         ns = filter (not.null) $ map (filter isAlpha) $ words name
         weights = concat $ 
                     [ "(" 
-                    , concat $ intersperse " + "
-                             $ map (\n -> "weight_table[" ++ map toUpper n ++ "]") ns
+                    , concat $ intersperse " + " $ map weightTable ns
                     , ");"
                     ]
+
+        weightTable "Rabbit" = "rabbit_weight"
+        weightTable n        = "weight_table[" ++ map toUpper n ++ "]"
 
 main :: IO ()
 main = getArgs >>= readFile . head >>= putStrLn . transform
