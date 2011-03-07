@@ -4,4 +4,6 @@
 *.swp
 Main
 Test
+data/staticeval.c
+tools/BoardToCode
 rabbocop.tar.bz2

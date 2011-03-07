@@ -25,9 +25,17 @@ runtest: Test
 
 ${LINK_O}: ${LINK_C} ${LINK_H}
 
+eval.o: data/staticeval.c
+
+data/staticeval.c: data/staticeval.txt tools/BoardToCode.hs
+	${HC} --make tools/BoardToCode.hs ${HFLAGS}
+	./tools/BoardToCode data/staticeval.txt > data/staticeval.c
+
 clean:
 	@echo Cleaning
 	rm -f *.o *.hi *.prof
+	rm -f tools/*.o tools/*.hi
+	rm -f data/staticeval.c
 
 dist:
 	rm ${NAME}.tar.bz2
