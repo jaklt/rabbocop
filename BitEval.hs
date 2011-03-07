@@ -13,12 +13,11 @@ iNFINITY :: Num a => a
 iNFINITY = 100000
 
 eval :: Board -> Player -> IO Int
-eval b player = do
-        e <- (c_eval (fg ! Rabbit) (fg ! Cat)   (fg ! Dog)
-                     (fg ! Horse)  (fg ! Camel) (fg ! Elephant)
-                     (fs ! Rabbit) (fs ! Cat)   (fs ! Dog)
-                     (fs ! Horse)  (fs ! Camel) (fs ! Elephant))
-        return $! if mySide b == Gold then e else -e
+eval b player =
+        c_eval (fg ! Rabbit) (fg ! Cat)   (fg ! Dog)
+               (fg ! Horse)  (fg ! Camel) (fg ! Elephant)
+               (fs ! Rabbit) (fs ! Cat)   (fs ! Dog)
+               (fs ! Horse)  (fs ! Camel) (fs ! Elephant)
     where
         fg = figures b ! Gold
         fs = figures b ! Silver

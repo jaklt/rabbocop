@@ -66,12 +66,12 @@ improveTree mt =
     case treeNode mt of
         Leaf -> do
             val <- getValueByMC (board mt) (movePhase mt)
-            return (createNode mt val, val)
+            return (createNode mt (val * (player mt <#> Gold)), val)
         root -> do
             let (node, rest) = findAndRemoveBest (children $ treeNode mt)
             (nodeNew, improvement) <- improveTree node
             -- TODO asi problem - vytvari se stromecek dobre?
-            let improvement' = player mt <#> player node * improvement
+            let improvement' = player mt <#> Gold * improvement
 
             return ( mt { treeNode = Node
                             { value    = value root + improvement'
@@ -79,7 +79,7 @@ improveTree mt =
                             , children = nodeNew : rest
                             }
                         }
-                   , improvement')
+                   , improvement)
 
 -- TODO co kdyz je vstupni seznam prazdny?
 findAndRemoveBest :: [MMTree] -> (MMTree, [MMTree])

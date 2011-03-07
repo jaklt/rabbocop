@@ -12,14 +12,14 @@ simulations = 100 -- ^ number of simulations
 getValueByMC :: Board -> MovePhase -> IO Int
 getValueByMC b mp = do
     s <- mapM (randomSimulation mp depth) $ replicate simulations b
-    return $ sum s
+    return $ sum s `div` simulations
 
 -- TODO +/- 1 discussion on empty steps
 randomSimulation :: MovePhase -> Int -> Board -> IO Int
 randomSimulation (pl,_) 0 b = eval b pl
 randomSimulation mp@(pl,sc) d b =
     case generateSteps b pl (sc < 2) of
-        [] -> return $ iNFINITY * pl <#> mySide b
+        [] -> return $ iNFINITY * pl <#> Silver
         xs -> do
             (s1,s2) <- chooseRandomly xs
             randomSimulation (stepInMove mp s2) (d-1) (fst $ makeMove b [s1,s2])

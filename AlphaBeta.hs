@@ -28,7 +28,7 @@ alphaBeta board pv (alpha, beta) depth actualDepth player = do
                 res <- if depth <= actualDepth
                             then do
                                 e <- eval board player
-                                return ([], e)
+                                return ([], e * Gold <#> mySide board)
                             else findBest (alpha', beta') ([], inf) steps
                 addHash (hash board) inverseDepth player res
                 return res
