@@ -51,8 +51,8 @@ instance Show a => Show (CTree a) where
         s i (CT a subtrs) = replicate (4*i) ' ' ++ show a
                           ++ "\n" ++ (concat $ map (s (i+1)) subtrs)
 
-mm2c :: MMTree -> CTree (MovePhase, Int, Int)
-mm2c mt = CT (movePhase mt, val,num) subtrees
+mm2c :: MMTree -> CTree (MovePhase, Int, Int, (Step,Step), Bool)
+mm2c mt = CT (movePhase mt, val, num, step mt, treeNode mt == Leaf) subtrees
     where
         (val,num,subtrees) = case treeNode mt of
                                 Leaf -> (0,0,[])
@@ -68,19 +68,26 @@ simpleMMTree b =
 
 testMCTS :: IO ()
 testMCTS = do
+        let b = testBoard5
         showHeader "starting MonteCarlo test:"
-        getValueByMC testBoard3 (Gold, 0) >>= putStrLn.("MC: "++).show
+        getValueByMC b (Gold, 0) >>= putStrLn.("MonteCarlo:\t"++).show
+        putStrLn $ "iNFINITY:\t" ++ show (iNFINITY :: Int)
 
         showHeader "starting MCTS test:"
-        (mt1,_) <- improveTree $ simpleMMTree testBoard
-        print $ mm2c mt1
+        (mt1,_) <- improveTree $ simpleMMTree b
         (mt2,_) <- improveTree mt1
-        print $ mm2c mt2
         (mt3,_) <- improveTree mt2
-        print $ mm2c mt3
         (mt4,_) <- improveTree mt3
+
+        print $ mm2c mt1
+        print $ mm2c mt2
+        print $ mm2c mt3
         print $ mm2c mt4
-        print $ descendByUCB1 mt4
+
+        let (bst,_) = descendByUCB1 (children $ treeNode mt2) (number $ treeNode mt2)
+        print $ step bst
+
+        -- putStrLn $ displayBoard b True
 
 {- ------------------------------------------------------- -}
 
