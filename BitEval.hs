@@ -7,7 +7,8 @@ import Data.Int (Int64)
 
 foreign import ccall "clib.h eval"
     c_eval :: Int64 -> Int64 -> Int64 -> Int64 -> Int64 -> Int64
-           -> Int64 -> Int64 -> Int64 -> Int64 -> Int64 -> Int64 -> IO Int
+           -> Int64 -> Int64 -> Int64 -> Int64 -> Int64 -> Int64
+           -> Bool -> IO Int
 
 iNFINITY :: Num a => a
 iNFINITY = 100000
@@ -18,6 +19,7 @@ eval b player =
                (fg ! Horse)  (fg ! Camel) (fg ! Elephant)
                (fs ! Rabbit) (fs ! Cat)   (fs ! Dog)
                (fs ! Horse)  (fs ! Camel) (fs ! Elephant)
+               (mySide b == Gold)
     where
         fg = figures b ! Gold
         fs = figures b ! Silver

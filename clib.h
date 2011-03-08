@@ -36,6 +36,7 @@ int empty_by_index(int i);
 int eval(uint64_t gr, uint64_t gc, uint64_t gd,
          uint64_t gh, uint64_t gm, uint64_t ge,
          uint64_t sr, uint64_t sc, uint64_t sd,
-         uint64_t sh, uint64_t sm, uint64_t se);
+         uint64_t sh, uint64_t sm, uint64_t se,
+         int player);
 
 #endif

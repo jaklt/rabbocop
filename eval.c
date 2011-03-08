@@ -81,7 +81,8 @@ static inline uint64_t adjecent(uint64_t pos)
 int eval(uint64_t gr, uint64_t gc, uint64_t gd,
          uint64_t gh, uint64_t gm, uint64_t ge,
          uint64_t sr, uint64_t sc, uint64_t sd,
-         uint64_t sh, uint64_t sm, uint64_t se)
+         uint64_t sh, uint64_t sm, uint64_t se,
+         int player)
 {
     int sum = 0, i,j;
     uint64_t figs[2][6] = {{gr, gc, gd, gh, gm, ge}, {sr, sc, sd, sh, sm, se}};
@@ -90,9 +91,18 @@ int eval(uint64_t gr, uint64_t gc, uint64_t gd,
     const int trap_control[5] = {0, 600, 900, 500, 200};
 
     /* Win or Loose */
-    /* TODO consider active player */
-    if ((gr &  UPPER_SIDE) || !sr) return  INFINITY;
-    if ((sr & BOTTOM_SIDE) || !gr) return -INFINITY;
+    /* TODO repair against rules */
+    if (player /* == GOLD */) {
+        if ((gr &  UPPER_SIDE) || !sr) return  INFINITY;
+        if ((sr & BOTTOM_SIDE) || !gr) return -INFINITY;
+        if (bit_count(sr) == 0) return  INFINITY;
+        if (bit_count(gr) == 0) return -INFINITY;
+    } else {
+        if ((sr & BOTTOM_SIDE) || !gr) return -INFINITY;
+        if ((gr &  UPPER_SIDE) || !sr) return  INFINITY;
+        if (bit_count(gr) == 0) return -INFINITY;
+        if (bit_count(sr) == 0) return  INFINITY;
+    }
 
     /* Material and position */
     sum += material_and_position(gr,gc,gd,gh,gm,ge, RABBIT_WEIGHT(gr))
