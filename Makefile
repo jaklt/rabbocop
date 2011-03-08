@@ -41,12 +41,15 @@ dist:
 	rm ${NAME}.tar.bz2
 	tar cjvf ${NAME}.tar.bz2 *.hs *.c *.h .vimrc .ghci Makefile .git .gitignore
 
-play: Main aei-1.1/roundrobin.py arimaa-client/gui.py
+play: Main aei-1.1/roundrobin.py arimaa-client/gui.py aei-1.1/roundrobin.cfg
 	cd aei-1.1; python roundrobin.py
 
 aei-1.1/roundrobin.py:
 	wget http://arimaa.janzert.com/aei/aei-1.1.zip --directory-prefix=aei-1.1
 	unzip aei-1.1/aei-1.1.zip
+
+aei-1.1/roundrobin.cfg: data/aei-roundrobin.cfg
+	cp data/aei-roundrobin.cfg aei-1.1/roundrobin.cfg
 
 arimaa-client/gui.py:
 	bzr branch lp:arimaa-client

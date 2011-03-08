@@ -4,6 +4,7 @@
 *.swp
 Main
 Test
+aei-1.1/*
 data/staticeval.c
 tools/BoardToCode
 rabbocop.tar.bz2
