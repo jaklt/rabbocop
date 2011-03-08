@@ -19,7 +19,7 @@ eval b player =
                (fg ! Horse)  (fg ! Camel) (fg ! Elephant)
                (fs ! Rabbit) (fs ! Cat)   (fs ! Dog)
                (fs ! Horse)  (fs ! Camel) (fs ! Elephant)
-               (mySide b == Gold)
+               (player == Gold)
     where
         fg = figures b ! Gold
         fs = figures b ! Silver

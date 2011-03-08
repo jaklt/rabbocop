@@ -25,6 +25,7 @@ void info_hash()
             reset_count, get_count, find_count, add_count, overwritten_count);
 }
 
+/** size in kilobytes, 0 means only reset (no resize) */
 void reset_hash(int size)
 {
     reset_count++;
@@ -32,7 +33,7 @@ void reset_hash(int size)
     if (table) free(table);
 
     if (size > 0)
-        HASH_SIZE = size * 1000000 / sizeof(struct record);
+        HASH_SIZE = size * 1000 / sizeof(struct record);
 
     table = (struct record *) calloc(HASH_SIZE, sizeof(struct record));
     if (!table) exit(2);

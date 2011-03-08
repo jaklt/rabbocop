@@ -113,7 +113,12 @@ action str line game = case str of
 
                     ("hash", size) -> do
                             let size' = getValue size
-                            resetHash (size' `div` 5)
+                            -- one entry in table has:
+                            --   * cover = 12B
+                            --   * value information = 12B
+                            --   * 4 steps = 4*12 + 4*12B
+                            -- total: 120B
+                            resetHash (size' * (1000 `div` 120))
                             return game { hashSize = size' }
                     {-
                     ("greserve",_) -> return game

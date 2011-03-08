@@ -1,4 +1,5 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE BangPatterns #-}
 module Hash (
     infoHash,
     resetHash,
@@ -32,9 +33,15 @@ addHash h d pl best = do
         isNotEmpty <- c_findHash h 0 plNum
         when isNotEmpty (c_getHash h plNum >>= freeStablePtr)
 
-        ptr <- newStablePtr best
+        ptr <- newStablePtr $! justNeeded best
         c_addHash h d plNum ptr
         return ()
+    where
+        justNeeded (!a:(!b):(!c):(!e):_,val) = ([a,b,c,e],val)
+        justNeeded (!a:(!b):(!c):[],val)     = ([a,b,c],val)
+        justNeeded (!a:(!b):[],val)          = ([a,b],val)
+        justNeeded (!a:[],val)               = ([a],val)
+        justNeeded ([],val)                  = ([],val)
 
 getHash :: Int64 -> Player -> IO (DMove, Int)
 getHash h pl = do

@@ -101,6 +101,7 @@ leafFromStep mt s@(s1,s2) =
        }
 
 -- TODO badly ordered rest of children
+--      speedup
 descendByUCB1 :: [MMTree] -> Int -> (MMTree, [MMTree])
 descendByUCB1 [] _ = error "Empty children list"
 descendByUCB1 (m:mts) nb = proj $ foldr (accumUCB nb) (m, valueUCB m nb, []) mts
