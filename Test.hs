@@ -9,9 +9,11 @@ import BitEval
 import BitRepresenation
 import MTDf
 import MCTS
+import IterativeAB
 import MyBits
 import Hash
 import MonteCarloEval
+import Control.Monad
 
 
 showHeader :: String -> IO ()
@@ -22,23 +24,45 @@ showHeader h = do
 testMyBits :: Bool
 testMyBits = and [bitIndex (bit i) == i | i <- [0..63]] -- && bitIndex 222 == -1
 
+{- -------------------------------------------------------
+ - Testing Timing
+ - ------------------------------------------------------- -}
+
 testTiming :: IO ()
 testTiming = do
         showHeader "testTiming"
-        {-
+        putStrLn $ displayBoard testBoard' True
+        -- {-
         mvar <- newMVar ([],0)
-        thread <- forkOS $ MTDf.search testBoard mvar
+        thread <- forkIO $ MTDf.search testBoard' mvar
         threadDelay 30000000
         (pv, val) <- takeMVar mvar
         print (pv, val)
         killThread thread
+        putStrLn "<< forbidden move Ed3n Db1n Re2e Rc2s >>"
         -- -}
-        -- {-
+        {-
         best <- alphaBeta testBoard' [] (-iNFINITY, iNFINITY) 5 0 Gold
         print best
         -- -}
     where
-        testBoard' = parseFlatBoard Gold "[r r  r r drc rdrrh  c mh   eE      H     D    HRRR C RR R RC  DR]"
+        testBoard' = parseFlatBoard Gold "[rdr crdrr r  r r h    h    c      m     RH Ee  R  RCR RRRD   RD ]"
+
+
+{- -------------------------------------------------------
+ - Testing Hash
+ - ------------------------------------------------------- -}
+
+testHash :: IO ()
+testHash = do
+        showHeader "starting hash test:"
+        let m = 2000000
+
+        forM_ [1 .. m] $ \n ->
+            addHash n 1 Gold ([(Pass,Pass)], 12)
+
+        forM_ [m `div` 2 .. m + (m `div` 2)] $ \n ->
+            findHash n 1 Gold
 
 {- -------------------------------------------------------
  - Testing MCTS
@@ -108,8 +132,9 @@ main = do
     -- putStrLn.show $ alphaBeta testBoard2 ([], 0) (-iNFINITY, iNFINITY) 1 0 Gold True
 
     resetHash 500
-    -- testTiming
-    testMCTS
+    testTiming
+    -- testMCTS
+    -- testHash
 
     {-
     putStrLn $ displayBoard testBoard2 True

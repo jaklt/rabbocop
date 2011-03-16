@@ -8,7 +8,8 @@ import System.Mem (performGC)
 import BitRepresenation
 import Hash (resetHash)
 -- import MTDf (search)
-import MCTS (search)
+-- import MCTS (search)
+import IterativeAB (search)
 
 data Game = Game { timePerMove :: Int, startingReserve :: Int
                  , percentUnusedToReserve :: Int, maxReserve :: Int
@@ -67,7 +68,7 @@ aeiGo game | board game == EmptyBoard  = do
                 return game
            | otherwise = do
                 mvar <- newMVar ([],0)
-                thread <- forkOS $ search (board game) mvar
+                thread <- forkIO $ search (board game) mvar
                 threadDelay (3000000 * timePerMove game `div` 4)
                 (pv, val) <- takeMVar mvar
                 killThread thread
@@ -118,7 +119,7 @@ action str line game = case str of
                             --   * value information = 12B
                             --   * 4 steps = 4*12 + 4*12B
                             -- total: 120B
-                            resetHash (size' * (1000 `div` 120))
+                            resetHash (size' * 1000 `div` 120)
                             return game { hashSize = size' }
                     {-
                     ("greserve",_) -> return game

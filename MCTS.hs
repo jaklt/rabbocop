@@ -109,12 +109,11 @@ descendByUCB1 (m:mts) nb = proj $ foldr (accumUCB nb) (m, valueUCB m nb, []) mts
 		proj (a,_,c) = (a,c)
 
 accumUCB :: Int -> MMTree -> (MMTree, Double, [MMTree]) -> (MMTree, Double, [MMTree])
-accumUCB count mt (best, bestValue, rest) = (best', bestValue', rest')
+accumUCB count mt (best, bestValue, rest)
+        | nodeVal > bestValue = (mt, nodeVal, best:rest)
+        | otherwise = (best, bestValue, mt:rest)
     where
         nodeVal = valueUCB mt count
-        (best', bestValue', rest')
-                | nodeVal > bestValue = (mt, nodeVal, best:rest)
-                | otherwise = (best, bestValue, mt:rest)
 
 valueUCB :: MMTree -> Int -> Double
 valueUCB mt count = 
