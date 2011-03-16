@@ -1,7 +1,7 @@
 NAME = rabbocop
 
-SRC_Hs = BitRepresenation.hs MyBits.hs BitEval.hs MTDf.hs Hash.hs AlphaBeta.hs MCTS.hs MonteCarloEval.hs
-LINK_C = clib.c hash.c eval.c
+SRC_Hs = BitRepresenation.hs MyBits.hs BitEval.hs MTDf.hs Hash.hs AlphaBeta.hs MCTS.hs MonteCarloEval.hs HaskellHash.hs
+LINK_C = clib.c eval.c
 LINK_H = clib.h
 
 LINK_O = ${LINK_C:.c=.o}
