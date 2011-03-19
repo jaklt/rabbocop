@@ -116,7 +116,7 @@ accumUCB count mt (best, bestValue, rest)
         nodeVal = valueUCB mt count
 
 valueUCB :: MMTree -> Int -> Double
-valueUCB mt count = 
+valueUCB mt count =
         case tn of
             Leaf -> iNFINITY'
             _ -> - (vl / nb) + sqrt (2 * log cn / nb)

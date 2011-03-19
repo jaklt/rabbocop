@@ -13,7 +13,7 @@ alphaBeta :: Board
           -> Player      -- ^ actual player
           -> IO (DMove, Int) -- ^ (steps to go, best value)
 alphaBeta board pv (alpha, beta) depth actualDepth player = do
-        inTranspositionTable <- findHash (hash board) inverseDepth player
+        inTranspositionTable <- findHash (hash board) inverseDepth player modDepth
         (alpha', beta', bestGues) <- if inTranspositionTable
             then do
                 bestGues@(_,ttValue) <- getHash (hash board) player
@@ -30,10 +30,12 @@ alphaBeta board pv (alpha, beta) depth actualDepth player = do
                                 e <- eval board player
                                 return ([], e * Gold <#> mySide board)
                             else findBest (alpha', beta') ([], inf) steps
-                addHash (hash board) inverseDepth player res
+                addHash (hash board) inverseDepth player modDepth res
                 return res
     where
         inverseDepth = depth - actualDepth
+        modDepth = actualDepth `mod` 4
+
         (headPV,tailPV) = case pv of (h:t) -> ([h],t); _ -> ([],[])
         steps = headPV ++ generateSteps board player (actualDepth `mod` 4 /= 3)
 
