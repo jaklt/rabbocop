@@ -19,20 +19,21 @@ import qualified Data.HashTable as H
 
 tABLEsIZE :: Num a => a
 -- tABLEsIZE = 23625
-tABLEsIZE = 23625000
+tABLEsIZE = 2362500
 
 data HObject = HO { hash   :: Int64
                   , best   :: (DMove, Int)
                   , depth  :: Int
                   , player :: Player
                   , steps  :: Int
+                  -- TODO (alpha,beta)-bounds sensitive
                   } deriving (Eq)
 
 mkOnceIO :: IO a -> IO (IO a)
 mkOnceIO io = do
     mv <- newEmptyMVar
     demand <- newEmptyMVar
-    forkIO (takeMVar demand >> io >>= putMVar mv)
+    _ <- forkIO (takeMVar demand >> io >>= putMVar mv)
     return (tryPutMVar demand () >> readMVar mv)
 
 hTable :: IO (H.HashTable Int32 HObject)
@@ -88,7 +89,7 @@ getHash h pl = do
         Just v  -> return $ best v
 
 resetHash :: Int -> IO ()
-resetHash size = return ()
+resetHash _ {- size -} = return ()
 
 infoHash :: IO ()
 infoHash = return ()

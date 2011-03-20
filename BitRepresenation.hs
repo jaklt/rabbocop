@@ -115,9 +115,10 @@ displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
 
         format :: String -> String
         format xs | nonFlat = (" +------------------------+\n"++) $ fst
-            $ foldr (\y (ys,n) -> ([c| c <- show ((n+1) `div` 8) ++ "|", n `mod` 8 == 7]
-                                    ++ ' ':y:" "
-                                    ++ [c| c <- "|\n", n `mod` 8 == 0] ++ ys, n+1))
+            $ foldr (\y (ys,n) -> ([c| c <- show ((n+1) `div` 8) ++ "|"
+                                     , n `mod` 8 == 7]
+                                   ++ ' ':y:" "
+                                   ++ [c| c <- "|\n", n `mod` 8 == 0] ++ ys, n+1))
                     (" +------------------------+\n   a  b  c  d  e  f  g  h", 0 :: Int) xs
                   | otherwise = "[" ++ xs ++ "]"
 
@@ -187,6 +188,7 @@ oponent :: Player -> Player
 oponent Gold = Silver
 oponent Silver = Gold
 
+-- | if Step argument is Pass then we count this step as one
 stepInMove :: MovePhase -> Step -> MovePhase
 stepInMove (pl,steps) s = (pl', steps' `mod` 4)
     where
@@ -209,7 +211,8 @@ makeStep b s@(Step piece player from to) =
         isTrapped p = adjecent p .&. ((whole b ! player) `xor` from) == 0
         trapped =  [Step piece player to 0 | to .&. traps /= 0, isTrapped to]
                 ++ [Step pie player tr 0 | tr <- bits $ (whole b ! player) .&. traps
-                                         , isTrapped tr, let pie = findPiece (figures b ! player) tr]
+                                         , isTrapped tr
+                                         , let pie = findPiece (figures b ! player) tr]
         steps = s : trapped
         diffs = [(pie, f `xor` t) | (Step pie _ f t) <- steps]
         hash' = foldr (\(Step pie pl f t) h -> h `xor` hashPiece pl pie (bitIndex f) `xor`

@@ -143,7 +143,7 @@ action str line game = case str of
     "makemove"    -> return $ aeiMakemove game line
     "go" -> if (fst.firstWord) line == "ponder"
                 then do
-                    performGC
+                    _ <- forkIO performGC
                     return game
                 else aeiGo game
     -- "stop" -> -- jak?

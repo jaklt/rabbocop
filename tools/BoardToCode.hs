@@ -32,10 +32,10 @@ blockDefinitions [] = []
 blockDefinitions ss =  [take 12 start] ++ blockDefinitions (drop 12 start)
     where
         start = dropWhile (null . trim) ss
-        
+
 parseDefinition :: [String] -> String
 parseDefinition definition@(name:defs:_:table) =
-        tab ++ "/*" ++ unlines (indent definition) ++ tab ++ "*/" ++ code 
+        tab ++ "/*" ++ unlines (indent definition) ++ tab ++ "*/" ++ code
     where
         code = unlines . indent $ generatedTables ++ [generatedSums]
         generatedTables = map (makeTable table defs . toLower) $ filter (`elem` ['A'..'Z']) name

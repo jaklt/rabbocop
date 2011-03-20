@@ -34,7 +34,7 @@ testTiming = do
         putStrLn $ displayBoard testBoard' True
         -- {-
         mvar <- newMVar ([],0)
-        thread <- forkIO $ MTDf.search testBoard' mvar
+        thread <- forkIO $ IterativeAB.search testBoard' mvar
         threadDelay 30000000
         (pv, val) <- takeMVar mvar
         print (pv, val)
@@ -42,7 +42,7 @@ testTiming = do
         putStrLn "<< forbidden move Ed3n Db1n Re2e Rc2s >>"
         -- -}
         {-
-        best <- alphaBeta testBoard' [] (-iNFINITY, iNFINITY) 5 0 Gold
+        best <- alphaBeta testBoard' [] (-iNFINITY, iNFINITY) 7 0 Gold
         print best
         -- -}
     where
@@ -126,28 +126,10 @@ main = do
     putStrLn $ "- testMyBits: " ++ show testMyBits
     putStrLn $ "- testMakeMove: " ++ show (testBoard3 == testBoard4)
 
-    -- putStrLn $ displayBoard testBoard2 True
-    -- putStrLn.show $ generateSteps testBoard2 Gold
-
-    -- putStrLn.show $ alphaBeta testBoard2 ([], 0) (-iNFINITY, iNFINITY) 1 0 Gold True
-
     resetHash 500
     testTiming
     -- testMCTS
     -- testHash
-
-    {-
-    putStrLn $ displayBoard testBoard2 True
-    res <- MTDf.search testBoard2 20
-    putStrLn $ showMove res
-
-    putStrLn $ displayBoard testBoard5 True
-    putStrLn $ show $ eval testBoard5 Gold
-
-    putStrLn $ displayBoard testBoard2 True
-    res <- alphaBeta testBoard2 [] (-iNFINITY, iNFINITY) 10 0 Gold True
-    putStrLn $ showMove res
-    -}
 
     infoHash
 

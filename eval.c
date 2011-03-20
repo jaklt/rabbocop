@@ -28,6 +28,7 @@ static int weight_table[6] = {
 #define AROUND_SW_TRAP (AROUND_TRAPS & SW)
 #define AROUND_SE_TRAP (AROUND_TRAPS & SE)
 
+/* TODO make it work */
 void init_eval()
 {
     /* random change pieces weight */
@@ -78,6 +79,12 @@ static inline uint64_t adjecent(uint64_t pos)
 
 #define adjecentOne(b) steps_from_position(0,1, bit_index(b))
 
+/**
+ * Static evaluation functoin.
+ * Keep in mind that it doesn't care about imobilization.
+ *
+ * TODO fix constants
+ */
 int eval(uint64_t gr, uint64_t gc, uint64_t gd,
          uint64_t gh, uint64_t gm, uint64_t ge,
          uint64_t sr, uint64_t sc, uint64_t sd,

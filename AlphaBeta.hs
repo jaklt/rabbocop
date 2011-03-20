@@ -1,9 +1,9 @@
+{-# LANGUAGE BangPatterns #-}
 module AlphaBeta (alphaBeta) where
 
 import BitRepresenation
 import BitEval
 import Hash
-
 
 alphaBeta :: Board
           -> DMove       -- ^ best PV so far
@@ -12,11 +12,22 @@ alphaBeta :: Board
           -> Int         -- ^ actual depth
           -> Player      -- ^ actual player
           -> IO (DMove, Int) -- ^ (steps to go, best value)
-alphaBeta board pv (alpha, beta) depth actualDepth player = do
-        inTranspositionTable <- findHash (hash board) inverseDepth player modDepth
+alphaBeta board pv (alpha, beta) depth actualDepth pl =
+        alphaBeta' board pv (alpha, beta) remDepth (pl, actualDepth `mod` 4)
+    where
+        remDepth = depth - actualDepth
+
+alphaBeta' :: Board
+           -> DMove       -- ^ best PV so far
+           -> (Int, Int)  -- ^ (alpha, beta)
+           -> Int         -- ^ depth remaining
+           -> MovePhase
+           -> IO (DMove, Int) -- ^ (steps to go, best value)
+alphaBeta' !board !pv (!alpha, !beta) !depth mp@(!pl, !stepCount) = do
+        inTranspositionTable <- findHash (hash board) depth pl stepCount
         (alpha', beta', bestGues) <- if inTranspositionTable
             then do
-                bestGues@(_,ttValue) <- getHash (hash board) player
+                bestGues@(_,ttValue) <- getHash (hash board) pl
                 return (max alpha ttValue, min beta ttValue, bestGues)
             else
                 return (alpha, beta, ([],0))
@@ -25,51 +36,50 @@ alphaBeta board pv (alpha, beta) depth actualDepth player = do
             then
                 return bestGues
             else do
-                res <- if depth <= actualDepth
+                res <- if depth <= 0
                             then do
-                                e <- eval board player
+                                e <- eval board pl
                                 return ([], e * Gold <#> mySide board)
-                            else findBest (alpha', beta') ([], inf) steps
-                addHash (hash board) inverseDepth player modDepth res
+                            else findBest (alpha', beta') board tailPV
+                                          depth mp ([], inf) steps
+                addHash (hash board) depth pl stepCount res
                 return res
     where
-        inverseDepth = depth - actualDepth
-        modDepth = actualDepth `mod` 4
-
+        inf = -iNFINITY * mySide board <#> pl
         (headPV,tailPV) = case pv of (h:t) -> ([h],t); _ -> ([],[])
-        steps = headPV ++ generateSteps board player (actualDepth `mod` 4 /= 3)
+        steps = headPV ++ generateSteps board pl (stepCount < 3)
 
-        findBest :: (Int, Int) -> (DMove, Int) -> DMove -> IO (DMove, Int)
-        findBest _ best [] = return best
-        findBest bounds@(a,b) best@(_, bestValue) ((s1,s2):ss) =
-                bounds `seq` best `seq` (s1,s2) `seq` do
-                    (childPV, childValue) <-
-                        alphaBeta board' tailPV' bounds depth actualDepth' player'
 
-                    let bestValue' = cmp bestValue childValue
-                    let bounds' = newBounds childValue
+findBest :: (Int, Int)    -- ^ Alpha,Beta
+         -> Board
+         -> DMove         -- ^ Principal variation
+         -> Int  -- ^ Max Depth
+         -> MovePhase
+         -> (DMove, Int)
+         -> DMove
+         -> IO (DMove, Int)
+findBest _ _ _ _ _ best [] = return best
+findBest bounds@(!a,!b) !board !pv !depth mp@(!pl,_)
+             best@(!_, !bestValue) ((!s1,!s2):ss) = do
+        (!childPV, !childValue) <-
+            alphaBeta' board' pv bounds depth' mp'
 
-                    best' <- if bestValue /= bestValue'
-                                then return ((s1,s2):childPV, childValue)
-                                else return best
-                    if inBounds bounds best then findBest bounds' best' ss
-                                            else return best -- Cut off
-            where
-                s = s1 : [s2 | s2 /= Pass]
-                actualDepth' = actualDepth + (if s2 /= Pass then 2 else 1)
-                tailPV' = if [(s1,s2)] == headPV then tailPV else []
+        let bestValue' = cmp bestValue childValue
+        let !bounds' | isMaxNode = (max a childValue, b)
+                     | otherwise = (a, min b childValue)
+        let !best' | bestValue /= bestValue' = ((s1,s2):childPV, childValue)
+                   | otherwise               = best
 
-                (board', _) = makeMove board s
-                player' = if actualDepth' `mod` 4 /= 0 then player
-                                                       else oponent player
+        if boundsOK bounds' then findBest bounds' board [] depth mp best' ss
+                            else return best' -- Cut off
+    where
+        mp' = stepInMove mp s2
+        depth' = depth - if s2 == Pass then 1 else 2
+        (board', _) = makeMove board [s1,s2]
 
-                newBounds childV | isMaxNode = (cmp a childV, b)
-                                 | otherwise = (a, cmp b childV)
+        boundsOK (!alpha, !beta) = alpha < beta
+        isMaxNode = mySide board == pl
+        cmp = if isMaxNode then max else min
 
-        isMaxNode = mySide board == player
-
-        inBounds (a,b) (_, best) | isMaxNode = best < b
-                                 | otherwise = best > a
-
-        (cmp, inf) | isMaxNode = (max, -iNFINITY)
-                   | otherwise = (min,  iNFINITY)
+        -- TODO important to fix this
+        -- tailPV' = if [(s1,s2)] == headPV then tailPV else []

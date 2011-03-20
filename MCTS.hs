@@ -90,7 +90,7 @@ createNode mt val =
                      }
            }
     where
-        steps = generateSteps (board mt) (player mt) (stepCount mt < 2)
+        steps = generateSteps (board mt) (player mt) (stepCount mt < 3)
 
 leafFromStep :: MMTree -> (Step, Step) -> MMTree
 leafFromStep mt s@(s1,s2) =
