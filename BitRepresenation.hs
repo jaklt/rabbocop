@@ -227,7 +227,7 @@ generateSteps b activePl canPullPush =
             gen (0 :: Int64) oWhole [Elephant,Camel .. Rabbit]
     where
         -- a* are for active player, o* are for his oponent
-        oponentPl = oponent activePl -- his oponent
+        oponentPl = oponent activePl -- active players oponent
         ap = figures b ! activePl
         op = figures b ! oponentPl
 
@@ -254,7 +254,7 @@ generateSteps b activePl canPullPush =
             else
                 -- pulls
                 [(cStep w, Step (findPiece oArr pull) oponentPl pull pos)
-                    | canPullPush, w <- possibleStepsFromPos
+                    | canPullPush, w <- bits $! empty .&. adjecent pos
                     , pull <- bits $! adjecent pos .&. opWeak]
 
                 -- pushs
@@ -266,12 +266,11 @@ generateSteps b activePl canPullPush =
                 -- simple steps
                 ++
                 zip
-                    (map cStep possibleStepsFromPos)
+                    (map cStep $ bits $! empty .&. stepsFromPosition activePl pie pos)
                     [Pass, Pass, Pass, Pass]
             ) ++
                 gen' opStrong opWeak pie xs
             where
-                possibleStepsFromPos = bits $! empty .&. adjecent pos
                 cStep = Step pie activePl pos
 
 
