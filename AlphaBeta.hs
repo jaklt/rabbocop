@@ -50,10 +50,10 @@ alphaBeta' !board !pv (!alpha, !beta) !depth mp@(!pl, !stepCount) = do
         steps = headPV ++ generateSteps board pl (stepCount < 3)
 
 
-findBest :: (Int, Int)    -- ^ Alpha,Beta
+findBest :: (Int, Int)   -- ^ Alpha,Beta
          -> Board
-         -> DMove         -- ^ Principal variation
-         -> Int  -- ^ Max Depth
+         -> DMove        -- ^ Principal variation
+         -> Int          -- ^ Max Depth
          -> MovePhase
          -> (DMove, Int)
          -> DMove
@@ -80,6 +80,3 @@ findBest bounds@(!a,!b) !board !pv !depth mp@(!pl,_)
         boundsOK (!alpha, !beta) = alpha < beta
         isMaxNode = mySide board == pl
         cmp = if isMaxNode then max else min
-
-        -- TODO important to fix this
-        -- tailPV' = if [(s1,s2)] == headPV then tailPV else []
