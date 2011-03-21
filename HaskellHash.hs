@@ -42,7 +42,7 @@ hTable = unsafePerformIO $ mkOnceIO $ H.new (==) (`mod` tABLEsIZE)
 
 toInt :: Int64 -> Player -> Int -> Int32
 toInt h pl s = fromIntegral . (`mod` tABLEsIZE) $
-    h `xor` fromIntegral (playerToInt pl) `xor` (fromIntegral s `shift` 4)
+    h `xor` fromIntegral (playerToInt pl) -- `xor` (fromIntegral s `shift` 4)
 
 addHash :: Int64  -- ^ hash
         -> Int    -- ^ depth
