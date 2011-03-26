@@ -46,7 +46,7 @@ testTiming = do
         print best
         -- -}
     where
-        testBoard' = parseFlatBoard Gold "[rdr crdrr r  r r h    h    c      m     RH Ee  R  RCR RRRD   RD ]"
+        testBoard' = parseFlatBoard Gold "[rdrcrrdrrhc  rhr   em                         ERRHRC RH RDRCR DR]"
 
 
 {- -------------------------------------------------------

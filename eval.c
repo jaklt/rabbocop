@@ -40,29 +40,38 @@ void init_eval()
     weight_table[5] += random() % 160;
 }
 
-static inline int material_and_position(
-        uint64_t r, uint64_t c, uint64_t d,
-        uint64_t h, uint64_t m, uint64_t e,
-        const int rabbit_weight)
-{
-    /* Help hexa table:
-        .... ....   0 = ....  8 = |...
-        .... ....   1 = ...|  9 = |..|
-        ..+. .+..   2 = ..|.  a = |.|.
-        .... ....   3 = ..||  b = |.||
-        .... ....   4 = .|..  c = ||..
-        ..+. .+..   5 = .|.|  d = ||.|
-        .... ....   6 = .||.  e = |||.
-        .... ....   7 = .|||  f = ||||
-    */
+/* Hexa table:
+	.... ....   0 = ....  8 = |...
+	.... ....   1 = ...|  9 = |..|
+	..+. .+..   2 = ..|.  a = |.|.
+	.... ....   3 = ..||  b = |.||
+	.... ....   4 = .|..  c = ||..
+	..+. .+..   5 = .|.|  d = ||.|
+	.... ....   6 = .||.  e = |||.
+	.... ....   7 = .|||  f = ||||
+*/
 
-    int sum = 0;
-    double tmp;
+#define BEGIN_material_and_position(col)             \
+    static inline int material_and_position_ ## col( \
+        uint64_t r, uint64_t c, uint64_t d,          \
+        uint64_t h, uint64_t m, uint64_t e,          \
+        const int rabbit_weight)                     \
+    {                                                \
+        int sum = 0;                                 \
+        double tmp;
 
-    #include "data/staticeval.c"
+#define END_material_and_position \
+        return sum;               \
+    }
 
-    return sum;
-}
+BEGIN_material_and_position(g)
+    #include "data/staticeval_g.c"
+END_material_and_position
+
+BEGIN_material_and_position(s)
+    #include "data/staticeval_s.c"
+END_material_and_position
+
 
 #define RABBIT_WEIGHT(r) \
     (weight_table[RABBIT] * (((double) 81) / ((bit_count(r)+1)*(bit_count(r)+1))))
@@ -99,7 +108,7 @@ int eval(uint64_t gr, uint64_t gc, uint64_t gd,
 
     /* Win or Loose */
     /* TODO repair against rules */
-    if (player /* == GOLD */) {
+    if (player == GOLD) {
         if ((gr &  UPPER_SIDE) || !sr) return  INFINITY;
         if ((sr & BOTTOM_SIDE) || !gr) return -INFINITY;
         if (bit_count(sr) == 0) return  INFINITY;
@@ -112,8 +121,8 @@ int eval(uint64_t gr, uint64_t gc, uint64_t gd,
     }
 
     /* Material and position */
-    sum += material_and_position(gr,gc,gd,gh,gm,ge, RABBIT_WEIGHT(gr))
-         - material_and_position(sr,sc,sd,sh,sm,se, RABBIT_WEIGHT(sr));
+    sum += material_and_position_g(gr,gc,gd,gh,gm,ge, RABBIT_WEIGHT(gr))
+         - material_and_position_s(sr,sc,sd,sh,sm,se, RABBIT_WEIGHT(sr));
 
     /* Having the strongest & the second strongest piece advantage */
     for (i=5, j=2; i>0 && j; i--) {

@@ -3,6 +3,7 @@ NAME = rabbocop
 SRC_Hs = BitRepresenation.hs MyBits.hs BitEval.hs MTDf.hs Hash.hs AlphaBeta.hs MCTS.hs MonteCarloEval.hs HaskellHash.hs
 LINK_C = clib.c eval.c
 LINK_H = clib.h
+STATIC_EVAL_TABLES = data/staticeval_g.c data/staticeval_s.c
 
 LINK_O = ${LINK_C:.c=.o}
 SRC = ${SRC_Hs} ${LINK_C} ${LINK_H}
@@ -25,11 +26,12 @@ runtest: Test
 
 ${LINK_O}: ${LINK_C} ${LINK_H}
 
-eval.o: data/staticeval.c
+eval.o: ${STATIC_EVAL_TABLES}
 
-data/staticeval.c: data/staticeval.txt tools/BoardToCode.hs
+${STATIC_EVAL_TABLES}: data/staticeval.txt tools/BoardToCode.hs
 	${HC} --make tools/BoardToCode.hs ${HFLAGS}
-	./tools/BoardToCode data/staticeval.txt > data/staticeval.c
+	./tools/BoardToCode data/staticeval.txt         > data/staticeval_g.c
+	./tools/BoardToCode data/staticeval.txt REVERSE > data/staticeval_s.c
 
 clean:
 	@echo Cleaning

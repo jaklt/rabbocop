@@ -24,26 +24,29 @@ split c ys = go ys []
 indent :: [String] -> [String]
 indent = map (tab ++)
 
-transform :: String -> String
-transform = unlines . map parseDefinition . blockDefinitions . lines
+transform :: Bool -> String -> String
+transform rev = unlines . map (parseDefinition rev) . blockDefinitions . lines
 
 blockDefinitions :: [String] -> [[String]]
 blockDefinitions [] = []
-blockDefinitions ss =  [take 12 start] ++ blockDefinitions (drop 12 start)
+blockDefinitions ss = [take 12 start] ++ blockDefinitions (drop 12 start)
     where
         start = dropWhile (null . trim) ss
 
-parseDefinition :: [String] -> String
-parseDefinition definition@(name:defs:_:table) =
-        tab ++ "/*" ++ unlines (indent definition) ++ tab ++ "*/" ++ code
+parseDefinition :: Bool -> [String] -> String
+parseDefinition rev (name:defs:_:table) =
+        tab ++ "/*" ++ unlines (indent (name:defs:table')) ++ tab ++ "*/" ++ code
     where
         code = unlines . indent $ generatedTables ++ [generatedSums]
-        generatedTables = map (makeTable table defs . toLower) $ filter (`elem` ['A'..'Z']) name
+        generatedTables = map (makeTable table' defs . toLower)
+                        $ filter (`elem` ['A'..'Z']) name
         generatedSums   = makeSums name
-parseDefinition _ = error "Parse error"
+        table' = (if rev then reverse else id) table
+parseDefinition _ _ = error "Parse error"
 
 makeTable :: [String] -> String -> Char -> String
-makeTable table defs c = ("\n" ++) $ unlines $ reverse $ addSemicolon $ reverse $ indent res
+makeTable table defs c =
+        ("\n" ++) $ unlines $ reverse $ addSemicolon $ reverse $ indent res
     where
         flatT = filter (`notElem` [' ', '\t', '-', '|', '+']) $ concat table
         bits = makeBits flatT
@@ -98,4 +101,8 @@ makeSums name = "sum += tmp * " ++ weights
         weightTable n        = "weight_table[" ++ map toUpper n ++ "]"
 
 main :: IO ()
-main = getArgs >>= readFile . head >>= putStrLn . transform
+main = do
+    (file:revStr) <- getArgs
+    let rev = case revStr of ["REVERSE"] -> True; _ -> False
+
+    readFile file >>= putStrLn . (transform rev)
