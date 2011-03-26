@@ -35,7 +35,8 @@ import Data.Char (digitToInt, isUpper, toLower)
 import Data.Int (Int64)
 import MyBits
 
-foreign import ccall "clib.h hash_piece" c_hashPiece :: Int -> Int -> Int -> Int64
+foreign import ccall "clib.h hash_piece" c_hashPiece :: Int -> Int -> Int
+                                                     -> Int64
 foreign import ccall "clib.h steps_from_position"
                             c_stepsFromPosition :: Int -> Int -> Int -> Int64
 
@@ -59,14 +60,15 @@ data Step = Step !Piece !Player {- from: -} !Int64 {- to: -} !Int64 | Pass
 
 type Move = [Step]
 type DMove = [(Step,Step)]
-type MovePhase = (Player, Int) -- ^ (active player, number of steps played in move)
+type MovePhase = (Player, Int) -- ^ (active player, steps played in move)
 
 traps :: Int64
 traps = 0x0000240000240000
 
 instance Show Step where
     show Pass = "Pass"
-    show (Step piece player from to) = showPiece player piece : (pos from ++ dir)
+    show (Step piece player from to) =
+            showPiece player piece : (pos from ++ dir)
         where
              format :: Show a => a -> Char
              format = toLower.head.show
@@ -78,7 +80,8 @@ instance Show Step where
                  | d == -1 = "e"
                  | otherwise = error
                         ( "Impossible move from: " ++ pos from ++ " to: "
-                        ++ pos to ++ " (with " ++ [showPiece player piece] ++ ")")
+                        ++ pos to
+                        ++ " (with " ++ [showPiece player piece] ++ ")")
 
              pos p = let q = bitIndex p in [ ['a'..'h'] !! (7 - q `mod` 8)
                                            , format $ q `div` 8 + 1]
@@ -100,7 +103,8 @@ p1 <#> p2 | p1 == p2  =  1
 showPiece :: Player -> Piece -> Char
 showPiece Gold Camel   = 'M'
 showPiece Silver Camel = 'm'
-showPiece col piece    = (if col == Gold then id else toLower) $ head $ show piece
+showPiece col piece    = (if col == Gold then id else toLower)
+                            $ head $ show piece
 
 displayBoard :: Board -> Bool -> String
 displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
@@ -111,15 +115,19 @@ displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
     where
         -- players piece on i position
         g :: Player -> Int64 -> Char
-        g pl i = showPiece pl $ head [p | p <- pieces, ((figures b ! pl) ! p) .&. i /= 0]
+        g pl i = showPiece pl $ head [p | p <- pieces
+                                        , ((figures b ! pl) ! p) .&. i /= 0]
 
         format :: String -> String
         format xs | nonFlat = (" +------------------------+\n"++) $ fst
             $ foldr (\y (ys,n) -> ([c| c <- show ((n+1) `div` 8) ++ "|"
                                      , n `mod` 8 == 7]
-                                   ++ ' ':y:" "
-                                   ++ [c| c <- "|\n", n `mod` 8 == 0] ++ ys, n+1))
-                    (" +------------------------+\n   a  b  c  d  e  f  g  h", 0 :: Int) xs
+                                        ++ ' ':y:" "
+                                        ++ [c| c <- "|\n", n `mod` 8 == 0]
+                                        ++ ys
+                                  , n+1))
+                    (" +------------------------+\n   a  b  c  d  e  f  g  h"
+                    , 0 :: Int) xs
                   | otherwise = "[" ++ xs ++ "]"
 
 
@@ -210,13 +218,15 @@ makeStep b s@(Step piece player from to) =
     where
         isTrapped p = adjecent p .&. ((whole b ! player) `xor` from) == 0
         trapped =  [Step piece player to 0 | to .&. traps /= 0, isTrapped to]
-                ++ [Step pie player tr 0 | tr <- bits $ (whole b ! player) .&. traps
+                ++ [Step pie player tr 0 | tr <- bits $
+                                                (whole b ! player) .&. traps
                                          , isTrapped tr
                                          , let pie = findPiece (figures b ! player) tr]
         steps = s : trapped
         diffs = [(pie, f `xor` t) | (Step pie _ f t) <- steps]
-        hash' = foldr (\(Step pie pl f t) h -> h `xor` hashPiece pl pie (bitIndex f) `xor`
-                                                 hashPiece pl pie (bitIndex t)) (hash b) steps
+        hash' = foldr (\(Step pie pl f t) h -> h
+                        `xor` hashPiece pl pie (bitIndex f)
+                        `xor` hashPiece pl pie (bitIndex t)) (hash b) steps
 
         boardDiff = [(player, accum xor (figures b ! player) diffs)]
         wholeDiff = [(player
@@ -266,7 +276,8 @@ generateSteps b activePl canPullPush =
                 -- simple steps
                 ++
                 zip
-                    (map cStep $ bits $! empty .&. stepsFromPosition activePl pie pos)
+                    (map cStep $ bits $!
+                        empty .&. stepsFromPosition activePl pie pos)
                     [Pass, Pass, Pass, Pass]
             ) ++
                 gen' opStrong opWeak pie xs

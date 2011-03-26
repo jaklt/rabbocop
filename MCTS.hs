@@ -24,7 +24,7 @@ data MMTree = MT { board     :: !Board
 data TreeNode = Leaf
               | Node { children :: [MMTree] -- ^ possible steps from this
                      , value    :: !Int     -- ^ actual value of this node
-                     , number   :: !Int     -- ^ how many times this node has been visited
+                     , number   :: !Int     -- ^ visits count
                      } deriving (Show, Eq)
 
 stepCount :: MMTree -> Int
@@ -58,7 +58,8 @@ constructMove _ 0 = []
 constructMove (MT { treeNode = Leaf }) _ = []
 constructMove !mt !n = (s `seq` subTreeMove) `seq` s : subTreeMove
     where
-        mt' = fst $ descendByUCB1 (children $ treeNode mt) (number $ treeNode mt)
+        mt' = fst $ descendByUCB1 (children $ treeNode mt)
+                                  (number $ treeNode mt)
         s = step mt'
         subTreeMove = constructMove mt' (n-1)
 
@@ -69,7 +70,8 @@ improveTree mt =
             val <- getValueByMC (board mt) (movePhase mt)
             return (createNode mt (val * (player mt <#> Gold)), val)
         root -> do
-            let (node, rest) = descendByUCB1 (children $ treeNode mt) (number $ treeNode mt)
+            let (node, rest) = descendByUCB1 (children $ treeNode mt)
+                                             (number $ treeNode mt)
             (nodeNew, improvement) <- improveTree node
             let improvement' = player mt <#> Gold * improvement
 
@@ -108,7 +110,8 @@ descendByUCB1 (m:mts) nb = proj $ foldr (accumUCB nb) (m, valueUCB m nb, []) mts
 	where
 		proj (a,_,c) = (a,c)
 
-accumUCB :: Int -> MMTree -> (MMTree, Double, [MMTree]) -> (MMTree, Double, [MMTree])
+accumUCB :: Int -> MMTree -> (MMTree, Double, [MMTree])
+         -> (MMTree, Double, [MMTree])
 accumUCB count mt (best, bestValue, rest)
         | nodeVal > bestValue = (mt, nodeVal, best:rest)
         | otherwise = (best, bestValue, mt:rest)

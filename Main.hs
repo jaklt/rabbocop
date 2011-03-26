@@ -7,9 +7,9 @@ import System.IO (hFlush, stdout)
 import System.Mem (performGC)
 import BitRepresenation
 import Hash (resetHash)
--- import MTDf (search)
+import MTDf (search)
 -- import MCTS (search)
-import IterativeAB (search)
+-- import IterativeAB (search)
 
 data Game = Game { timePerMove :: Int, startingReserve :: Int
                  , percentUnusedToReserve :: Int, maxReserve :: Int
@@ -48,8 +48,10 @@ aeiMakemove game move
         | whole (board game) ! Silver == 0 = game { board = fst board2 }
         | otherwise =  game { board = fst board1 }
     where
-        board1 = makeMove (board game) $ filter notTrapping $ map parseStep $ words move
-        board2 = makeMove (board game) $ map (positionToStep.parsePosition) $ words move
+        board1 = makeMove (board game) $ filter notTrapping
+               $ map parseStep $ words move
+        board2 = makeMove (board game) $ map (positionToStep.parsePosition)
+               $ words move
 
         notTrapping (Step _ _ _ to) = to /= 0
         notTrapping _ = True

@@ -17,6 +17,7 @@ search board mvar = search' 1 ([], 0)
             putStrLn $ "info actual " ++ show best
             infoHash
             hFlush stdout
-            m <- alphaBeta board (fst best) (-iNFINITY, iNFINITY) depth 0 (mySide board)
+            m <- alphaBeta board (fst best) (-iNFINITY, iNFINITY)
+                           depth 0 (mySide board)
             _ <- m `seq` swapMVar mvar m
             search' (depth+1) m
