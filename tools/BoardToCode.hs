@@ -29,7 +29,8 @@ transform rev = unlines . map (parseDefinition rev) . blockDefinitions . lines
 
 blockDefinitions :: [String] -> [[String]]
 blockDefinitions [] = []
-blockDefinitions ss = [take 12 start] ++ blockDefinitions (drop 12 start)
+blockDefinitions ss = [take 12 start | length start >= 12]
+                      ++ blockDefinitions (drop 12 start)
     where
         start = dropWhile (null . trim) ss
 

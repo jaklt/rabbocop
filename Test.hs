@@ -10,6 +10,7 @@ import BitRepresenation
 import MTDf
 import MCTS
 import IterativeAB
+import Helpers
 import MyBits
 import Hash
 import MonteCarloEval
@@ -23,6 +24,53 @@ showHeader h = do
 
 testMyBits :: Bool
 testMyBits = and [bitIndex (bit i) == i | i <- [0..63]] -- && bitIndex 222 == -1
+
+{- -------------------------------------------------------
+ - Testing positions
+ - ------------------------------------------------------- -}
+
+-- TODO more sophisticate
+moveContainOR :: [String] -> Move -> Bool
+moveContainOR [] _ = True
+moveContainOR (step:rest) move = step `elem` (map show move)
+                               || moveContain rest move
+
+positionCases :: [(String, Move -> Bool)]
+positionCases =
+    [ ( "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
+      , moveContainOR ["Cd1e", "Cf1w", "re2n", "re2w", "re2e"])
+    ]
+
+testSearchFunction :: (Board -> MVar (DMove, Int) -> IO ()) -> IO ()
+testSearchFunction srch = go positionCases
+    where
+        testTime = 30000000
+
+        go :: [(String, Move -> Bool)] -> IO ()
+        go [] = return ()
+        go ((board, positive):rest) = do
+            let board' = parseFlatBoard Gold board
+            mvar <- newMVar ([],0)
+            res <- forkIO $ srch board' mvar
+            threadDelay testTime
+            (pv, _) <- takeMVar mvar
+            let move = justOneMove board' pv
+
+            if positive move
+                then do
+                    putStrLn $ "\ntest: " ++ board ++ " - OK"
+                    go rest
+                else do
+                    putStrLn $ "\ntest - FAILED:"
+                    putStrLn $ displayBoard board' True
+                    print pv
+
+testPositions :: IO ()
+testPositions = do
+        showHeader "testPositions"
+        testSearchFunction IterativeAB.search
+        -- testSearchFunction MTDf.search
+        -- testSearchFunction MCTS.search
 
 {- -------------------------------------------------------
  - Testing Timing
@@ -126,7 +174,8 @@ main = do
     putStrLn $ "- testMakeMove: " ++ show (testBoard3 == testBoard4)
 
     resetHash 500
-    testTiming
+    testPositions
+    -- testTiming
     -- testMCTS
     -- testHash
 
