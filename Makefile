@@ -39,10 +39,6 @@ clean:
 	rm -f tools/*.o tools/*.hi
 	rm -f data/staticeval.c
 
-dist:
-	rm ${NAME}.tar.bz2
-	tar cjvf ${NAME}.tar.bz2 *.hs *.c *.h .vimrc .ghci Makefile .git .gitignore
-
 play: Main aei-1.1/roundrobin.py arimaa-client/gui.py aei-1.1/roundrobin.cfg
 	cd aei-1.1; python roundrobin.py
 
@@ -56,4 +52,4 @@ aei-1.1/roundrobin.cfg: data/aei-roundrobin.cfg
 arimaa-client/gui.py:
 	bzr branch lp:arimaa-client
 
-.PHONY: all clean dist runtest play
+.PHONY: all clean runtest play

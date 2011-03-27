@@ -39,14 +39,13 @@ testTiming = do
         (pv, val) <- takeMVar mvar
         print (pv, val)
         killThread thread
-        putStrLn "<< forbidden move Ed3n Db1n Re2e Rc2s >>"
         -- -}
         {-
         best <- alphaBeta testBoard' [] (-iNFINITY, iNFINITY) 7 0 Gold
         print best
         -- -}
     where
-        testBoard' = parseFlatBoard Gold "[rdrcrrdrrhc  rhr   em                         ERRHRC RH RDRCR DR]"
+        testBoard' = parseFlatBoard Gold "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
 
 
 {- -------------------------------------------------------
