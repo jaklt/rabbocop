@@ -29,26 +29,34 @@ testMyBits = and [bitIndex (bit i) == i | i <- [0..63]] -- && bitIndex 222 == -1
  - Testing positions
  - ------------------------------------------------------- -}
 
+type TestCase = (String, [String] -> Bool, Player)
+
 -- TODO more sophisticate
 moveContainOR :: [String] -> [String] -> Bool
 moveContainOR [] _ = False
 moveContainOR (st:rest) moves = st `elem` moves || moveContainOR rest moves
 
-positionCases :: [(String, [String] -> Bool)]
+positionCases :: [TestCase]
 positionCases =
-    [ ( "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
-      , moveContainOR ["Cd1e", "Cf1w", "re2n", "re2w", "re2e"])
+    [ -- See my goal
+      ( "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
+      , moveContainOR ["re2s"]
+      , Silver)
+      -- See oponents goal
+    , ( "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
+      , moveContainOR ["Cd1e", "Cf1w", "re2n", "re2w", "re2e"]
+      , Gold)
     ]
 
 testSearchFunction :: (Board -> MVar (DMove, Int) -> IO ()) -> IO ()
 testSearchFunction srch = go positionCases
     where
-        testTime = 30000000
+        testTime = 10000000
 
-        go :: [(String, [String] -> Bool)] -> IO ()
+        go :: [TestCase] -> IO ()
         go [] = return ()
-        go ((brd, positive):rest) = do
-            let board' = parseFlatBoard Gold brd
+        go ((brd, positive, pl):rest) = do
+            let board' = parseFlatBoard pl brd
             mvar <- newMVar ([],0)
             thread <- forkIO $ srch board' mvar
             threadDelay testTime
@@ -59,11 +67,11 @@ testSearchFunction srch = go positionCases
             if positive move
                 then do
                     putStrLn $ "\ntest: " ++ brd ++ " - OK"
-                    go rest
                 else do
                     putStrLn $ "\ntest - FAILED:"
                     putStrLn $ displayBoard board' True
                     print pv
+            go rest
 
 testPositions :: IO ()
 testPositions = do
