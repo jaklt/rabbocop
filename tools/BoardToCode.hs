@@ -39,14 +39,15 @@ parseDefinition rev (name:defs:_:table) =
         tab ++ "/*" ++ unlines (indent (name:defs:table')) ++ tab ++ "*/" ++ code
     where
         code = unlines . indent $ generatedTables ++ [generatedSums]
-        generatedTables = map (makeTable table' defs . toLower)
-                        $ filter (`elem` ['A'..'Z']) name
+        generatedTables = map (makeTable table' defs firstPie . toLower) pieces
+        pieces = filter (`elem` ['A'..'Z']) name
+        firstPie = toLower $ head pieces
         generatedSums   = makeSums name
         table' = (if rev then reverse else id) table
 parseDefinition _ _ = error "Parse error"
 
-makeTable :: [String] -> String -> Char -> String
-makeTable table defs c =
+makeTable :: [String] -> String -> Char -> Char -> String
+makeTable table defs first c =
         ("\n" ++) $ unlines $ reverse $ addSemicolon $ reverse $ indent res
     where
         flatT = filter (`notElem` [' ', '\t', '-', '|', '+']) $ concat table
@@ -56,10 +57,13 @@ makeTable table defs c =
 
         addSemicolon s = (head s ++ ";") : tail s
 
+        templCode | first == c = ("tmp  = ", "     + " )
+                  | otherwise  = ("tmp += ", "     + ")
+
         res :: [String]
         res | null comb = []
             | otherwise =
-                ("tmp = " ++ head comb) : map ("    + " ++) (tail comb)
+                (fst templCode ++ head comb) : map (snd templCode ++) (tail comb)
 
 combine :: [(Char, Double)] -> Char -> [(Char, Word64)] -> [String]
 combine defs ch = foldr cmb []
