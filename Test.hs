@@ -30,12 +30,11 @@ testMyBits = and [bitIndex (bit i) == i | i <- [0..63]] -- && bitIndex 222 == -1
  - ------------------------------------------------------- -}
 
 -- TODO more sophisticate
-moveContainOR :: [String] -> Move -> Bool
-moveContainOR [] _ = True
-moveContainOR (step:rest) move = step `elem` (map show move)
-                               || moveContain rest move
+moveContainOR :: [String] -> [String] -> Bool
+moveContainOR [] _ = False
+moveContainOR (st:rest) moves = st `elem` moves || moveContainOR rest moves
 
-positionCases :: [(String, Move -> Bool)]
+positionCases :: [(String, [String] -> Bool)]
 positionCases =
     [ ( "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
       , moveContainOR ["Cd1e", "Cf1w", "re2n", "re2w", "re2e"])
@@ -46,19 +45,20 @@ testSearchFunction srch = go positionCases
     where
         testTime = 30000000
 
-        go :: [(String, Move -> Bool)] -> IO ()
+        go :: [(String, [String] -> Bool)] -> IO ()
         go [] = return ()
-        go ((board, positive):rest) = do
-            let board' = parseFlatBoard Gold board
+        go ((brd, positive):rest) = do
+            let board' = parseFlatBoard Gold brd
             mvar <- newMVar ([],0)
-            res <- forkIO $ srch board' mvar
+            thread <- forkIO $ srch board' mvar
             threadDelay testTime
             (pv, _) <- takeMVar mvar
-            let move = justOneMove board' pv
+            killThread thread
+            let move = map show $ justOneMove board' pv
 
             if positive move
                 then do
-                    putStrLn $ "\ntest: " ++ board ++ " - OK"
+                    putStrLn $ "\ntest: " ++ brd ++ " - OK"
                     go rest
                 else do
                     putStrLn $ "\ntest - FAILED:"
@@ -69,8 +69,8 @@ testPositions :: IO ()
 testPositions = do
         showHeader "testPositions"
         testSearchFunction IterativeAB.search
-        -- testSearchFunction MTDf.search
-        -- testSearchFunction MCTS.search
+        testSearchFunction MTDf.search
+        testSearchFunction MCTS.search
 
 {- -------------------------------------------------------
  - Testing Timing
