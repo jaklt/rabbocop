@@ -90,7 +90,7 @@ static inline uint64_t adjecent(uint64_t pos)
 
 /**
  * Static evaluation functoin.
- * Keep in mind that it doesn't care about imobilization.
+ * Keep in mind that it doesn't care about immobilization.
  *
  * TODO fix constants
  */

@@ -9,7 +9,7 @@ LINK_O = ${LINK_C:.c=.o}
 SRC = ${SRC_Hs} ${LINK_C} ${LINK_H}
 
 HC = ghc
-HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap -threaded # -fhpc -prof -auto-all # -funbox-strict-fields
+HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap -threaded # -prof -fforce-recomp -auto-all # -fhpc -funbox-strict-fields
 CC = gcc
 CFLAGS = -O2 -std=c99 -Wall -pedantic
 
@@ -35,9 +35,10 @@ ${STATIC_EVAL_TABLES}: data/staticeval.txt tools/BoardToCode.hs
 
 clean:
 	@echo Cleaning
-	rm -f *.o *.hi *.prof
+	rm -f *.o *.hi *.prof *.tix
 	rm -f tools/*.o tools/*.hi
-	rm -f data/staticeval.c
+	rm -f data/staticeval_g.c
+	rm -f data/staticeval_s.c
 
 play: Main aei-1.1/roundrobin.py arimaa-client/gui.py aei-1.1/roundrobin.cfg
 	cd aei-1.1; python roundrobin.py

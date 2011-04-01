@@ -38,7 +38,10 @@ import MyBits
 foreign import ccall "clib.h hash_piece" c_hashPiece :: Int -> Int -> Int
                                                      -> Int64
 foreign import ccall "clib.h steps_from_position"
-                            c_stepsFromPosition :: Int -> Int -> Int -> Int64
+                            c_stepsFromPosition :: Int -> Int -> Int64 -> Int64
+-- | arguments: PlayerPieces OponentsStrongerPieces TestedOne
+foreign import ccall "clib.h immobilised"
+                            immobilised :: Int64 -> Int64 -> Int64 -> Bool
 
 data Player = Gold | Silver
               deriving (Eq, Ord, Enum, Ix, Show)
@@ -180,11 +183,10 @@ createBoard pl xs = fst $ makeMove bo $ map positionToStep xs
         wh = array (Gold, Silver) [(Gold, 0),  (Silver, 0)]
         bo = Board { hash=0, figures=fi, whole=wh, mySide=pl }
 
-
 -- | third argument: only one bit number
 stepsFromPosition :: Player -> Piece -> Int64 -> Int64
 stepsFromPosition pl pie pos =
-        c_stepsFromPosition (playerToInt pl) (pieceToInt pie) (bitIndex pos)
+        c_stepsFromPosition (playerToInt pl) (pieceToInt pie) pos
 {-# INLINE stepsFromPosition #-}
 
 -- | argument: only one bit number
@@ -232,6 +234,7 @@ makeStep b s@(Step piece player from to) =
         wholeDiff = [(player
                      , foldr (\(Step _ _ f t) x -> x `xor` f `xor` t) 0 steps)]
 
+-- TODO better ordering
 generateSteps :: Board -> Player -> Bool -> DMove
 generateSteps b activePl canPullPush =
             gen (0 :: Int64) oWhole [Elephant,Camel .. Rabbit]
@@ -284,12 +287,6 @@ generateSteps b activePl canPullPush =
             where
                 cStep = Step pie activePl pos
 
-
--- | arguments: PlayerPieces OponentsStrongerPieces TestedOne
-immobilised :: Int64 -> Int64 -> Int64 -> Bool
-immobilised ap op p = ap .&. adjP == 0 && op .&. adjP /= 0
-    where adjP = adjecent p
-
 -- | second argument: only one bit number
 findPiece :: Array Piece Int64 -> Int64 -> Piece
 findPiece a p | a ! Rabbit   .&. p /= 0 = Rabbit
@@ -312,10 +309,12 @@ playerFromChar c = if isUpper c || c `elem` "gw"
 
 pieceToInt :: Piece -> Int
 pieceToInt = index (Rabbit, Elephant)
+{-# INLINE pieceToInt #-}
 
 playerToInt :: Player -> Int
 playerToInt Gold   = 0
 playerToInt Silver = 1
+{-# INLINE playerToInt #-}
 
 hashPiece :: Player -> Piece -> Position -> Int64
 hashPiece _ _ 0 = 0

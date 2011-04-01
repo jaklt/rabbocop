@@ -49,6 +49,7 @@ search' :: MMTree -> MVar (DMove, Int) -> IO ()
 search' !mt mvar = do
         (mt',score) <- improveTree mt
         _ <- move `seq` swapMVar mvar (move,score)
+        putStrLn $ "info actual " ++ show (move,score)
         search' mt' mvar
     where
         move = constructMove mt 4

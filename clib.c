@@ -127,9 +127,15 @@ void init_steps_table()
         }
 }
 
-int64_t steps_from_position(int pl, int pie, int pos)
+int64_t steps_from_position(int pl, int pie, uint64_t pos)
 {
-    return bit_steps_table[pl][pie][pos];
+    return bit_steps_table[pl][pie][bit_index(pos)];
+}
+
+int immobilised(uint64_t pl_pieces, uint64_t op_pieces, uint64_t tested)
+{
+    uint64_t adjecent_pos = steps_from_position(GOLD, ELEPHANT, tested);
+    return ((pl_pieces & adjecent_pos) == 0) && (op_pieces & adjecent_pos);
 }
 
 extern void init_eval();
