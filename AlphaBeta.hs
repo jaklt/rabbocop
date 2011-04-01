@@ -1,7 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 module AlphaBeta (alphaBeta) where
 
-import BitRepresenation
+import BitRepresentation
 import BitEval
 import Hash
 

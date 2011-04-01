@@ -8,7 +8,7 @@ module HaskellHash (
 ) where
 
 import Data.Int (Int64)
-import BitRepresenation (DMove, Player, playerToInt)
+import BitRepresentation (DMove, Player, playerToInt)
 import Control.Monad (when)
 
 import Data.Int (Int32)

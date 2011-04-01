@@ -4,7 +4,7 @@ module Helpers (
     justOneMove
 ) where
 
-import BitRepresenation
+import BitRepresentation
 
 ltrim :: String -> String
 ltrim = dropWhile (== ' ')

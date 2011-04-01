@@ -5,7 +5,7 @@ import Control.Monad (unless)
 import Data.Array ((!))
 import System.IO (hFlush, stdout)
 import System.Mem (performGC)
-import BitRepresenation
+import BitRepresentation
 import Helpers
 import Hash (resetHash)
 import MTDf (search)

@@ -3,10 +3,12 @@ module Main where
 import Data.Bits
 import Control.Concurrent
 import Prelude
+import System.Random
+import Control.Monad
 
 import AlphaBeta
 import BitEval
-import BitRepresenation
+import BitRepresentation
 import MTDf
 import MCTS
 import IterativeAB
@@ -14,7 +16,6 @@ import Helpers
 import MyBits
 import Hash
 import MonteCarloEval
-import Control.Monad
 
 
 showHeader :: String -> IO ()
@@ -76,8 +77,8 @@ testSearchFunction srch = go positionCases
 testPositions :: IO ()
 testPositions = do
         showHeader "testPositions"
-        testSearchFunction IterativeAB.search
-        testSearchFunction MTDf.search
+        -- testSearchFunction IterativeAB.search
+        -- testSearchFunction MTDf.search
         testSearchFunction MCTS.search
 
 {- -------------------------------------------------------
@@ -90,8 +91,8 @@ testTiming = do
         putStrLn $ displayBoard testBoard' True
         -- {-
         mvar <- newMVar ([],0)
-        thread <- forkIO $ IterativeAB.search testBoard' mvar
-        threadDelay 30000000
+        thread <- forkIO $ MCTS.search testBoard' mvar
+        threadDelay 10000000
         (pv, val) <- takeMVar mvar
         print (pv, val)
         killThread thread
@@ -101,7 +102,7 @@ testTiming = do
         print best
         -- -}
     where
-        testBoard' = parseFlatBoard Gold "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
+        testBoard' = parseFlatBoard Silver "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
 
 
 {- -------------------------------------------------------
@@ -187,7 +188,14 @@ main = do
     -- testMCTS
     -- testHash
 
-    infoHash
+    {-
+    forM_ [1 .. 20 :: Int] $ \_ ->
+        print =<< getValueByMC testBoard' (Silver, 0)
+
+    where
+        testBoard' = parseFlatBoard Silver "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
+    -}
+
 
 startSilver, startGold :: String
 startSilver = "ra8 rb8 rc8 rd8 re8 rf8 rg8 rh8 ha7 db7 cc7 ed7 me7 cf7 dg7 hh7 "

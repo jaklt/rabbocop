@@ -9,7 +9,7 @@ module MCTS (
 ) where
 
 import Control.Concurrent
-import BitRepresenation
+import BitRepresentation
 import BitEval (iNFINITY)
 import MonteCarloEval
 

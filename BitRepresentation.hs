@@ -1,5 +1,5 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
-module BitRepresenation (
+module BitRepresentation (
     Player(..),
     Piece(..),
     Position,

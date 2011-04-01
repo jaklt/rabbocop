@@ -4,7 +4,7 @@ module IterativeAB (search) where
 import Control.Concurrent (MVar, swapMVar)
 import System.IO (hFlush, stdout)
 import AlphaBeta
-import BitRepresenation (Board(..), DMove)
+import BitRepresentation (Board(..), DMove)
 import BitEval (iNFINITY)
 import Hash (infoHash)
 

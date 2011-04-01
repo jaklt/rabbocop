@@ -1,6 +1,6 @@
 module MonteCarloEval (getValueByMC) where
 
-import BitRepresenation
+import BitRepresentation
 import BitEval
 import System.Random
 
@@ -30,3 +30,4 @@ chooseRandomly xs = do
     return $ xs !! i
 
 -- TODO makeMove could be rewriten by makeStep
+-- TODO measuring length is ineficient
