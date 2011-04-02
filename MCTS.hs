@@ -13,7 +13,6 @@ import BitRepresentation
 import BitEval
 import MonteCarloEval
 
-
 -- | Mini-Max Tree representation
 data MMTree = MT { board     :: !Board
                  , movePhase :: !MovePhase
@@ -145,7 +144,7 @@ valueUCB mt count =
         case tn of
             Leaf -> iNFINITY'
             n@Node { children = [] } -> fromIntegral $ value n
-            _ -> - (vl / nb) + sqrt (2 * log cn / nb)
+            _ -> (vl / nb) + sqrt (2 * log cn / nb)
     where
         tn = treeNode mt
         [vl,nb,cn] = map fromIntegral [value tn, number tn, count]
