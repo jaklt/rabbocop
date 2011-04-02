@@ -10,7 +10,7 @@ module MCTS (
 
 import Control.Concurrent
 import BitRepresentation
-import BitEval (iNFINITY)
+import BitEval
 import MonteCarloEval
 
 
@@ -59,30 +59,45 @@ constructMove _ 0 = []
 constructMove (MT { treeNode = Leaf }) _ = []
 constructMove !mt !n = (s `seq` subTreeMove) `seq` s : subTreeMove
     where
-        mt' = fst $ descendByUCB1 (children $ treeNode mt)
-                                  (number $ treeNode mt)
+        mt' = fst $ descendByUCB1 mt
         s = step mt'
         subTreeMove = constructMove mt' (n-1)
 
 improveTree :: MMTree -> IO (MMTree, Int)
-improveTree mt =
-    case treeNode mt of
-        Leaf -> do
-            val <- getValueByMC (board mt) (movePhase mt)
-            return (createNode mt (val * (player mt <#> Gold)), val)
-        root -> do
-            let (node, rest) = descendByUCB1 (children $ treeNode mt)
-                                             (number $ treeNode mt)
-            (nodeNew, improvement) <- improveTree node
-            let improvement' = player mt <#> Gold * improvement
+improveTree mt
+    | treeNode mt == Leaf = do
+        val <- getValueByMC (board mt) (movePhase mt)
+        return (createNode mt (val * (player mt <#> Gold)), val)
 
-            return ( mt { treeNode = Node
-                            { value    = value root + improvement'
-                            , number   = number root + 1
-                            , children = nodeNew : rest
-                            }
+    -- immobilization
+    | rest == [] && movePhase mt == movePhase node = do
+        e <- eval (board mt) (player mt)
+        let inf' = inf e
+        return ( mt { treeNode = Node
+                        { value = inf'
+                        , number = number root + 1
+                        , children = []
                         }
-                   , improvement)
+                    }
+               , inf')
+
+    | otherwise = do
+        (nodeNew, improvement) <- improveTree node
+        let improvement' = player mt <#> Gold * improvement
+
+        return ( mt { treeNode = Node
+                        { value    = value root + improvement'
+                        , number   = number root + 1
+                        , children = nodeNew : rest
+                        }
+                    }
+               , improvement)
+    where
+        (node, rest) = descendByUCB1 mt
+        root = treeNode mt
+        inf ev | ev >= iNFINITY || ev <= -iNFINITY = ev
+               | otherwise = player mt <#> Silver * iNFINITY
+
 
 createNode :: MMTree -> Int -> MMTree
 createNode mt val =
@@ -103,11 +118,19 @@ leafFromStep mt s@(s1,s2) =
        , step = s
        }
 
+-- | if immobilised returns (first_argument, [])
+descendByUCB1 :: MMTree -> (MMTree, [MMTree])
+descendByUCB1 mt = case chs of
+                    [] -> (mt, []) -- immobilization
+                    _  -> descendByUCB1' chs (number $ treeNode mt)
+    where
+        chs = (children $ treeNode mt)
+
 -- TODO badly ordered rest of children
 --      speedup
-descendByUCB1 :: [MMTree] -> Int -> (MMTree, [MMTree])
-descendByUCB1 [] _ = error "Empty children list"
-descendByUCB1 (m:mts) nb = proj $ foldr (accumUCB nb) (m, valueUCB m nb, []) mts
+descendByUCB1' :: [MMTree] -> Int -> (MMTree, [MMTree])
+descendByUCB1' (m:mts) nb =
+        proj $ foldr (accumUCB nb) (m, valueUCB m nb, []) mts
 	where
 		proj (a,_,c) = (a,c)
 
