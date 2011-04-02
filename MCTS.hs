@@ -127,9 +127,10 @@ descendByUCB1 mt = case chs of
 -- | first argument have to be not empty
 descendByUCB1' :: [MMTree] -> Int -> (MMTree, [MMTree])
 descendByUCB1' mms nb =
-        proj $ foldr (accumUCB nb) (head mms, valueUCB (tail mms) nb, []) mms
+        proj $ foldr (accumUCB nb) (hMms, valueUCB hMms nb, []) (tail mms)
 	where
-		proj (a,_,c) = (a,c)
+        hMms = head mms
+        proj (a,_,c) = (a,c)
 
 accumUCB :: Int -> MMTree -> (MMTree, Double, [MMTree])
          -> (MMTree, Double, [MMTree])
@@ -143,6 +144,7 @@ valueUCB :: MMTree -> Int -> Double
 valueUCB mt count =
         case tn of
             Leaf -> iNFINITY'
+            n@Node { children = [] } -> fromIntegral $ value n
             _ -> - (vl / nb) + sqrt (2 * log cn / nb)
     where
         tn = treeNode mt

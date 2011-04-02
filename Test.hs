@@ -3,7 +3,6 @@ module Main where
 import Data.Bits
 import Control.Concurrent
 import Prelude
-import System.Random
 import Control.Monad
 
 import AlphaBeta
@@ -131,8 +130,8 @@ instance Show a => Show (CTree a) where
         s i (CT a subtrs) = replicate (4*i) ' ' ++ show a
                           ++ "\n" ++ (concat $ map (s (i+1)) subtrs)
 
-mm2c :: MMTree -> CTree (MovePhase, Int, Int, (Step,Step), Bool)
-mm2c mt = CT (movePhase mt, val, num, step mt, treeNode mt == Leaf) subtrees
+mm2c :: MMTree -> CTree (MovePhase, Int, Int, (Step,Step))
+mm2c mt = CT (movePhase mt, val, num, step mt) subtrees
     where
         (val,num,subtrees) = case treeNode mt of
                                 Leaf -> (0,0,[])
@@ -164,7 +163,7 @@ testMCTS = do
         print $ mm2c mt3
         print $ mm2c mt4
 
-        let (bst,_) = descendByUCB1 (children $ treeNode mt2) (number $ treeNode mt2)
+        let (bst,_) = descendByUCB1 mt3
         print $ step bst
 
         -- putStrLn $ displayBoard b True
