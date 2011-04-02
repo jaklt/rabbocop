@@ -36,6 +36,10 @@ moveContainOR :: [String] -> [String] -> Bool
 moveContainOR [] _ = False
 moveContainOR (st:rest) moves = st `elem` moves || moveContainOR rest moves
 
+moveContainAND :: [String] -> [String] -> Bool
+moveContainAND [] _ = True
+moveContainAND (st:rest) moves = st `elem` moves && moveContainOR rest moves
+
 positionCases :: [TestCase]
 positionCases =
     [ -- See my goal
@@ -46,7 +50,17 @@ positionCases =
     , ( "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
       , moveContainOR ["Cd1e", "Cf1w", "re2n", "re2w", "re2e"]
       , Gold)
+      -- Can immobilise oponent?
+    , ( "[ rrrrrrrR                                                       ]"
+      , \s -> moveContainAND ["rb8w", "rc8w", "rb8s"] s
+           || moveContainAND ["rb8w", "rc8s", "rc7w"] s
+      , Silver)
+      -- Hard example from Kozeleks thesis (page 29)
+    , ( "[rrrrrrrrhdcm c h Mx  x   e               Dx dxD H CE C HRRRRRRRR]"
+      , moveContainAND ["Ed2n", "Ed3n", "Ed4n", "Ed5n"]
+      , Gold)
     ]
+
 
 testSearchFunction :: (Board -> MVar (DMove, Int) -> IO ()) -> IO ()
 testSearchFunction srch = go positionCases
@@ -87,7 +101,6 @@ testPositions = do
 testTiming :: IO ()
 testTiming = do
         showHeader "testTiming"
-        putStrLn $ displayBoard testBoard' True
         -- {-
         mvar <- newMVar ([],0)
         thread <- forkIO $ MCTS.search testBoard' mvar
@@ -100,9 +113,17 @@ testTiming = do
         best <- alphaBeta testBoard' [] (-iNFINITY, iNFINITY) 7 0 Gold
         print best
         -- -}
+        putStrLn $ displayBoard testBoard' True
     where
-        testBoard' = parseFlatBoard Silver "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
-
+        testBoard' = parseFlatBoard Gold
+                        $ "[        "
+                        ++ "     r  "
+                        ++ "  x  x  "
+                        ++ "  D     "
+                        ++ "        "
+                        ++ "  x  x  "
+                        ++ "  R     "
+                        ++ "        ]"
 
 {- -------------------------------------------------------
  - Testing Hash
@@ -166,7 +187,7 @@ testMCTS = do
         let (bst,_) = descendByUCB1 mt3
         print $ step bst
 
-        -- putStrLn $ displayBoard b True
+        putStrLn $ displayBoard b True
 
 {- ------------------------------------------------------- -}
 
