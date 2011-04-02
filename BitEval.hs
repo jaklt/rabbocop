@@ -1,7 +1,11 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
-module BitEval (eval, iNFINITY) where
+module BitEval (
+    eval,
+    evalImmobilised,
+    iNFINITY
+) where
 
-import BitRepresentation (Board(..), Player(..), Piece(..), playerToInt)
+import BitRepresentation (Board(..), Player(..), Piece(..), playerToInt, (<#>))
 import Data.Array ((!))
 import Data.Int (Int64)
 
@@ -23,3 +27,10 @@ eval b player = return $
     where
         fg = figures b ! Gold
         fs = figures b ! Silver
+
+evalImmobilised :: Board -> Player -> IO Int
+evalImmobilised b pl = do
+    e <- eval b pl
+    if e >= iNFINITY || e <= -iNFINITY
+        then return e
+        else return $ pl <#> Silver * iNFINITY

@@ -71,15 +71,14 @@ improveTree mt
 
     -- immobilization
     | rest == [] && movePhase mt == movePhase node = do
-        e <- eval (board mt) (player mt)
-        let inf' = inf e
+        inf <- evalImmobilised (board mt) (player mt)
         return ( mt { treeNode = Node
-                        { value = inf'
+                        { value = inf
                         , number = number root + 1
                         , children = []
                         }
                     }
-               , inf')
+               , inf)
 
     | otherwise = do
         (nodeNew, improvement) <- improveTree node
@@ -95,9 +94,6 @@ improveTree mt
     where
         (node, rest) = descendByUCB1 mt
         root = treeNode mt
-        inf ev | ev >= iNFINITY || ev <= -iNFINITY = ev
-               | otherwise = player mt <#> Silver * iNFINITY
-
 
 createNode :: MMTree -> Int -> MMTree
 createNode mt val =
@@ -128,9 +124,10 @@ descendByUCB1 mt = case chs of
 
 -- TODO badly ordered rest of children
 --      speedup
+-- | first argument have to be not empty
 descendByUCB1' :: [MMTree] -> Int -> (MMTree, [MMTree])
-descendByUCB1' (m:mts) nb =
-        proj $ foldr (accumUCB nb) (m, valueUCB m nb, []) mts
+descendByUCB1' mms nb =
+        proj $ foldr (accumUCB nb) (head mms, valueUCB (tail mms) nb, []) mms
 	where
 		proj (a,_,c) = (a,c)
 
