@@ -14,7 +14,7 @@ search board mvar = search' 1 ([], 0)
     where
         search' :: Int -> (DMove, Int) -> IO ()
         search' !depth best = do
-            putStrLn $ "info actual " ++ show best
+            -- putStrLn $ "info actual " ++ show best
             infoHash
             hFlush stdout
             m <- alphaBeta board (fst best) (-iNFINITY, iNFINITY)

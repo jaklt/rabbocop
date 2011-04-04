@@ -23,31 +23,46 @@ alphaBeta' :: Board
            -> Int         -- ^ depth remaining
            -> MovePhase
            -> IO (DMove, Int) -- ^ (steps to go, best value)
-alphaBeta' !board !pv (!alpha, !beta) !depth mp@(!pl, !stepCount) = do
-        inTranspositionTable <- findHash (hash board) depth pl stepCount
-        (alpha', beta', bestGues) <- if inTranspositionTable
+alphaBeta' !board !pv aB@(!alpha, !beta) !depth mp@(!pl, !stepCount) = do
+        inTranspositionTable <- findHash (hash board) depth mp
+        (ttBounds@(al', bet'), maybeBest) <- if inTranspositionTable
             then do
-                bestGues@(_,ttValue) <- getHash (hash board) pl
-                return (max alpha ttValue, min beta ttValue, bestGues)
+                (ttMove, lowerBound, upperBound) <- getHash (hash board) pl
+                return ( (lowerBound, upperBound)
+                       , maybeResult lowerBound upperBound ttMove)
             else
-                return (alpha, beta, ([],0))
+                return (aB, Nothing)
+        let newAB = (max alpha al', min beta bet')
 
-        if alpha' > beta'
-            then
-                return bestGues
-            else do
+        case maybeBest of
+            Just best -> return best
+            Nothing -> do
                 res <- if depth <= 0
                             then do
                                 e <- eval board pl
                                 return ([], e * Gold <#> mySide board)
-                            else findBest (alpha', beta') board tailPV
+                            else findBest newAB board tailPV
                                           depth mp ([], inf) steps
-                addHash (hash board) depth pl stepCount res
+                addHash (hash board) depth mp (changeTTBounds res ttBounds newAB)
                 return res
     where
         inf = -iNFINITY * mySide board <#> pl
         (headPV,tailPV) = case pv of (h:t) -> ([h],t); _ -> ([],[])
         steps = headPV ++ generateSteps board pl (stepCount < 3)
+
+        maybeResult low upp mv | low >= beta  = Just (mv, low)
+                               | upp <= alpha = Just (mv, upp)
+                               | otherwise    = Nothing
+
+changeTTBounds :: (DMove, Int) -- recursively computed or eval result
+               -> (Int, Int)   -- old bounds
+               -> (Int, Int)   -- used alphaBeta window
+               -> (DMove, Int, Int)
+changeTTBounds (mv, score) (ttAlpha, ttBeta) (alpha,beta)
+        | score <= alpha = (mv, ttAlpha, score)  -- change upper bound in TT
+        | alpha < score && score < beta = (mv, score, score)
+        | score >= beta = (mv, score, ttBeta)  -- change lower bound in TT
+        | otherwise = (mv, ttAlpha, ttBeta)
 
 
 findBest :: (Int, Int)   -- ^ Alpha,Beta

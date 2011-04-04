@@ -33,7 +33,7 @@ search board mvar = search' 1 ([], 0)
     where
         search' :: Int -> (DMove, Int) -> IO ()
         search' depth gues = do
-            putStrLn $ "info actual " ++ show gues
+            -- putStrLn $ "info actual " ++ show gues
             infoHash
             hFlush stdout
             m <- mtdf board gues depth iNFINITY (-iNFINITY)

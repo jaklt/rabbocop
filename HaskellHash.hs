@@ -7,10 +7,8 @@ module HaskellHash (
     addHash
 ) where
 
+import BitRepresentation (DMove, Player, playerToInt, MovePhase)
 import Data.Int (Int64)
-import BitRepresentation (DMove, Player, playerToInt)
-import Control.Monad (when)
-
 import Data.Int (Int32)
 import Data.Bits
 import System.IO.Unsafe
@@ -18,15 +16,13 @@ import Control.Concurrent
 import qualified Data.HashTable as H
 
 tABLEsIZE :: Num a => a
--- tABLEsIZE = 23625
-tABLEsIZE = 2362500
+tABLEsIZE = 236250
 
+-- TODO try bangs
 data HObject = HO { hash   :: Int64
-                  , best   :: (DMove, Int)
+                  , best   :: (DMove, Int, Int)
                   , depth  :: Int
-                  , player :: Player
-                  , steps  :: Int
-                  -- TODO (alpha,beta)-bounds sensitive
+                  , phase  :: MovePhase
                   } deriving (Eq)
 
 mkOnceIO :: IO a -> IO (IO a)
@@ -40,52 +36,49 @@ hTable :: IO (H.HashTable Int32 HObject)
 hTable = unsafePerformIO $ mkOnceIO $ H.new (==) (`mod` tABLEsIZE)
 {-# NOINLINE hTable #-}
 
-toInt :: Int64 -> Player -> Int -> Int32
-toInt h pl s = fromIntegral . (`mod` tABLEsIZE) $
+toInt :: Int64 -> MovePhase -> Int32
+toInt h (pl,s) = fromIntegral . (`mod` tABLEsIZE) $
     h `xor` fromIntegral (playerToInt pl) -- `xor` (fromIntegral s `shift` 4)
 
-addHash :: Int64  -- ^ hash
-        -> Int    -- ^ depth
-        -> Player -- ^ active player
-        -> Int    -- ^ steps in move
-        -> (DMove, Int) -- ^ (PV, value)
+-- TODO consider wheather is better always rewrite HT entry, or it is
+--      necessary to check and compare depths
+addHash :: Int64     -- ^ hash
+        -> Int       -- ^ depth
+        -> MovePhase -- ^ active player and steps in move
+        -> (DMove, Int, Int) -- ^ (PV, lower bound, upper bound)
         -> IO ()
-addHash h d pl s b = do
+addHash h d mp b = do
         t <- hTable
-        let key = toInt h pl s
-        inside <- findHash h d pl s
-        when (not inside) (do
-            _ <- H.update t key (HO { hash = h
-                                    , best = justNeeded b
-                                    , depth = d
-                                    , player = pl
-                                    , steps  = s
-                                    })
-            return ())
+        _ <- H.update t (toInt h mp)
+                (HO { hash = h
+                    , best = justNeeded b
+                    , depth = d
+                    , phase = mp
+                    })
+        return ()
     where
-        justNeeded (!a:(!f):(!c):(!e):_,val) = ([a,f,c,e],val)
-        justNeeded (!a:(!f):(!c):[],val)     = ([a,f,c],val)
-        justNeeded (!a:(!f):[],val)          = ([a,f],val)
-        justNeeded (!a:[],val)               = ([a],val)
-        justNeeded ([],val)                  = ([],val)
+        justNeeded (!a:(!f):(!c):(!e):_,x,y) = ([a,f,c,e],x,y)
+        justNeeded (!a:(!f):(!c):[],x,y)     = ([a,f,c],x,y)
+        justNeeded (!a:(!f):[],x,y)          = ([a,f],x,y)
+        justNeeded (!a:[],x,y)               = ([a],x,y)
+        justNeeded ([],x,y)                  = ([],x,y)
 
-findHash :: Int64 -> Int -> Player -> Int -> IO Bool
-findHash h d pl s = do
+findHash :: Int64 -> Int -> MovePhase -> IO Bool
+findHash h d mp = do
         t <- hTable
-        let key = toInt h pl s
-        val <- H.lookup t key
+        val <- H.lookup t $ toInt h mp
         case val of
             Nothing -> return False
             Just v  ->
-                return $ player v == pl && depth v >= d
-                       &&  hash v == h  && steps v == s
+                return $ phase v == mp
+                      && depth v >= d &&  hash v == h
 
-getHash :: Int64 -> Player -> IO (DMove, Int)
+getHash :: Int64 -> Player -> IO (DMove, Int, Int)
 getHash h pl = do
     t <- hTable
-    val <- H.lookup t (toInt h pl 0)
+    val <- H.lookup t $ toInt h (pl,0)
     case val of
-        Nothing -> return ([], -1)
+        Nothing -> return ([], -1, -1)
         Just v  -> return $ best v
 
 resetHash :: Int -> IO ()

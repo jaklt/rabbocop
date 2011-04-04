@@ -126,8 +126,8 @@ action str line game = case str of
     -- "stop" -> -- jak?
     "debug" -> case firstWord line of
                 ("board",kind) -> do
-                    putStrLn $ unlines $ map ("info board "++)
-                             $ lines $ displayBoard (board game) (kind /= "flat")
+                    putStrLn $ unlines $ map ("info board "++) $ lines
+                             $ displayBoard (board game) (kind /= "flat")
                     return game
                 _ -> return game
     "quit" -> return $ game { quit = True }

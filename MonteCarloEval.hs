@@ -3,6 +3,7 @@ module MonteCarloEval (getValueByMC) where
 import BitRepresentation
 import BitEval
 import System.Random
+import Control.Applicative ((<$>))
 
 
 depth, simulations :: Int
@@ -25,9 +26,7 @@ randomSimulation mp@(pl,sc) d b =
             randomSimulation (stepInMove mp s2) (d-1) (fst $ makeMove b [s1,s2])
 
 chooseRandomly :: [a] -> IO a
-chooseRandomly xs = do
-    i <- randomRIO (0, length xs - 1)
-    return $ xs !! i
+chooseRandomly xs = (xs !!) <$> randomRIO (0, length xs - 1)
 
 -- TODO makeMove could be rewriten by makeStep
 -- TODO measuring length is ineficient

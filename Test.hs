@@ -90,8 +90,8 @@ testSearchFunction srch = go positionCases
 testPositions :: IO ()
 testPositions = do
         showHeader "testPositions"
-        -- testSearchFunction IterativeAB.search
-        -- testSearchFunction MTDf.search
+        testSearchFunction IterativeAB.search
+        testSearchFunction MTDf.search
         testSearchFunction MCTS.search
 
 {- -------------------------------------------------------
@@ -135,10 +135,10 @@ testHash = do
         let m = 2000000
 
         forM_ [1 .. m] $ \n ->
-            addHash n 1 Gold 0 ([(Pass,Pass)], 12)
+            addHash n 1 (Gold,0) ([(Pass,Pass)], 12, 13)
 
         forM_ [m `div` 2 .. m + (m `div` 2)] $ \n ->
-            findHash n 1 Gold 0
+            findHash n 1 (Gold, 0)
 
 {- -------------------------------------------------------
  - Testing MCTS
