@@ -12,6 +12,7 @@ Wanna play?
 -----------
 
 Requirements (i am sorry but I do not now minimal needed versions)::
+
     python with WxPython
     bzr
     git
@@ -19,6 +20,7 @@ Requirements (i am sorry but I do not now minimal needed versions)::
     gcc
 
 Just type::
+
     git clone git@github.com:JackeLee/rabbocop.git
     cd rabbocop
     make play
