@@ -22,7 +22,7 @@ Test: Test.hs ${SRC} ${LINK_O}
 	${HC} --make Test.hs ${LINK_O} ${HFLAGS}
 
 runtest: Test
-	time ./Test # ${RUN_PARAMS}
+	time -p ./Test # ${RUN_PARAMS}
 
 ${LINK_O}: ${LINK_C} ${LINK_H}
 

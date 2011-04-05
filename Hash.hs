@@ -1,7 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 module Hash (
-    infoHash,
-    resetHash,
+    TTable(..),
     findHash,
     getHash,
     addHash

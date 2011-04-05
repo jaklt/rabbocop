@@ -7,17 +7,18 @@ import System.IO (hFlush, stdout)
 import System.Mem (performGC)
 import BitRepresentation
 import Helpers
-import Hash (resetHash)
 import MTDf (search)
 -- import MCTS (search)
 -- import IterativeAB (search)
+
+type SearchEngine = Board -> MVar (DMove, Int) -> IO ()
 
 data Game = Game { timePerMove :: Int, startingReserve :: Int
                  , percentUnusedToReserve :: Int, maxReserve :: Int
                  , maxLenghtOfGame :: Int, maxTurns :: Int, maxTurnTime :: Int
                  , quit :: Bool, board :: Board
-                 , hashSize :: Int }
-                 deriving (Show)
+                 , engine :: SearchEngine
+                 }
 
 
 getValue :: Read a => String -> a
@@ -61,7 +62,7 @@ aeiGo game | board game == EmptyBoard  = do
                 return game
            | otherwise = do
                 mvar <- newMVar ([],0)
-                thread <- forkIO $ search (board game) mvar
+                thread <- forkIO $ engine game (board game) mvar
                 threadDelay (3000000 * timePerMove game `div` 4)
                 (pv, val) <- takeMVar mvar
                 killThread thread
@@ -90,14 +91,12 @@ action str line game = case str of
                     ("tcturntime", time)-> return game { maxTurnTime = getValue time }
 
                     ("hash", size) -> do
-                            let size' = getValue size
                             -- one entry in table has:
                             --   * cover = 12B
                             --   * value information = 12B
                             --   * 4 steps = 4*12 + 4*12B
                             -- total: 120B
-                            resetHash (size' * 1000 `div` 120)
-                            return game { hashSize = size' }
+                            return game { engine = search $ getValue size }
                     {-
                     ("greserve",_) -> return game
                     ("sreserve",_) -> return game
@@ -144,11 +143,10 @@ communicate game = game `seq` do
 
 main :: IO ()
 main = do
-    resetHash 0
-    communicate game
-    where
-        game = Game { timePerMove = 20, startingReserve = 20
-                    , percentUnusedToReserve = 100, maxReserve = 10
-                    , maxLenghtOfGame = -1, maxTurns = -1, maxTurnTime = -1
-                    , quit = False, board = EmptyBoard
-                    , hashSize = 100 }
+    communicate
+        Game { timePerMove = 20, startingReserve = 20
+             , percentUnusedToReserve = 100, maxReserve = 10
+             , maxLenghtOfGame = -1, maxTurns = -1, maxTurnTime = -1
+             , quit = False, board = EmptyBoard
+             , engine = search 1000
+             }

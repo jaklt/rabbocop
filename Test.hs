@@ -62,17 +62,18 @@ positionCases =
     ]
 
 
-testSearchFunction :: (Board -> MVar (DMove, Int) -> IO ()) -> IO ()
+testSearchFunction :: (Int -> Board -> MVar (DMove, Int) -> IO ()) -> IO ()
 testSearchFunction srch = go positionCases
     where
-        testTime = 10000000
+        testTime  = 10000000
+        tableSize = 236250
 
         go :: [TestCase] -> IO ()
         go [] = return ()
         go ((brd, positive, pl):rest) = do
             let board' = parseFlatBoard pl brd
             mvar <- newMVar ([],0)
-            thread <- forkIO $ srch board' mvar
+            thread <- forkIO $ srch tableSize board' mvar
             threadDelay testTime
             (pv, _) <- takeMVar mvar
             killThread thread
@@ -103,14 +104,15 @@ testTiming = do
         showHeader "testTiming"
         -- {-
         mvar <- newMVar ([],0)
-        thread <- forkIO $ MCTS.search testBoard' mvar
+        thread <- forkIO $ IterativeAB.search 236250 testBoard'  mvar
         threadDelay 10000000
         (pv, val) <- takeMVar mvar
         print (pv, val)
         killThread thread
         -- -}
         {-
-        best <- alphaBeta testBoard' [] (-iNFINITY, iNFINITY) 7 0 Gold
+        tt <- newTT 236250
+        best <- alphaBeta testBoard' tt [] (-iNFINITY, iNFINITY) 9 0 Gold
         print best
         -- -}
         putStrLn $ displayBoard testBoard' True
@@ -120,7 +122,7 @@ testTiming = do
                         ++ "     r  "
                         ++ "  x  x  "
                         ++ "  D     "
-                        ++ "        "
+                        ++ "     d  "
                         ++ "  x  x  "
                         ++ "  R     "
                         ++ "        ]"
@@ -129,6 +131,7 @@ testTiming = do
  - Testing Hash
  - ------------------------------------------------------- -}
 
+{-
 testHash :: IO ()
 testHash = do
         showHeader "starting hash test:"
@@ -139,6 +142,7 @@ testHash = do
 
         forM_ [m `div` 2 .. m + (m `div` 2)] $ \n ->
             findHash n 1 (Gold, 0)
+-}
 
 {- -------------------------------------------------------
  - Testing MCTS
@@ -202,7 +206,6 @@ main = do
     putStrLn $ "- testMyBits: " ++ show testMyBits
     putStrLn $ "- testMakeMove: " ++ show (testBoard3 == testBoard4)
 
-    resetHash 500
     testPositions
     -- testTiming
     -- testMCTS
