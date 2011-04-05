@@ -11,7 +11,7 @@ function, I use one not highly optimized.
 Wanna play?
 -----------
 
-Requirements (i am sorry but I do not now minimal needed versions)::
+Requirements (i am sorry but I do not know minimal needed versions)::
 
     python with WxPython
     bzr

@@ -141,8 +141,8 @@ newTT tableSize = do
         --   * one value of information = 12B
         --     + cover for each composite entry
         --   * 4 steps = 4*12 + 4*12B
-        -- total: 12 + (12 + (4*12 + 4*12) + 2*12) + 12 + (12 + 2*12)
-        --        = 192
+        -- total: 12 + (12 + (4*12 + 4*12) + 2*12) + 12 + (12 + 2*12) B
+        --        = 192B
         ts = fromIntegral $ tableSize * 100 `div` 200
 
 isValid' :: HObject -> (Int64, Int, MovePhase) -> Bool

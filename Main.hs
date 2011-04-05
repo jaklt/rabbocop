@@ -90,12 +90,7 @@ action str line game = case str of
                     ("tcturns", turns)  -> return game { maxTurns = getValue turns }
                     ("tcturntime", time)-> return game { maxTurnTime = getValue time }
 
-                    ("hash", size) -> do
-                            -- one entry in table has:
-                            --   * cover = 12B
-                            --   * value information = 12B
-                            --   * 4 steps = 4*12 + 4*12B
-                            -- total: 120B
+                    ("hash", size) ->
                             return game { engine = search $ getValue size }
                     {-
                     ("greserve",_) -> return game
