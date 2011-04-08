@@ -74,7 +74,7 @@ END_material_and_position
 
 
 #define RABBIT_WEIGHT(r) \
-    (weight_table[RABBIT] * (((double) 81) / ((bit_count(r)+1)*(bit_count(r)+1))))
+   (weight_table[RABBIT] * 100 * ((double) bit_count(r)) / (4 * bit_count(r)+1))
 
 static inline uint64_t adjecent(uint64_t pos)
 {
@@ -107,17 +107,12 @@ int eval(uint64_t gr, uint64_t gc, uint64_t gd,
     const int trap_control[5] = {0, 600, 900, 500, 200};
 
     /* Win or Loose */
-    /* TODO repair against rules */
     if (player == GOLD) {
         if ((gr &  UPPER_SIDE) || !sr) return  INFINITY;
         if ((sr & BOTTOM_SIDE) || !gr) return -INFINITY;
-        if (bit_count(sr) == 0) return  INFINITY;
-        if (bit_count(gr) == 0) return -INFINITY;
     } else {
         if ((sr & BOTTOM_SIDE) || !gr) return -INFINITY;
         if ((gr &  UPPER_SIDE) || !sr) return  INFINITY;
-        if (bit_count(gr) == 0) return -INFINITY;
-        if (bit_count(sr) == 0) return  INFINITY;
     }
 
     /* Material and position */
@@ -127,7 +122,7 @@ int eval(uint64_t gr, uint64_t gc, uint64_t gd,
     /* Having the strongest & the second strongest piece advantage */
     for (i=5, j=2; i>0 && j; i--) {
         /* Only two biggest */
-        j -= figs[GOLD][i] & figs[SILVER][i];
+        j -= !!figs[GOLD][i] | !!figs[SILVER][i];
 
         /* If one of them has big advantage */
         if ((!!figs[GOLD][i]) ^ (!!figs[SILVER][i]))

@@ -36,6 +36,7 @@ alphaBeta' :: Board
            -> MovePhase
            -> IO (DMove, Int) -- ^ (steps to go, best value)
 alphaBeta' !board tt !pv aB@(!alpha, !beta) !remDepth mp@(!pl, !stepCount) = do
+
         inTranspositionTable <- findHash tt ((hash board),remDepth,mp)
         (ttBounds@(al', bet'), maybeBest) <- if inTranspositionTable
             then do
@@ -58,6 +59,7 @@ alphaBeta' !board tt !pv aB@(!alpha, !beta) !remDepth mp@(!pl, !stepCount) = do
                                           remDepth mp ([], inf) steps
                 addHash tt ((hash board),remDepth,mp)
                         (changeTTBounds res ttBounds newAB)
+
                 return res
     where
         inf = -iNFINITY * mySide board <#> pl
@@ -90,7 +92,8 @@ findBest :: (Int, Int)   -- ^ Alpha,Beta
          -> IO (DMove, Int)
 findBest _ _ _ _ _ _ bestResult [] = return bestResult
 findBest bounds@(!a,!b) !board tt !pv !remDepth mp@(!pl,_)
-             best0@(!_, !bestValue) ((!s1,!s2):ss) = do
+             best0@(!_, !bestValue) ((!s1,!s2):ss)
+    = do
         (!childPV, !childValue) <-
             alphaBeta' board' tt pv bounds remDepth' mp'
 
@@ -100,7 +103,8 @@ findBest bounds@(!a,!b) !board tt !pv !remDepth mp@(!pl,_)
         let !best' | bestValue /= bestValue' = ((s1,s2):childPV, childValue)
                    | otherwise               = best0
 
-        if boundsOK bounds' then findBest bounds' board tt [] remDepth mp best' ss
+        if boundsOK bounds' then findBest bounds' board tt []
+                                          remDepth mp best' ss
                             else return best' -- Cut off
     where
         mp' = stepInMove mp s2

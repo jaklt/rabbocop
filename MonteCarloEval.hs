@@ -14,6 +14,7 @@ getValueByMC :: Board -> MovePhase -> IO Int
 getValueByMC b mp = do
     s <- mapM (randomSimulation mp depth) $ replicate simulations b
     return $ sum s `div` simulations
+-- TODO 1/1+e^{-\lambda x} -> change ints to doubles
 
 -- TODO +/- 1 discussion on empty steps
 randomSimulation :: MovePhase -> Int -> Board -> IO Int
