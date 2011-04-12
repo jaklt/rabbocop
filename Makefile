@@ -18,7 +18,7 @@ all: Main
 Main: Main.hs ${SRC} ${LINK_O}
 	${HC} --make Main.hs ${LINK_O} ${HFLAGS}
 
-Test: Test.hs ${SRC} ${LINK_O}
+Test: Test.hs TestPositions.hs ${SRC} ${LINK_O}
 	${HC} --make Test.hs ${LINK_O} ${HFLAGS}
 
 runtest: Test
@@ -28,8 +28,11 @@ ${LINK_O}: ${LINK_C} ${LINK_H}
 
 eval.o: ${STATIC_EVAL_TABLES}
 
-${STATIC_EVAL_TABLES}: data/staticeval.txt tools/BoardToCode.hs
+# Prepare part of static evaluation based on considering actual position
+tools/BoardToCode: tools/BoardToCode.hs
 	${HC} --make tools/BoardToCode.hs ${HFLAGS}
+
+${STATIC_EVAL_TABLES}: data/staticeval.txt tools/BoardToCode
 	./tools/BoardToCode data/staticeval.txt         > data/staticeval_g.c
 	./tools/BoardToCode data/staticeval.txt REVERSE > data/staticeval_s.c
 
@@ -40,6 +43,7 @@ clean:
 	rm -f data/staticeval_g.c
 	rm -f data/staticeval_s.c
 
+# Download and instal GUI
 play: Main aei-1.1/roundrobin.py arimaa-client/gui.py aei-1.1/roundrobin.cfg
 	cd aei-1.1; python roundrobin.py
 

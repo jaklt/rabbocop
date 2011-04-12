@@ -1,7 +1,8 @@
 module Helpers (
     ltrim,
     firstWord,
-    justOneMove
+    justOneMove,
+    showHeader
 ) where
 
 import BitRepresentation
@@ -32,3 +33,9 @@ justOneMove b pv = snd $ makeMove b $ justOneMove' pv 4
                  _ -> error "Inner error in aeiGo"
 
         pl = mySide b
+
+showHeader :: String -> IO ()
+showHeader h = do
+        putStrLn $ '\n' : h
+        putStrLn $ map (\_ -> '-') h  -- underline
+

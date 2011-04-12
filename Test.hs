@@ -3,7 +3,6 @@ module Main where
 import Data.Bits
 import Control.Concurrent
 import Prelude
-import Control.Monad
 
 import AlphaBeta
 import BitEval
@@ -13,87 +12,12 @@ import MCTS
 import IterativeAB
 import Helpers
 import MyBits
-import Hash
 import MonteCarloEval
+import TestPositions
 
-
-showHeader :: String -> IO ()
-showHeader h = do
-        putStrLn $ '\n' : h
-        putStrLn $ map (\_ -> '-') h  -- underline
 
 testMyBits :: Bool
 testMyBits = and [bitIndex (bit i) == i | i <- [0..63]] -- && bitIndex 222 == -1
-
-{- -------------------------------------------------------
- - Testing positions
- - ------------------------------------------------------- -}
-
-type TestCase = (String, [String] -> Bool, Player)
-
--- TODO more sophisticate
-moveContainOR :: [String] -> [String] -> Bool
-moveContainOR [] _ = False
-moveContainOR (st:rest) moves = st `elem` moves || moveContainOR rest moves
-
-moveContainAND :: [String] -> [String] -> Bool
-moveContainAND [] _ = True
-moveContainAND (st:rest) moves = st `elem` moves && moveContainOR rest moves
-
-positionCases :: [TestCase]
-positionCases =
-    [ -- See my goal
-      ( "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
-      , moveContainOR ["re2s"]
-      , Silver)
-      -- See oponents goal
-    , ( "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
-      , moveContainOR ["Cd1e", "Cf1w", "re2n", "re2w", "re2e"]
-      , Gold)
-      -- Can immobilise oponent?
-    , ( "[ rrrrrrrR                                                       ]"
-      , \s -> moveContainAND ["rb8w", "rc8w", "rb8s"] s
-           || moveContainAND ["rb8w", "rc8s", "rc7w"] s
-      , Silver)
-      -- Hard example from Kozeleks thesis (page 29)
-    , ( "[rrrrrrrrhdcm c h Mx  x   e               Dx dxD H CE C HRRRRRRRR]"
-      , moveContainAND ["Ed2n", "Ed3n", "Ed4n", "Ed5n"]
-      , Gold)
-    ]
-
-
-testSearchFunction :: (Int -> Board -> MVar (DMove, Int) -> IO ()) -> IO ()
-testSearchFunction srch = go positionCases
-    where
-        testTime  = 10000000
-        tableSize = 236250
-
-        go :: [TestCase] -> IO ()
-        go [] = return ()
-        go ((brd, positive, pl):rest) = do
-            let board' = parseFlatBoard pl brd
-            mvar <- newMVar ([],0)
-            thread <- forkIO $ srch tableSize board' mvar
-            threadDelay testTime
-            (pv, _) <- takeMVar mvar
-            killThread thread
-            let move = map show $ justOneMove board' pv
-
-            if positive move
-                then do
-                    putStrLn $ "\ntest: " ++ brd ++ " - OK"
-                else do
-                    putStrLn $ "\ntest - FAILED:"
-                    putStrLn $ displayBoard board' True
-                    print pv
-            go rest
-
-testPositions :: IO ()
-testPositions = do
-        showHeader "testPositions"
-        testSearchFunction IterativeAB.search
-        testSearchFunction MTDf.search
-        testSearchFunction MCTS.search
 
 {- -------------------------------------------------------
  - Testing Timing
@@ -127,21 +51,9 @@ testTiming = do
                         ++ "  R     "
                         ++ "        ]"
 
-{- -------------------------------------------------------
- - Testing Hash
- - ------------------------------------------------------- -}
 
 {-
-testHash :: IO ()
-testHash = do
-        showHeader "starting hash test:"
-        let m = 2000000
 
-        forM_ [1 .. m] $ \n ->
-            addHash n 1 (Gold,0) ([(Pass,Pass)], 12, 13)
-
-        forM_ [m `div` 2 .. m + (m `div` 2)] $ \n ->
-            findHash n 1 (Gold, 0)
 -}
 
 {- -------------------------------------------------------
@@ -206,10 +118,10 @@ main = do
     putStrLn $ "- testMyBits: " ++ show testMyBits
     putStrLn $ "- testMakeMove: " ++ show (testBoard3 == testBoard4)
 
-    testPositions
+    -- testPositions
+    testEval
     -- testTiming
     -- testMCTS
-    -- testHash
 
     {-
     forM_ [1 .. 20 :: Int] $ \_ ->
