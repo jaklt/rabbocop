@@ -41,14 +41,14 @@ void init_eval()
 }
 
 /* Hexa table:
-	.... ....   0 = ....  8 = |...
-	.... ....   1 = ...|  9 = |..|
-	..+. .+..   2 = ..|.  a = |.|.
-	.... ....   3 = ..||  b = |.||
-	.... ....   4 = .|..  c = ||..
-	..+. .+..   5 = .|.|  d = ||.|
-	.... ....   6 = .||.  e = |||.
-	.... ....   7 = .|||  f = ||||
+    .... ....   0 = ....  8 = |...
+    .... ....   1 = ...|  9 = |..|
+    ..+. .+..   2 = ..|.  a = |.|.
+    .... ....   3 = ..||  b = |.||
+    .... ....   4 = .|..  c = ||..
+    ..+. .+..   5 = .|.|  d = ||.|
+    .... ....   6 = .||.  e = |||.
+    .... ....   7 = .|||  f = ||||
 */
 
 #define BEGIN_material_and_position(col)             \
@@ -74,19 +74,19 @@ END_material_and_position
 
 
 #define RABBIT_WEIGHT(r) \
-   (weight_table[RABBIT] * 100 * ((double) bit_count(r)) / (4 * bit_count(r)+1))
+   (27 + weight_table[RABBIT] * 42 / (8 * (double) bit_count(r)+1))
 
 static inline uint64_t adjecent(uint64_t pos)
 {
     uint64_t res = 0;
     while (pos) {
-        res |= steps_from_position(0,1, bit_index(pos & (-pos)));
+        res |= steps_from_position(0,1, pos & (-pos));
         pos ^= pos & (-pos);
     }
     return res;
 }
 
-#define adjecentOne(b) steps_from_position(0,1, bit_index(b))
+#define adjecentOne(b) steps_from_position(0,1, (b))
 
 /**
  * Static evaluation functoin.
@@ -104,7 +104,7 @@ int eval(uint64_t gr, uint64_t gc, uint64_t gd,
     uint64_t figs[2][6] = {{gr, gc, gd, gh, gm, ge}, {sr, sc, sd, sh, sm, se}};
     uint64_t whole[2] = {gr|gc|gd|gh|gm|ge, sr|sc|sd|sh|sm|se};
     uint64_t tmpG, tmpS, tmpG2, tmpS2, tmp1, tmp2;
-    const int trap_control[5] = {0, 600, 900, 500, 200};
+    const int trap_control[5] = {0, 60, 100, 50, 20};
 
     /* Win or Loose */
     if (player == GOLD) {
@@ -147,21 +147,23 @@ int eval(uint64_t gr, uint64_t gc, uint64_t gd,
         tmpG2 ^= figs[  GOLD][i];
         tmpS2 ^= figs[SILVER][i];
 
-        /* Possibility to push/pull pieces */
-        sum += bit_count(adjecent(figs[  GOLD][i]) & tmpS) * weight_table[i] / 3
-             - bit_count(adjecent(figs[SILVER][i]) & tmpG) * weight_table[i] / 3;
+        /* Possibility to be pushed/pulled */
+        sum -= bit_count(adjecent(figs[  GOLD][i]) & tmpS2) * weight_table[i]/3
+             - bit_count(adjecent(figs[SILVER][i]) & tmpG2) * weight_table[i]/3;
 
         /* Cannot move */
-        tmp1 = adjecent(tmpG2) & figs[  GOLD][i];
+        tmp1 = adjecent(tmpS2) & figs[  GOLD][i];
         tmp2 = adjecent(tmpG2) & figs[SILVER][i];
 
         while (tmp1) {
-            sum -= (!(adjecentOne(tmp1 & (-tmp1)) & tmpG)) * weight_table[i] / 2;
+            sum -= (!(adjecentOne(tmp1 & (-tmp1)) & whole[GOLD]))
+                 * weight_table[i]/2;
             tmp1 ^= tmp1 & (-tmp1);
         }
 
         while (tmp2) {
-            sum += (!(adjecentOne(tmp2 & (-tmp2)) & tmpS)) * weight_table[i] / 2;
+            sum += (!(adjecentOne(tmp2 & (-tmp2)) & whole[SILVER]))
+                 * weight_table[i]/2;
             tmp2 ^= tmp2 & (-tmp2);
         }
         /* b & (-b) is right most bit */

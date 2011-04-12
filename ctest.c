@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "clib.h"
 
-void bits(int64_t bs)
+void bits(uint64_t bs)
 {
     int64_t b;
 

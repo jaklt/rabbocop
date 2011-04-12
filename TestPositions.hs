@@ -50,7 +50,7 @@ moveContainAND [] _ = True
 moveContainAND (st:rest) moves = st `elem` moves && moveContainOR rest moves
 
 testSearchFunction :: (Int -> Board -> MVar (DMove, Int) -> IO ()) -> IO ()
-testSearchFunction srch = go positionCases 1
+testSearchFunction srch = go positionCases 1 >> putStrLn ""
     where
         testTime  = 10000000
         tableSize = 236250
@@ -67,22 +67,23 @@ testSearchFunction srch = go positionCases 1
             let move = justOneMove board' pv
             let (board'', move') = makeMove board' move
 
+            putStr $ show i ++ ". test"
             if positive (map show move)
                 then do
-                    putStrLn $ show i ++ ". test: " ++ brd ++ " - OK"
+                    putStrLn $ ": " ++ brd ++ " - OK"
                 else do
-                    putStrLn $ "\ntest - FAILED:"
+                    putStrLn $ " - FAILED:"
                     putStrLn $ unlines $ mergeStrings
                                             [ lines $ displayBoard board'  True
                                             , boardSizedSpace
                                             , lines $ displayBoard board'' True ]
-                    print (move', sc)
+                    putStrLn $ show (move', sc) ++ "\n"
             go rest (i+1)
 
 testPositions :: IO ()
 testPositions = do
         showHeader "testPositions"
-        -- testSearchFunction IterativeAB.search
+        testSearchFunction IterativeAB.search
         testSearchFunction MTDf.search
         testSearchFunction MCTS.search
 

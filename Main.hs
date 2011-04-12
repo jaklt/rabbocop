@@ -7,9 +7,9 @@ import System.IO (hFlush, stdout)
 import System.Mem (performGC)
 import BitRepresentation
 import Helpers
-import MTDf (search)
+-- import MTDf (search)
 -- import MCTS (search)
--- import IterativeAB (search)
+import IterativeAB (search)
 
 type SearchEngine = Board -> MVar (DMove, Int) -> IO ()
 
