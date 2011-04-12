@@ -17,6 +17,30 @@ import MTDf
 
 type TestCase = (String, [String] -> Bool, Player)
 
+
+displayResult :: Show a
+              => (a -> a -> Bool ) -> (a, Board) -> [(a, Board)] -> IO ()
+displayResult _ _ [] = putStrLn "OK"
+displayResult cmp (n1, b1) (h@(n2,b2):rest) = do
+        if cmp n1 n2
+            then displayResult cmp h rest
+            else do
+                putStrLn "FAILED:"
+                putStrLn $ unlines $ mergeStrings
+                                    [ lines $ displayBoard b1 True
+                                    , boardSizedSpace
+                                    , lines $ displayBoard b2 True]
+                putStrLn $ replicate 24 ' ' ++ show n1 ++ " % " ++ show n2
+
+boardSizedSpace :: [String]
+boardSizedSpace = replicate 11 "       "
+
+mergeStrings :: [[String]] -> [String]
+mergeStrings s | null s     = []
+               | any null s = []
+mergeStrings s = (concat $ map head s) : mergeStrings (map tail s)
+
+
 moveContainOR :: [String] -> [String] -> Bool
 moveContainOR [] _ = False
 moveContainOR (st:rest) moves = st `elem` moves || moveContainOR rest moves
@@ -26,30 +50,34 @@ moveContainAND [] _ = True
 moveContainAND (st:rest) moves = st `elem` moves && moveContainOR rest moves
 
 testSearchFunction :: (Int -> Board -> MVar (DMove, Int) -> IO ()) -> IO ()
-testSearchFunction srch = go positionCases
+testSearchFunction srch = go positionCases 1
     where
         testTime  = 10000000
         tableSize = 236250
 
-        go :: [TestCase] -> IO ()
-        go [] = return ()
-        go ((brd, positive, pl):rest) = do
+        go :: [TestCase] -> Int -> IO ()
+        go [] _ = return ()
+        go ((brd, positive, pl):rest) i = do
             let board' = parseFlatBoard pl brd
             mvar <- newMVar ([],0)
             thread <- forkIO $ srch tableSize board' mvar
             threadDelay testTime
-            (pv, _) <- takeMVar mvar
+            (pv, sc) <- takeMVar mvar
             killThread thread
-            let move = map show $ justOneMove board' pv
+            let move = justOneMove board' pv
+            let (board'', move') = makeMove board' move
 
-            if positive move
+            if positive (map show move)
                 then do
-                    putStrLn $ "\ntest: " ++ brd ++ " - OK"
+                    putStrLn $ show i ++ ". test: " ++ brd ++ " - OK"
                 else do
                     putStrLn $ "\ntest - FAILED:"
-                    putStrLn $ displayBoard board' True
-                    print pv
-            go rest
+                    putStrLn $ unlines $ mergeStrings
+                                            [ lines $ displayBoard board'  True
+                                            , boardSizedSpace
+                                            , lines $ displayBoard board'' True ]
+                    print (move', sc)
+            go rest (i+1)
 
 testPositions :: IO ()
 testPositions = do
@@ -60,20 +88,20 @@ testPositions = do
 
 -- | Test if all lists from evalCases are `eval-decreasing'
 testEval :: IO ()
-testEval = mapM_ testEval' $ zip [1..] evalCases
+testEval = do
+        showHeader "testEval"
+        mapM_ testEval' $ zip [1..] evalCases
 
 -- TODO show which board is considered better than which
 testEval' :: (Int, [(String, Player)]) -> IO ()
 testEval' (num,tests) = do
         putStr $ "\t" ++ show num ++ ". - "
         evaluated <- forM tests $ \(b,pl) -> do
-            let board = parseFlatBoard pl b
-            (if pl == Gold then (1*) else ((-1)*)) <$> eval board pl
+            let brd = parseFlatBoard pl b
+            (\e -> if pl == Gold then (1*e,brd) else ((-1)*e, brd))
+                <$> eval brd pl
 
-        if (snd $ foldr (\n1 (n2, bool) -> (n1, n1 > n2 && bool))
-                        (-iNFINITY - 1, True) evaluated)
-            then putStrLn "OK"
-            else putStrLn "FAILED"
+        displayResult (>) (iNFINITY + 1, EmptyBoard) evaluated
 
 
 -- -------------------------------------------
