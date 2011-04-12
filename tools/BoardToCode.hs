@@ -4,7 +4,6 @@ import Data.Word
 import Data.Bits
 import System.Environment
 import Data.Char
-import Data.List hiding (find)
 import Numeric
 
 tab :: String
@@ -38,41 +37,41 @@ parseDefinition :: Bool -> [String] -> String
 parseDefinition rev (name:defs:_:table) =
         tab ++ "/*" ++ unlines (indent (name:defs:table')) ++ tab ++ "*/" ++ code
     where
-        code = unlines . indent $ generatedTables ++ [generatedSums]
-        generatedTables = map (makeTable table' defs firstPie . toLower) pieces
-        pieces = filter (`elem` ['A'..'Z']) name
-        firstPie = toLower $ head pieces
-        generatedSums   = makeSums name
+        code = unlines . indent $ generatedTables
+        generatedTables = map (makeTable table' defs) name'
         table' = (if rev then reverse else id) table
+        name' = filter (not.null) $ map (filter isAlpha) $ words name
 parseDefinition _ _ = error "Parse error"
 
-makeTable :: [String] -> String -> Char -> Char -> String
-makeTable table defs first c =
-        ("\n" ++) $ unlines $ reverse $ addSemicolon $ reverse $ indent res
+makeTable :: [String] -> String -> String -> String
+makeTable table defs name =
+        ("\n" ++).(++ assign) $ unlines $ reverse $ addSemicolon $ reverse
+                              $ indent res
     where
         flatT = filter (`notElem` [' ', '\t', '-', '|', '+']) $ concat table
         bits = makeBits flatT
         parsedD = makeDefs defs
+        (c:_) = filter (`elem` ['A'..'Z']) name
         comb = combine parsedD c bits
+        assign = tab ++ makeSum name ++ ";"
 
         addSemicolon s = (head s ++ ";") : tail s
-
-        templCode | first == c = ("tmp  = ", "     + " )
-                  | otherwise  = ("tmp += ", "     + ")
 
         res :: [String]
         res | null comb = []
             | otherwise =
-                (fst templCode ++ head comb) : map (snd templCode ++) (tail comb)
+                ("tmp = " ++ head comb) : map ("    + " ++) (tail comb)
 
 combine :: [(Char, Double)] -> Char -> [(Char, Word64)] -> [String]
 combine defs ch = foldr cmb []
     where
         cmb (c,mask) s =
-            s ++ [num c ++ " * bit_count("++[ch]++" & 0x" ++ (showHex mask "LLU)")]
+            s ++ [num c ++ " * bit_count("++[toLower ch]
+                        ++" & 0x" ++ (long $ showHex mask "") ++ "LLU)"]
 
         num c = let f = find c in (if f < 0 then "" else " ") ++ (show (find c))
         find c = foldr (\(a,b) r -> if c == a then b else r) 0 defs
+        long m = replicate (16 - length m) '0' ++ m
 
 makeDefs :: String -> [(Char, Double)]
 makeDefs s = map (make . split '=') $ split ',' s
@@ -92,16 +91,9 @@ repRes c n res
     | c == fst (head res) = (c, snd (head res) .|. bit n) : tail res
     | otherwise = head res : repRes c n (tail res)
 
-makeSums :: String -> String
-makeSums name = "sum += tmp * " ++ weights
+makeSum :: String -> String
+makeSum name = "sum += tmp * " ++ weightTable name
     where
-        ns = filter (not.null) $ map (filter isAlpha) $ words name
-        weights = concat $ 
-                    [ "(" 
-                    , concat $ intersperse " + " $ map weightTable ns
-                    , ");"
-                    ]
-
         weightTable "Rabbit" = "rabbit_weight"
         weightTable n        = "weight_table[" ++ map toUpper n ++ "]"
 
