@@ -13,6 +13,16 @@ static int weight_table[6] = {
     1600 /* elephant */
 };
 
+/*
+ * In order not to repeat position, this is forbidden board setup
+ * and active player.
+ */
+uint64_t forb_b[2][6] = {
+    {0, 0, 0, 0, 0, 0}, /* Golds   position */
+    {0, 0, 0, 0, 0, 0}  /* Silvers position */
+};
+int forb_pl = -1;
+
 #define INFINITY 100000
 
 #define TRAPS        0x0000240000240000LLU
@@ -94,11 +104,7 @@ static inline uint64_t adjecent(uint64_t pos)
  *
  * TODO fix constants
  */
-int eval(uint64_t gr, uint64_t gc, uint64_t gd,
-         uint64_t gh, uint64_t gm, uint64_t ge,
-         uint64_t sr, uint64_t sc, uint64_t sd,
-         uint64_t sh, uint64_t sm, uint64_t se,
-         int player)
+int eval(BOARD_AS_PARAMETER)
 {
     int sum = 0, i,j;
     uint64_t figs[2][6] = {{gr, gc, gd, gh, gm, ge}, {sr, sc, sd, sh, sm, se}};
@@ -113,6 +119,19 @@ int eval(uint64_t gr, uint64_t gc, uint64_t gd,
     } else {
         if ((sr & BOTTOM_SIDE) || !gr) return -INFINITY;
         if ((gr &  UPPER_SIDE) || !sr) return  INFINITY;
+    }
+
+    /* prevent repetition */
+    if (forb_pl == player
+        && forb_b[0][0] == figs[0][0] && forb_b[0][1] == figs[0][1]
+        && forb_b[0][2] == figs[0][2] && forb_b[0][3] == figs[0][3]
+        && forb_b[0][4] == figs[0][4] && forb_b[0][5] == figs[0][5]
+
+        && forb_b[1][0] == figs[1][0] && forb_b[1][1] == figs[1][1]
+        && forb_b[1][2] == figs[1][2] && forb_b[1][3] == figs[1][3]
+        && forb_b[1][4] == figs[1][4] && forb_b[1][5] == figs[1][5])
+    {
+        return INFINITY * (player == GOLD ? -1 : 1);
     }
 
     /* Material and position */
@@ -173,4 +192,15 @@ int eval(uint64_t gr, uint64_t gc, uint64_t gd,
     }
 
     return sum;
+}
+
+void forbid_board(BOARD_AS_PARAMETER)
+{
+    forb_b[0][0] = gr; forb_b[0][1] = gc; forb_b[0][2] = gd;
+    forb_b[0][3] = gh; forb_b[0][4] = gm; forb_b[0][5] = ge;
+
+    forb_b[1][0] = sr; forb_b[1][1] = sc; forb_b[1][2] = sd;
+    forb_b[1][3] = sh; forb_b[1][4] = sm; forb_b[1][5] = se;
+
+    forb_pl = player;
 }

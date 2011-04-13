@@ -6,6 +6,7 @@ import Data.Array ((!))
 import System.IO (hFlush, stdout)
 import System.Mem (performGC)
 
+import BitEval (forbidBoard)
 import BitRepresentation
 import Helpers
 -- import MTDf (newSearch)
@@ -63,6 +64,7 @@ aeiGo game | board game == EmptyBoard  = do
                 return game
            | otherwise = do
                 mvar <- newMVar ([],0)
+                forbidBoard $ board game
                 thread <- forkIO $ engine game (board game) mvar
                 threadDelay (3000000 * timePerMove game `div` 4)
                 (pv, val) <- takeMVar mvar
