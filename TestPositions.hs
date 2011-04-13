@@ -49,8 +49,8 @@ moveContainAND :: [String] -> [String] -> Bool
 moveContainAND [] _ = True
 moveContainAND (st:rest) moves = st `elem` moves && moveContainOR rest moves
 
-testSearchFunction :: (Int -> Board -> MVar (DMove, Int) -> IO ()) -> IO ()
-testSearchFunction srch = go positionCases 1 >> putStrLn ""
+testSearchFunction :: (Int -> IO (Board -> MVar (DMove, Int) -> IO ())) -> IO ()
+testSearchFunction newSrch = go positionCases 1 >> putStrLn ""
     where
         testTime  = 10000000
         tableSize = 236250
@@ -60,7 +60,8 @@ testSearchFunction srch = go positionCases 1 >> putStrLn ""
         go ((brd, positive, pl):rest) i = do
             let board' = parseFlatBoard pl brd
             mvar <- newMVar ([],0)
-            thread <- forkIO $ srch tableSize board' mvar
+            srch <- newSrch tableSize
+            thread <- forkIO $ srch board' mvar
             threadDelay testTime
             (pv, sc) <- takeMVar mvar
             killThread thread
@@ -83,9 +84,9 @@ testSearchFunction srch = go positionCases 1 >> putStrLn ""
 testPositions :: IO ()
 testPositions = do
         showHeader "testPositions"
-        testSearchFunction IterativeAB.search
-        testSearchFunction MTDf.search
-        testSearchFunction MCTS.search
+        testSearchFunction IterativeAB.newSearch
+        testSearchFunction MTDf.newSearch
+        testSearchFunction MCTS.newSearch
 
 -- | Test if all lists from evalCases are `eval-decreasing'
 testEval :: IO ()
@@ -133,22 +134,38 @@ positionCases =
 -- | List of lists of decreasing positions (in eval point of view)
 evalCases :: [[(String, Player)]]
 evalCases =
-    [
-        [ ( "[rrrccrrr"
-          ++ "r d  dhr"
-          ++ " hx  x  "
-          ++ " H   E  "
-          ++ "  e    R"
-          ++ "RmDCCxHR"
-          ++ "   RR D "
-          ++ "R R  R  ", Gold) -- bot played Dc3s Hb5e Rh4n Rh5n !!
-        , ( "[rrrccrrr"
-          ++ "r d  dhr"
-          ++ " hx  x R"
-          ++ "  e  E  "
-          ++ "        "
-          ++ "RmxCCxHR"
-          ++ "  DRR D "
-          ++ "R R  R  ", Gold) -- it's definitely better to have horse
-        ]
+    [ [ ( "[rrrccrrr"
+        ++ "r d  dhr"
+        ++ " hx  x  "
+        ++ " H   E  "
+        ++ "  e    R"
+        ++ "RmDCCxHR"
+        ++ "   RR D "
+        ++ "R R  R  ", Gold) -- bot played Dc3s Hb5e Rh4n Rh5n !!
+      , ( "[rrrccrrr"
+        ++ "r d  dhr"
+        ++ " hx  x R"
+        ++ "  e  E  "
+        ++ "        "
+        ++ "RmxCCxHR"
+        ++ "  DRR D "
+        ++ "R R  R  ", Gold) -- it's definitely better to have horse
+      ]
+    , [ ( "[rrrcdrhc"
+        ++ "rrr emhd"
+        ++ "  x  x  "
+        ++ "        "
+        ++ "        "
+        ++ " HxE x  "
+        ++ "RRM  RHR"
+        ++ "RDRCCRDR", Gold) -- it's better to kill rabbit (rd3w Ee3w)
+      , ( "[rrrcdrhc"
+        ++ "rrr emhd"
+        ++ "  x  x  "
+        ++ "        "
+        ++ "        "
+        ++ " HxE x  "
+        ++ "RRMr RHR"
+        ++ "RDRCCRDR", Gold) -- than pushing him down (rd3s Ee3w)
+      ]
     ]

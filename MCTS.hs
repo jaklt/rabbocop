@@ -2,7 +2,7 @@
 module MCTS (
     MMTree(..),
     TreeNode(..),
-    search,
+    newSearch,
     improveTree,
     descendByUCB1,
     createNode,
@@ -35,15 +35,17 @@ player = fst . movePhase
 iNFINITY' :: Num a => a
 iNFINITY' = iNFINITY * iNFINITY
 
-search :: Int               -- ^ table size
-       -> Board             -- ^ starting position
+newSearch :: Int -> IO (Board -> MVar (DMove, Int) -> IO ())
+newSearch _ = return search
+
+search :: Board             -- ^ starting position
        -> MVar (DMove, Int) -- ^ best results to store here
        -> IO ()
-search _ b = search' MT { board = b
-                        , movePhase = (mySide b, 0)
-                        , treeNode = Leaf
-                        , step = (Pass, Pass)
-                        }
+search b = search' MT { board = b
+                      , movePhase = (mySide b, 0)
+                      , treeNode = Leaf
+                      , step = (Pass, Pass)
+                      }
 
 search' :: MMTree -> MVar (DMove, Int) -> IO ()
 search' !mt mvar = do

@@ -5,11 +5,12 @@ import Control.Monad (unless)
 import Data.Array ((!))
 import System.IO (hFlush, stdout)
 import System.Mem (performGC)
+
 import BitRepresentation
 import Helpers
--- import MTDf (search)
--- import MCTS (search)
-import IterativeAB (search)
+-- import MTDf (newSearch)
+-- import MCTS (newSearch)
+import IterativeAB (newSearch)
 
 type SearchEngine = Board -> MVar (DMove, Int) -> IO ()
 
@@ -90,8 +91,9 @@ action str line game = case str of
                     ("tcturns", turns)  -> return game { maxTurns = getValue turns }
                     ("tcturntime", time)-> return game { maxTurnTime = getValue time }
 
-                    ("hash", size) ->
-                            return game { engine = search $ getValue size }
+                    ("hash", size) -> do
+                            search <- newSearch $ getValue size
+                            return game { engine = search }
                     {-
                     ("greserve",_) -> return game
                     ("sreserve",_) -> return game
@@ -138,10 +140,11 @@ communicate game = game `seq` do
 
 main :: IO ()
 main = do
+    search <- newSearch 1000
     communicate
         Game { timePerMove = 20, startingReserve = 20
              , percentUnusedToReserve = 100, maxReserve = 10
              , maxLenghtOfGame = -1, maxTurns = -1, maxTurnTime = -1
              , quit = False, board = EmptyBoard
-             , engine = search 1000
+             , engine = search
              }

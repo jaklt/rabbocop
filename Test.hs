@@ -28,7 +28,8 @@ testTiming = do
         showHeader "testTiming"
         -- {-
         mvar <- newMVar ([],0)
-        thread <- forkIO $ IterativeAB.search 236250 testBoard'  mvar
+        search <- IterativeAB.newSearch 236250
+        thread <- forkIO $ search testBoard'  mvar
         threadDelay 10000000
         (pv, val) <- takeMVar mvar
         print (pv, val)

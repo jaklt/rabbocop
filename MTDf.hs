@@ -1,13 +1,18 @@
 {-# LANGUAGE BangPatterns #-}
-module MTDf (search) where
+module MTDf (newSearch) where
 
 import AlphaBeta
 import BitRepresentation (Board(..), DMove)
 import BitEval (iNFINITY)
 
+import Control.Applicative ((<$>))
 import Control.Concurrent (MVar, swapMVar)
 import System.IO (hFlush, stdout)
 
+
+newSearch :: Int  -- ^ table size
+          -> IO (Board -> MVar (DMove, Int) -> IO ())
+newSearch tableSize = iterative <$> newTT tableSize
 
 mtdf :: Board        -- ^ start position
      -> ABTTable
@@ -30,15 +35,13 @@ mtdf !b tt (!best, bestValue) depth !lb !ub = do
              | otherwise       = bestValue
 
 -- | iterative deepening
-search :: Int -> Board -> MVar (DMove, Int) -> IO ()
-search tableSize board mvar = search' 1 ([], 0) =<< newTT tableSize
+iterative :: ABTTable -> Board -> MVar (DMove, Int) -> IO ()
+iterative tt board mvar = search' 1 ([], 0)
     where
-        search' :: Int -> (DMove, Int) -> ABTTable -> IO ()
-        search' depth gues tt = do
+        search' :: Int -> (DMove, Int) -> IO ()
+        search' depth gues = do
             -- putStrLn $ "info actual " ++ show gues
             hFlush stdout
             !m <- mtdf board tt gues depth (-iNFINITY) iNFINITY
             _ <- swapMVar mvar m
-            search' (depth+1) m tt
-
--- TODO kontrola vyhry a pripadny konec
+            search' (depth+1) m
