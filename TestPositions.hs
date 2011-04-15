@@ -103,7 +103,7 @@ testEval' (num,tests) = do
             (\e -> if pl == Gold then (1*e,brd) else ((-1)*e, brd))
                 <$> eval brd pl
 
-        displayResult (>) (iNFINITY + 1, EmptyBoard) evaluated
+        displayResult (>) (iNFINITY * iNFINITY, EmptyBoard) evaluated
 
 
 -- -------------------------------------------

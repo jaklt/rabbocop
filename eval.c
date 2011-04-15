@@ -5,7 +5,7 @@ long int random(void);
 
 
 static int weight_table[6] = {
-      90 /* rabbit   */,
+      96 /* rabbit   */,
      200 /* cat      */,
      400 /* dog      */,
      700 /* horse    */,
@@ -131,7 +131,7 @@ int eval(BOARD_AS_PARAMETER)
         && forb_b[1][2] == figs[1][2] && forb_b[1][3] == figs[1][3]
         && forb_b[1][4] == figs[1][4] && forb_b[1][5] == figs[1][5])
     {
-        return INFINITY * (player == GOLD ? -1 : 1);
+        return INFINITY * (player == GOLD ? -2 : 2);
     }
 
     /* Material and position */
@@ -167,8 +167,8 @@ int eval(BOARD_AS_PARAMETER)
         tmpS2 ^= figs[SILVER][i];
 
         /* Possibility to be pushed/pulled */
-        sum -= bit_count(adjecent(figs[  GOLD][i]) & tmpS2) * weight_table[i]/3
-             - bit_count(adjecent(figs[SILVER][i]) & tmpG2) * weight_table[i]/3;
+        sum -= bit_count(adjecent(figs[  GOLD][i]) & tmpS2) * weight_table[i]/7
+             - bit_count(adjecent(figs[SILVER][i]) & tmpG2) * weight_table[i]/7;
 
         /* Cannot move */
         tmp1 = adjecent(tmpS2) & figs[  GOLD][i];
@@ -176,13 +176,13 @@ int eval(BOARD_AS_PARAMETER)
 
         while (tmp1) {
             sum -= (!(adjecentOne(tmp1 & (-tmp1)) & whole[GOLD]))
-                 * weight_table[i]/2;
+                 * weight_table[i]/7;
             tmp1 ^= tmp1 & (-tmp1);
         }
 
         while (tmp2) {
             sum += (!(adjecentOne(tmp2 & (-tmp2)) & whole[SILVER]))
-                 * weight_table[i]/2;
+                 * weight_table[i]/7;
             tmp2 ^= tmp2 & (-tmp2);
         }
         /* b & (-b) is right most bit */

@@ -130,7 +130,7 @@ descendByUCB1 mt = case chs of
 descendByUCB1' :: [MMTree] -> Int -> (MMTree, [MMTree])
 descendByUCB1' mms nb =
         proj $ foldr (accumUCB nb) (hMms, valueUCB hMms nb, []) (tail mms)
-	where
+    where
         hMms = head mms
         proj (a,_,c) = (a,c)
 
