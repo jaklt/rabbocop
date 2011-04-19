@@ -151,6 +151,12 @@ evalCases =
         ++ "  DRR D "
         ++ "R R  R  ", Gold) -- it's definitely better to have horse
       ]
+    , [ -- same as previous, but from oponents perspective
+        ( "[rrrccrrrr d  dhr hx  x R  e  E          RmxCCxHR  DRR D R R  R  "
+        , Silver)
+      , ( "[rrrccrrrr d  dhr hx  x   H   E    e    RRmDCCxHR   RR D R R  R  "
+        , Silver)
+      ]
     , [ ( "[rrrcdrhc"
         ++ "rrr emhd"
         ++ "  x  x  "
