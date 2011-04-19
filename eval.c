@@ -5,7 +5,7 @@ long int random(void);
 
 
 static int weight_table[6] = {
-      96 /* rabbit   */,
+      90 /* rabbit   */,
      200 /* cat      */,
      400 /* dog      */,
      700 /* horse    */,
@@ -167,8 +167,8 @@ int eval(BOARD_AS_PARAMETER)
         tmpS2 ^= figs[SILVER][i];
 
         /* Possibility to be pushed/pulled */
-        sum -= bit_count(adjecent(figs[  GOLD][i]) & tmpS2) * weight_table[i]/7
-             - bit_count(adjecent(figs[SILVER][i]) & tmpG2) * weight_table[i]/7;
+        sum -= bit_count(adjecent(figs[  GOLD][i]) & tmpS2) * weight_table[i]/15
+             - bit_count(adjecent(figs[SILVER][i]) & tmpG2) * weight_table[i]/15;
 
         /* Cannot move */
         tmp1 = adjecent(tmpS2) & figs[  GOLD][i];
@@ -176,13 +176,13 @@ int eval(BOARD_AS_PARAMETER)
 
         while (tmp1) {
             sum -= (!(adjecentOne(tmp1 & (-tmp1)) & whole[GOLD]))
-                 * weight_table[i]/7;
+                 * weight_table[i]/10;
             tmp1 ^= tmp1 & (-tmp1);
         }
 
         while (tmp2) {
             sum += (!(adjecentOne(tmp2 & (-tmp2)) & whole[SILVER]))
-                 * weight_table[i]/7;
+                 * weight_table[i]/10;
             tmp2 ^= tmp2 & (-tmp2);
         }
         /* b & (-b) is right most bit */

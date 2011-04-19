@@ -53,7 +53,7 @@ testSearchFunction :: (Int -> IO (Board -> MVar (DMove, Int) -> IO ())) -> IO ()
 testSearchFunction newSrch = go positionCases 1 >> putStrLn ""
     where
         testTime  = 10000000
-        tableSize = 236250
+        tableSize = 200
 
         go :: [TestCase] -> Int -> IO ()
         go [] _ = return ()

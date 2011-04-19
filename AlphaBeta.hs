@@ -147,7 +147,7 @@ newTT tableSize = do
         --   * 4 steps = 4*12 + 4*12B
         -- total: 12 + (12 + (4*12 + 4*12) + 2*12) + 12 + (12 + 2*12) B
         --        = 192B
-        ts = fromIntegral $ tableSize * 100 `div` 200
+        ts = (fromIntegral tableSize) * (500000 `div` 200)
 
 isValid' :: HObject -> (Int64, Int, MovePhase) -> Bool
 isValid' e (h,d,mp) = phase e == mp
