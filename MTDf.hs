@@ -1,5 +1,11 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP          #-}
+#ifdef ENGINE
+module Main (main) where
+import AEI
+#else
 module MTDf (newSearch) where
+#endif
 
 import AlphaBeta
 import BitRepresentation (Board(..), DMove)
@@ -45,3 +51,8 @@ iterative tt board mvar = search' 1 ([], 0)
             !m <- mtdf board tt gues depth (-iNFINITY) iNFINITY
             _ <- swapMVar mvar m
             search' (depth+1) m
+
+#ifdef ENGINE
+main :: IO ()
+main = runAEIInterface newSearch
+#endif

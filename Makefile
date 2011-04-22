@@ -1,6 +1,8 @@
 NAME = rabbocop
+BINs = IterativeAB MCTS MTDf Test
 
 SRC_Hs = \
+	AEI.hs \
 	AlphaBeta.hs \
 	BitEval.hs \
 	BitRepresentation.hs \
@@ -35,13 +37,13 @@ ifdef JUDY
 	HFLAGS += -DJUDY
 endif
 
-all: Main
 
-Main: Main.hs ${SRC} ${LINK_O}
-	${HC} --make Main.hs ${LINK_O} ${HFLAGS}
+all: IterativeAB MCTS MTDf
 
-Test: Test.hs TestPositions.hs ${SRC} ${LINK_O}
-	${HC} --make Test.hs ${LINK_O} ${HFLAGS}
+IterativeAB MCTS MTDf: HFLAGS += -DENGINE
+
+$(BINs): % : %.hs ${SRC} ${LINK_O}
+	${HC} --make $@.hs ${LINK_O} ${HFLAGS}
 
 runtest: Test
 	time -p ./Test # ${RUN_PARAMS}
@@ -66,7 +68,7 @@ clean:
 	rm -f data/staticeval_s.c
 
 # Download and instal GUI
-play: Main aei-1.1/roundrobin.py arimaa-client/gui.py aei-1.1/roundrobin.cfg
+play: IterativeAB aei-1.1/roundrobin.py arimaa-client/gui.py aei-1.1/roundrobin.cfg
 	cd aei-1.1; python roundrobin.py
 
 aei-1.1/roundrobin.py:

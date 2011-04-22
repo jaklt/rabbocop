@@ -1,4 +1,9 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP          #-}
+#ifdef ENGINE
+module Main (main) where
+import AEI
+#else
 module MCTS (
     MMTree(..),
     TreeNode(..),
@@ -7,11 +12,18 @@ module MCTS (
     descendByUCB1,
     createNode,
 ) where
+#endif
 
 import Control.Concurrent
 import BitRepresentation
 import BitEval
 import MonteCarloEval
+
+
+#ifdef ENGINE
+main :: IO ()
+main = runAEIInterface newSearch
+#endif
 
 -- | Mini-Max Tree representation
 data MMTree = MT { board     :: !Board

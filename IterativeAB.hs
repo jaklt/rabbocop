@@ -1,5 +1,11 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP          #-}
+#ifdef ENGINE
+module Main (main) where
+import AEI
+#else
 module IterativeAB (newSearch) where
+#endif
 
 import AlphaBeta
 import BitRepresentation (Board(..), DMove)
@@ -26,3 +32,8 @@ iterative tt board mvar = search' 1 ([], 0)
                            depth 0 (mySide board)
             _ <- m `seq` swapMVar mvar m
             search' (depth+1) m
+
+#ifdef ENGINE
+main :: IO ()
+main = runAEIInterface newSearch
+#endif

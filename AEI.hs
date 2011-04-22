@@ -1,4 +1,7 @@
-module Main (main) where
+module AEI
+    ( SearchEngine
+    , runAEIInterface
+    ) where
 
 import Control.Concurrent
 import Control.Monad (unless)
@@ -9,17 +12,20 @@ import System.Mem (performGC)
 import BitEval (forbidBoard)
 import BitRepresentation
 import Helpers
--- import MTDf (newSearch)
--- import MCTS (newSearch)
-import IterativeAB (newSearch)
 
 type SearchEngine = Board -> MVar (DMove, Int) -> IO ()
 
-data Game = Game { timePerMove :: Int, startingReserve :: Int
-                 , percentUnusedToReserve :: Int, maxReserve :: Int
-                 , maxLenghtOfGame :: Int, maxTurns :: Int, maxTurnTime :: Int
-                 , quit :: Bool, board :: Board
-                 , engine :: SearchEngine
+data Game = Game { timePerMove :: Int
+                 , percentUnusedToReserve :: Int
+                 , startingReserve :: Int
+                 , maxLenghtOfGame :: Int
+                 , maxReserve  :: Int
+                 , maxTurns    :: Int
+                 , maxTurnTime :: Int
+                 , quit        :: Bool
+                 , board       :: Board
+                 , engine      :: SearchEngine
+                 , newEngine   :: Int -> IO (SearchEngine)
                  }
 
 
@@ -85,16 +91,23 @@ action str line game = case str of
         case firstWord line of
             ("name", line') ->
                 case firstWord line' of
-                    ("tcmove", time)    -> return game { timePerMove = getValue time }
-                    ("tcreserve", time) -> return game { startingReserve = getValue time}
-                    ("tcpercent", time) -> return game { percentUnusedToReserve = getValue time }
-                    ("tcmax", time)     -> return game { maxReserve = getValue time }
-                    ("tctotal", time)   -> return game { maxLenghtOfGame = getValue time }
-                    ("tcturns", turns)  -> return game { maxTurns = getValue turns }
-                    ("tcturntime", time)-> return game { maxTurnTime = getValue time }
+                    ("tcmove", time)    ->
+                        return game { timePerMove = getValue time }
+                    ("tcreserve", time) ->
+                        return game { startingReserve = getValue time}
+                    ("tcpercent", time) ->
+                        return game { percentUnusedToReserve = getValue time }
+                    ("tcmax", time)     ->
+                        return game { maxReserve = getValue time }
+                    ("tctotal", time)   ->
+                        return game { maxLenghtOfGame = getValue time }
+                    ("tcturns", turns)  ->
+                        return game { maxTurns = getValue turns }
+                    ("tcturntime", time)->
+                        return game { maxTurnTime = getValue time }
 
                     ("hash", size) -> do
-                            search <- newSearch $ getValue size
+                            search <- newEngine game $ getValue size
                             return game { engine = search }
                     {-
                     ("greserve",_) -> return game
@@ -140,13 +153,19 @@ communicate game = game `seq` do
     game' <- action str line game
     unless (quit game') $ communicate game'
 
-main :: IO ()
-main = do
+runAEIInterface :: (Int -> IO (SearchEngine)) -> IO ()
+runAEIInterface newSearch = do
     search <- newSearch 1000
     communicate
-        Game { timePerMove = 20, startingReserve = 20
-             , percentUnusedToReserve = 100, maxReserve = 10
-             , maxLenghtOfGame = -1, maxTurns = -1, maxTurnTime = -1
-             , quit = False, board = EmptyBoard
+        Game { timePerMove = 20
+             , startingReserve = 20
+             , percentUnusedToReserve = 100
+             , maxReserve = 10
+             , maxLenghtOfGame = -1
+             , maxTurns = -1
+             , maxTurnTime = -1
+             , quit = False
+             , board = EmptyBoard
              , engine = search
+             , newEngine = newSearch
              }
