@@ -1,23 +1,6 @@
-{-# LANGUAGE BangPatterns #-}
-module HaskellHash (
-    TTable(..),
-    findHash,
-    getHash,
-    addHash
-) where
-
-import Data.Int (Int32)
 import qualified Data.HashTable as H
 
-
-data TTable e o i
-    = TT { table     :: H.HashTable Int32 o
-         , getEntry  :: o -> e
-         , isValid   :: o -> i -> Bool
-         , key       :: i -> Int32
-         , saveEntry :: e -> i -> o
-         , empty     :: e
-         }
+type HTable o = H.HashTable Int32 o
 
 -- TODO consider wheather is better always rewrite HT entry, or it is
 --      necessary to check and compare depths
@@ -42,3 +25,6 @@ getHash tt i = do
     case val of
         Nothing -> return $ empty tt
         Just v  -> return $ getEntry tt v
+
+newHT :: (Int32 -> Int32) -> IO (HTable o)
+newHT = H.new (==)

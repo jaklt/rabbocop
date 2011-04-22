@@ -1,6 +1,6 @@
 NAME = rabbocop
 
-SRC_Hs = BitRepresentation.hs MyBits.hs BitEval.hs MTDf.hs Hash.hs AlphaBeta.hs MCTS.hs MonteCarloEval.hs HaskellHash.hs IterativeAB.hs Helpers.hs
+SRC_Hs = BitRepresentation.hs MyBits.hs BitEval.hs MTDf.hs Hash.hs AlphaBeta.hs MCTS.hs MonteCarloEval.hs HaskellHash.hs IterativeAB.hs Helpers.hs JudyHash.hs
 LINK_C = clib.c eval.c
 LINK_H = clib.h
 STATIC_EVAL_TABLES = data/staticeval_g.c data/staticeval_s.c

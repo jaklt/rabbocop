@@ -10,7 +10,6 @@ import BitEval
 import Hash
 import Data.Bits
 import Data.Int (Int64, Int32)
-import qualified Data.HashTable as H
 
 type ABTTable = TTable (DMove, Int, Int) HObject (Int64, Int, MovePhase)
 
@@ -130,7 +129,7 @@ data HObject = HO { hash0 :: Int64
 
 newTT :: Int -> IO ABTTable
 newTT tableSize = do
-        ht <- H.new (==) (`mod` ts)
+        ht <- newHT (`mod` ts)
         return TT
            { table     = ht
            , getEntry  = best
