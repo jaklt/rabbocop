@@ -26,7 +26,9 @@ iterative tt board mvar = search' 1 ([], 0)
     where
         search' :: Int -> (DMove, Int) -> IO ()
         search' !depth best = do
-            -- putStrLn $ "info actual " ++ show best
+#ifdef VERBOSE
+            putStrLn $ "info actual " ++ show best
+#endif
             hFlush stdout
             m <- alphaBeta board tt (fst best) (-iNFINITY, iNFINITY)
                            depth 0 (mySide board)

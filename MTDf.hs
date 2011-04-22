@@ -46,7 +46,9 @@ iterative tt board mvar = search' 1 ([], 0)
     where
         search' :: Int -> (DMove, Int) -> IO ()
         search' depth gues = do
-            -- putStrLn $ "info actual " ++ show gues
+#ifdef VERBOSE
+            putStrLn $ "info actual " ++ show gues
+#endif
             hFlush stdout
             !m <- mtdf board tt gues depth (-iNFINITY) iNFINITY
             _ <- swapMVar mvar m

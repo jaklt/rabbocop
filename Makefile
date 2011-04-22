@@ -29,12 +29,11 @@ HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap -threaded
 CC = gcc
 CFLAGS = -O2 -std=c99 -Wall -pedantic
 
+ENABLED_DEFINES = JUDY VERBOSE
+HFLAGS += $(foreach v, $(ENABLED_DEFINES), $(if $($(v)), -D$(v)))
+
 ifdef PROF
 	HFLAGS += -prof -fforce-recomp -auto-all
-endif
-
-ifdef JUDY
-	HFLAGS += -DJUDY
 endif
 
 
