@@ -1,5 +1,6 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 module BitRepresentation (
+    -- * Basic types
     Player(..),
     Piece(..),
     Position,
@@ -9,25 +10,35 @@ module BitRepresentation (
     Move,
     DMove,
     MovePhase,
+
+    -- * Species lists
     pieces,
     players,
+
+    -- * Other helper functions
     (<#>),
     displayBoard,
+    oponent,
+    stepInMove,
+    isEnd,
+
+    -- * Parsing/creating board or position
     parseBoard,
     parseFlatBoard,
     parsePosition,
-    positionToStep,
     parseStep,
     createBoard,
-    oponent,
-    stepInMove,
+
+    -- * Stepping
     makeMove,
     makeStep,
     generateSteps,
-    isEnd,
+
+    -- * Projections
     playerFromChar,
     pieceFromChar,
     playerToInt,
+    positionToStep,
 ) where
 
 import Data.Array
@@ -93,12 +104,15 @@ instance Show Step where
 instance Show Board where
     show = ("\n" ++) . (++ "\n") . flip displayBoard True
 
+---------------------------------------------------------------------
 
 players :: [Player]
 players = [Gold, Silver]
 
 pieces :: [Piece]
 pieces = [Rabbit .. Elephant]
+
+---------------------------------------------------------------------
 
 (<#>) :: Num a => Player -> Player -> a
 p1 <#> p2 | p1 == p2  =  1
@@ -134,6 +148,30 @@ displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
                     , 0 :: Int) xs
                   | otherwise = "[" ++ xs ++ "]"
 
+oponent :: Player -> Player
+oponent Gold = Silver
+oponent Silver = Gold
+
+-- | if Step argument is Pass then we count this step as one
+stepInMove :: MovePhase -> Step -> MovePhase
+stepInMove (pl,steps) s = (pl', steps' `mod` 4)
+    where
+        steps' = steps + if s == Pass then 1 else 2
+
+        pl' = if steps' > 3 then oponent pl
+                            else pl
+
+isEnd :: Board -> Bool
+isEnd b = bitCount gr == 0 || bitCount sr == 0
+       || bitCount ((gr .&. upp) .|. (sr .&. btm)) /= 0
+    where
+        fig = figures b
+        gr = fig ! Gold ! Rabbit
+        sr = fig ! Silver ! Rabbit
+        upp = 0xff00000000000000 :: Int64
+        btm = 0x00000000000000ff :: Int64
+
+---------------------------------------------------------------------
 
 parseBoard :: Player -> String -> Board
 parseBoard pl inp = createBoard pl $ map parsePosition $ words inp
@@ -161,9 +199,6 @@ parsePosition :: String -> (Player, Piece, Position)
 parsePosition (p:x:y:[]) = (playerFromChar p, pieceFromChar p, newPosition x y)
 parsePosition p = error ("Wrong position given: " ++ p)
 
-positionToStep :: (Player, Piece, Position) -> Step
-positionToStep (pl,pie,pos) = Step pie pl 0 (bit pos)
-
 parseStep :: String -> Step
 parseStep (p:x:y:o:[]) =
             Step (pieceFromChar p) (playerFromChar p) (bit from) (bit to)
@@ -184,29 +219,7 @@ createBoard pl xs = fst $ makeMove bo $ map positionToStep xs
         wh = array (Gold, Silver) [(Gold, 0),  (Silver, 0)]
         bo = Board { hash=0, figures=fi, whole=wh, mySide=pl }
 
--- | third argument: only one bit number
-stepsFromPosition :: Player -> Piece -> Int64 -> Int64
-stepsFromPosition pl pie pos =
-        c_stepsFromPosition (playerToInt pl) (pieceToInt pie) pos
-{-# INLINE stepsFromPosition #-}
-
--- | argument: only one bit number
-adjecent :: Int64 -> Int64
-adjecent = stepsFromPosition Gold Elephant
-{-# INLINE adjecent #-}
-
-oponent :: Player -> Player
-oponent Gold = Silver
-oponent Silver = Gold
-
--- | if Step argument is Pass then we count this step as one
-stepInMove :: MovePhase -> Step -> MovePhase
-stepInMove (pl,steps) s = (pl', steps' `mod` 4)
-    where
-        steps' = steps + if s == Pass then 1 else 2
-
-        pl' = if steps' > 3 then oponent pl
-                            else pl
+---------------------------------------------------------------------
 
 makeMove :: Board -> Move -> (Board, Move)
 makeMove b = foldl (\(b1, ss1) s -> case makeStep b1 s of
@@ -299,15 +312,18 @@ findPiece a p | a ! Rabbit   .&. p /= 0 = Rabbit
               | a ! Elephant .&. p /= 0 = Elephant
 findPiece _ _ = error "Inner error in findPiece"
 
-isEnd :: Board -> Bool
-isEnd b = bitCount gr == 0 || bitCount sr == 0
-       || bitCount ((gr .&. upp) .|. (sr .&. btm)) /= 0
-    where
-        fig = figures b
-        gr = fig ! Gold ! Rabbit
-        sr = fig ! Silver ! Rabbit
-        upp = 0xff00000000000000 :: Int64
-        btm = 0x00000000000000ff :: Int64
+-- | third argument: only one bit number
+stepsFromPosition :: Player -> Piece -> Int64 -> Int64
+stepsFromPosition pl pie pos =
+        c_stepsFromPosition (playerToInt pl) (pieceToInt pie) pos
+{-# INLINE stepsFromPosition #-}
+
+-- | argument: only one bit number
+adjecent :: Int64 -> Int64
+adjecent = stepsFromPosition Gold Elephant
+{-# INLINE adjecent #-}
+
+---------------------------------------------------------------------
 
 pieceFromChar :: Char -> Piece
 pieceFromChar c = case toLower c of
@@ -327,6 +343,9 @@ playerToInt :: Player -> Int
 playerToInt Gold   = 0
 playerToInt Silver = 1
 {-# INLINE playerToInt #-}
+
+positionToStep :: (Player, Piece, Position) -> Step
+positionToStep (pl,pie,pos) = Step pie pl 0 (bit pos)
 
 hashPiece :: Player -> Piece -> Position -> Int64
 hashPiece _ _ 0 = 0
