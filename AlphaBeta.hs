@@ -51,7 +51,7 @@ alphaBeta' !board tt !pv aB@(!alpha, !beta) !remDepth mp@(!pl, !stepCount) = do
         case maybeBest of
             Just bestResult -> return bestResult
             Nothing -> do
-                res <- if remDepth <= 0
+                res <- if remDepth <= 0 || isEnd board
                             then do
                                 e <- eval board pl
                                 return ([], e * Gold <#> mySide board)
@@ -157,7 +157,7 @@ isValid' e (h,d,mp) = phase e == mp
 key' :: Int32 -> (Int64, Int, MovePhase) -> Int32
 key' tableSize (h, _, (pl,s)) = fromIntegral . (`mod` tableSize) $
     fromIntegral h `xor` fromIntegral (playerToInt pl)
-    -- `xor` (fromIntegral s `shift` 4)
+    `xor` (fromIntegral s `shift` 4)
 
 saveEntry' :: (DMove, Int, Int) -> (Int64, Int, MovePhase) -> HObject
 saveEntry' b (h,d,mp) =

@@ -24,6 +24,7 @@ module BitRepresentation (
     makeMove,
     makeStep,
     generateSteps,
+    isEnd,
     playerFromChar,
     pieceFromChar,
     playerToInt,
@@ -287,6 +288,7 @@ generateSteps b activePl canPullPush =
             where
                 cStep = Step pie activePl pos
 
+-- | Find in array of pieces which piece is on given position
 -- | second argument: only one bit number
 findPiece :: Array Piece Int64 -> Int64 -> Piece
 findPiece a p | a ! Rabbit   .&. p /= 0 = Rabbit
@@ -296,6 +298,16 @@ findPiece a p | a ! Rabbit   .&. p /= 0 = Rabbit
               | a ! Camel    .&. p /= 0 = Camel
               | a ! Elephant .&. p /= 0 = Elephant
 findPiece _ _ = error "Inner error in findPiece"
+
+isEnd :: Board -> Bool
+isEnd b = bitCount gr == 0 || bitCount sr == 0
+       || bitCount ((gr .&. upp) .|. (sr .&. btm)) /= 0
+    where
+        fig = figures b
+        gr = fig ! Gold ! Rabbit
+        sr = fig ! Silver ! Rabbit
+        upp = 0xff00000000000000 :: Int64
+        btm = 0x00000000000000ff :: Int64
 
 pieceFromChar :: Char -> Piece
 pieceFromChar c = case toLower c of
