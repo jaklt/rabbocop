@@ -1,6 +1,19 @@
 NAME = rabbocop
 
-SRC_Hs = BitRepresentation.hs MyBits.hs BitEval.hs MTDf.hs Hash.hs AlphaBeta.hs MCTS.hs MonteCarloEval.hs HaskellHash.hs IterativeAB.hs Helpers.hs JudyHash.hs
+SRC_Hs = \
+	AlphaBeta.hs \
+	BitEval.hs \
+	BitRepresentation.hs \
+	Hash.hs \
+	HaskellHash.hs \
+	Helpers.hs \
+	IterativeAB.hs \
+	JudyHash.hs \
+	MCTS.hs \
+	MonteCarloEval.hs \
+	MTDf.hs \
+	MyBits.hs \
+
 LINK_C = clib.c eval.c
 LINK_H = clib.h
 STATIC_EVAL_TABLES = data/staticeval_g.c data/staticeval_s.c
@@ -9,9 +22,18 @@ LINK_O = ${LINK_C:.c=.o}
 SRC = ${SRC_Hs} ${LINK_C} ${LINK_H}
 
 HC = ghc
-HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap -threaded # -prof -fforce-recomp -auto-all # -fhpc -funbox-strict-fields
+HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap -threaded
+#        -fhpc -funbox-strict-fields
 CC = gcc
 CFLAGS = -O2 -std=c99 -Wall -pedantic
+
+ifdef PROF
+	HFLAGS += -prof -fforce-recomp -auto-all
+endif
+
+ifdef JUDY
+	HFLAGS += -DJUDY
+endif
 
 all: Main
 

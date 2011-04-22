@@ -36,13 +36,14 @@ testTiming = do
         killThread thread
         -- -}
         {-
-        tt <- newTT 236250
-        best <- alphaBeta testBoard' tt [] (-iNFINITY, iNFINITY) 9 0 Gold
+        tt <- newTT 200
+        best <- alphaBeta testBoard' tt [] (-iNFINITY, iNFINITY) 7 0 pl
         print best
         -- -}
         putStrLn $ displayBoard testBoard' True
     where
-        testBoard' = parseFlatBoard Gold
+        pl = Silver
+        testBoard' = parseFlatBoard pl
                         $ "[        "
                         ++ "     r  "
                         ++ "  x  x  "
@@ -52,10 +53,6 @@ testTiming = do
                         ++ "  R     "
                         ++ "        ]"
 
-
-{-
-
--}
 
 {- -------------------------------------------------------
  - Testing MCTS
@@ -119,7 +116,7 @@ main = do
     putStrLn $ "- testMyBits: " ++ show testMyBits
     putStrLn $ "- testMakeMove: " ++ show (testBoard3 == testBoard4)
 
-    -- testPositions
+    testPositions
     testEval
     -- testTiming
     -- testMCTS

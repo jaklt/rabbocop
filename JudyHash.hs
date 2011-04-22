@@ -7,7 +7,7 @@ import Foreign.StablePtr
 
 -------------------------------------------------------------------------
 --  Current implementation of this library is not useful (too slow),   --
---  JudyHash uses less memory with (about half)                        --
+--  JudyHash uses less memory (about half)                        --
 -------------------------------------------------------------------------
 
 -- From Judy documentation:
