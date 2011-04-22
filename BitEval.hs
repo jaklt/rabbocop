@@ -3,10 +3,11 @@ module BitEval (
     eval,
     evalImmobilised,
     forbidBoard,
+    isForbidden,
     iNFINITY
 ) where
 
-import BitRepresentation (Board(..), Player(..), Piece(..), playerToInt, (<#>))
+import BitRepresentation
 import Data.Array ((!))
 import Data.Int (Int64)
 
@@ -16,6 +17,7 @@ type CBoardFunction a = Int64 -> Int64 -> Int64 -> Int64 -> Int64 -> Int64
 
 foreign import ccall "clib.h eval"           c_eval :: CBoardFunction Int
 foreign import ccall "clib.h forbid_board" c_forbid :: CBoardFunction ()
+foreign import ccall "clib.h is_forbidden" c_is_forbidden :: CBoardFunction Bool
 
 
 iNFINITY :: Num a => a
@@ -33,6 +35,12 @@ evalImmobilised b pl = do
 
 forbidBoard :: Board -> IO ()
 forbidBoard b = boardAsCParameter c_forbid b (mySide b)
+
+isForbidden :: Board -> MovePhase -> IO Bool
+isForbidden b (pl,0) | pl == mySide b = return False
+                     | otherwise = boardAsCParameter c_is_forbidden b pl
+isForbidden _ _ = return False
+
 
 boardAsCParameter :: CBoardFunction a -> Board -> Player -> IO a
 boardAsCParameter cFunction b player =

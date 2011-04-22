@@ -13,16 +13,6 @@ static int weight_table[6] = {
     1600 /* elephant */
 };
 
-/*
- * In order not to repeat position, this is forbidden board setup
- * and active player.
- */
-uint64_t forb_b[2][6] = {
-    {0, 0, 0, 0, 0, 0}, /* Golds   position */
-    {0, 0, 0, 0, 0, 0}  /* Silvers position */
-};
-int forb_pl = -1;
-
 #define INFINITY 100000
 
 #define TRAPS        0x0000240000240000LLU
@@ -121,19 +111,6 @@ int eval(BOARD_AS_PARAMETER)
         if ((gr &  UPPER_SIDE) || !sr) return  INFINITY;
     }
 
-    /* prevent repetition */
-    if (forb_pl == player
-        && forb_b[0][0] == figs[0][0] && forb_b[0][1] == figs[0][1]
-        && forb_b[0][2] == figs[0][2] && forb_b[0][3] == figs[0][3]
-        && forb_b[0][4] == figs[0][4] && forb_b[0][5] == figs[0][5]
-
-        && forb_b[1][0] == figs[1][0] && forb_b[1][1] == figs[1][1]
-        && forb_b[1][2] == figs[1][2] && forb_b[1][3] == figs[1][3]
-        && forb_b[1][4] == figs[1][4] && forb_b[1][5] == figs[1][5])
-    {
-        return INFINITY * (player == GOLD ? -2 : 2);
-    }
-
     /* Material and position */
     sum += material_and_position_g(gr,gc,gd,gh,gm,ge, RABBIT_WEIGHT(gr))
          - material_and_position_s(sr,sc,sd,sh,sm,se, RABBIT_WEIGHT(sr));
@@ -192,15 +169,4 @@ int eval(BOARD_AS_PARAMETER)
     }
 
     return sum;
-}
-
-void forbid_board(BOARD_AS_PARAMETER)
-{
-    forb_b[0][0] = gr; forb_b[0][1] = gc; forb_b[0][2] = gd;
-    forb_b[0][3] = gh; forb_b[0][4] = gm; forb_b[0][5] = ge;
-
-    forb_b[1][0] = sr; forb_b[1][1] = sc; forb_b[1][2] = sd;
-    forb_b[1][3] = sh; forb_b[1][4] = sm; forb_b[1][5] = se;
-
-    forb_pl = player;
 }

@@ -138,6 +138,37 @@ int immobilised(uint64_t pl_pieces, uint64_t op_pieces, uint64_t tested)
     return ((pl_pieces & adjecent_pos) == 0) && (op_pieces & adjecent_pos);
 }
 
+
+/*
+ * In order not to repeat positions, this is forbidden board setup.
+ */
+uint64_t forb_b[2][6] = {
+    {0, 0, 0, 0, 0, 0}, /* Golds   position */
+    {0, 0, 0, 0, 0, 0}  /* Silvers position */
+};
+
+void forbid_board(BOARD_AS_PARAMETER)
+{
+    forb_b[0][0] = gr; forb_b[0][1] = gc; forb_b[0][2] = gd;
+    forb_b[0][3] = gh; forb_b[0][4] = gm; forb_b[0][5] = ge;
+
+    forb_b[1][0] = sr; forb_b[1][1] = sc; forb_b[1][2] = sd;
+    forb_b[1][3] = sh; forb_b[1][4] = sm; forb_b[1][5] = se;
+}
+
+int is_forbidden(BOARD_AS_PARAMETER)
+{
+    /* prevent repetition */
+    return ( forb_b[0][0] == gr && forb_b[0][1] == gc
+          && forb_b[0][2] == gd && forb_b[0][3] == gh
+          && forb_b[0][4] == gm && forb_b[0][5] == ge
+
+          && forb_b[1][0] == sr && forb_b[1][1] == sc
+          && forb_b[1][2] == sd && forb_b[1][3] == sh
+          && forb_b[1][4] == sm && forb_b[1][5] == se);
+}
+
+
 extern void init_eval();
 
 void __attribute((constructor)) init()

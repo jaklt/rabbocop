@@ -46,8 +46,10 @@ alphaBeta' !board tt !pv aB@(!alpha, !beta) !remDepth mp@(!pl, !stepCount) = do
             else
                 return (aB, Nothing)
         let newAB = (max alpha al', min beta bet')
+        forbidden <- isForbidden board mp
 
         case maybeBest of
+            _ | forbidden -> return ([], -iNFINITY) -- to omit repetitions
             Just bestResult -> return bestResult
             Nothing -> do
                 res <- if remDepth <= 0 || isEnd board

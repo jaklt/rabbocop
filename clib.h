@@ -33,5 +33,6 @@ void init();
 
 int          eval(BOARD_AS_PARAMETER);
 void forbid_board(BOARD_AS_PARAMETER);
+int  is_forbidden(BOARD_AS_PARAMETER);
 
 #endif
