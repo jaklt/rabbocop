@@ -16,11 +16,17 @@ SRC_Hs = \
 	MCTS.hs \
 	MTDf.hs \
 
-LINK_C = libs/basic.c libs/Bits/bits.c libs/Eval/eval.c
+LINK_C = libs/basic.c libs/Bits/bits.c
 LINK_H = libs/clib.h
 STATIC_EVAL_TABLES = data/staticeval_g.c data/staticeval_s.c
 
+ifeq (${EVAL},fairy)
+	LINK_C += libs/Eval/eval-fairy.c
+else
+	LINK_C += libs/Eval/eval.c
+endif
 LINK_O = ${LINK_C:.c=.o}
+
 SRC = ${SRC_Hs} ${LINK_C} ${LINK_H}
 
 HC = ghc
