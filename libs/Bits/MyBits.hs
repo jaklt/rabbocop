@@ -1,5 +1,5 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
-module MyBits (bitIndex, bitCount, rightMostBit, bits) where
+module Bits.MyBits (bitIndex, bitCount, rightMostBit, bits) where
 
 import Data.Bits ((.&.))
 import Data.Int  (Int64)

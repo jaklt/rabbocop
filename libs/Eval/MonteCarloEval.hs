@@ -1,7 +1,7 @@
-module MonteCarloEval (getValueByMC) where
+module Eval.MonteCarloEval (getValueByMC) where
 
-import BitRepresentation
-import BitEval
+import Bits.BitRepresentation
+import Eval.BitEval
 import System.Random
 import Control.Applicative ((<$>))
 

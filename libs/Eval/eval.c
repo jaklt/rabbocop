@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "clib.h"
+#include "../clib.h"
 
 long int random(void);
 
@@ -65,11 +65,11 @@ void init_eval()
     }
 
 BEGIN_material_and_position(g)
-    #include "data/staticeval_g.c"
+    #include "../../data/staticeval_g.c"
 END_material_and_position
 
 BEGIN_material_and_position(s)
-    #include "data/staticeval_s.c"
+    #include "../../data/staticeval_s.c"
 END_material_and_position
 
 

@@ -9,8 +9,8 @@ import Data.Array ((!))
 import System.IO (hFlush, stdout)
 import System.Mem (performGC)
 
-import BitEval (forbidBoard)
-import BitRepresentation
+import Eval.BitEval (forbidBoard)
+import Bits.BitRepresentation
 import Helpers
 
 type SearchEngine = Board -> MVar (DMove, Int) -> IO ()

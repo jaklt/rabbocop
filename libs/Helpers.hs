@@ -5,7 +5,7 @@ module Helpers (
     showHeader
 ) where
 
-import BitRepresentation
+import Bits.BitRepresentation
 
 ltrim :: String -> String
 ltrim = dropWhile (== ' ')

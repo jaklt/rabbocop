@@ -1,5 +1,5 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
-module BitEval (
+module Eval.BitEval (
     eval,
     evalImmobilised,
     forbidBoard,
@@ -7,7 +7,7 @@ module BitEval (
     iNFINITY
 ) where
 
-import BitRepresentation
+import Bits.BitRepresentation
 import Data.Array ((!))
 import Data.Int (Int64)
 

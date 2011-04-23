@@ -14,9 +14,9 @@ module Hash
 import Data.Int (Int32)
 
 #ifdef JUDY
-#include "JudyHash.hs"
+#include "Hash/JudyHash.hs"
 #else
-#include "HaskellHash.hs"
+#include "Hash/HaskellHash.hs"
 #endif
 
 data TTable e o i

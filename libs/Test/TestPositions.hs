@@ -1,4 +1,4 @@
-module TestPositions
+module Test.TestPositions
     ( testPositions
     , testEval
     ) where
@@ -7,8 +7,8 @@ import Control.Concurrent
 import Control.Applicative
 import Control.Monad
 
-import BitRepresentation
-import BitEval
+import Bits.BitRepresentation
+import Eval.BitEval
 import IterativeAB
 import Helpers
 import MCTS

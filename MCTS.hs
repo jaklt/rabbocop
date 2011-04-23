@@ -15,9 +15,9 @@ module MCTS (
 #endif
 
 import Control.Concurrent
-import BitRepresentation
-import BitEval
-import MonteCarloEval
+import Bits.BitRepresentation
+import Eval.BitEval
+import Eval.MonteCarloEval
 
 
 #ifdef ENGINE

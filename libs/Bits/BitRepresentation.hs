@@ -1,5 +1,5 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
-module BitRepresentation (
+module Bits.BitRepresentation (
     -- * Basic types
     Player(..),
     Piece(..),
@@ -45,7 +45,7 @@ import Data.Array
 import Data.Bits ((.&.), (.|.), xor, complement, bit)
 import Data.Char (digitToInt, isUpper, toLower)
 import Data.Int (Int64)
-import MyBits
+import Bits.MyBits
 
 foreign import ccall "clib.h hash_piece" c_hashPiece :: Int -> Int -> Int
                                                      -> Int64

@@ -8,8 +8,8 @@ module IterativeAB (newSearch) where
 #endif
 
 import AlphaBeta
-import BitRepresentation (Board(..), DMove)
-import BitEval (iNFINITY)
+import Bits.BitRepresentation (Board(..), DMove)
+import Eval.BitEval (iNFINITY)
 
 import Control.Applicative ((<$>))
 import Control.Concurrent (MVar, swapMVar)

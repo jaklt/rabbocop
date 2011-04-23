@@ -5,15 +5,15 @@ import Control.Concurrent
 import Prelude
 
 import AlphaBeta
-import BitEval
-import BitRepresentation
+import Eval.BitEval
+import Eval.MonteCarloEval
+import Bits.BitRepresentation
 import MTDf
 import MCTS
 import IterativeAB
 import Helpers
-import MyBits
-import MonteCarloEval
-import TestPositions
+import Bits.MyBits
+import Test.TestPositions
 
 
 testMyBits :: Bool

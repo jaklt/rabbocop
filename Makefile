@@ -2,29 +2,29 @@ NAME = rabbocop
 BINs = IterativeAB MCTS MTDf Test
 
 SRC_Hs = \
-	AEI.hs \
-	AlphaBeta.hs \
-	BitEval.hs \
-	BitRepresentation.hs \
-	Hash.hs \
-	HaskellHash.hs \
-	Helpers.hs \
+	libs/AEI.hs \
+	libs/AlphaBeta.hs \
+	libs/Bits/BitRepresentation.hs \
+	libs/Bits/MyBits.hs \
+	libs/Eval/BitEval.hs \
+	libs/Eval/MonteCarloEval.hs \
+	libs/Hash/HaskellHash.hs \
+	libs/Hash/JudyHash.hs \
+	libs/Hash.hs \
+	libs/Helpers.hs \
 	IterativeAB.hs \
-	JudyHash.hs \
 	MCTS.hs \
-	MonteCarloEval.hs \
 	MTDf.hs \
-	MyBits.hs \
 
-LINK_C = clib.c eval.c
-LINK_H = clib.h
+LINK_C = libs/basic.c libs/Bits/bits.c libs/Eval/eval.c
+LINK_H = libs/clib.h
 STATIC_EVAL_TABLES = data/staticeval_g.c data/staticeval_s.c
 
 LINK_O = ${LINK_C:.c=.o}
 SRC = ${SRC_Hs} ${LINK_C} ${LINK_H}
 
 HC = ghc
-HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap -threaded
+HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap -threaded -ilibs
 #        -fhpc -funbox-strict-fields
 CC = gcc
 CFLAGS = -O2 -std=c99 -Wall -pedantic
@@ -35,6 +35,8 @@ HFLAGS += $(foreach v, $(ENABLED_DEFINES), $(if $($(v)), -D$(v)))
 ifdef PROF
 	HFLAGS += -prof -fforce-recomp -auto-all
 endif
+
+SHELL = /usr/bin/env bash
 
 
 all: IterativeAB MCTS MTDf
@@ -49,7 +51,7 @@ runtest: Test
 
 ${LINK_O}: ${LINK_C} ${LINK_H}
 
-eval.o: ${STATIC_EVAL_TABLES}
+libs/Eval/eval.o: ${STATIC_EVAL_TABLES}
 
 # Prepare part of static evaluation based on considering actual position
 tools/BoardToCode: tools/BoardToCode.hs
@@ -61,8 +63,8 @@ ${STATIC_EVAL_TABLES}: data/staticeval.txt tools/BoardToCode
 
 clean:
 	@echo Cleaning
-	rm -f *.o *.hi *.prof *.tix
-	rm -f tools/*.o tools/*.hi
+	rm -f *.prof *.tix
+	rm -f {,libs/,libs/*/,tools/}{*.o,*.hi}
 	rm -f data/staticeval_g.c
 	rm -f data/staticeval_s.c
 

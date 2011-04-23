@@ -5,8 +5,8 @@ module AlphaBeta
     , newTT
     ) where
 
-import BitRepresentation
-import BitEval
+import Bits.BitRepresentation
+import Eval.BitEval
 import Hash
 import Data.Bits
 import Data.Int (Int64, Int32)
