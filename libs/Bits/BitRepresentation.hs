@@ -33,6 +33,8 @@ module Bits.BitRepresentation (
     makeMove,
     makeStep,
     generateSteps,
+    canMakeStep,
+    canMakeStep2,
 
     -- * Projections
     playerFromChar,
@@ -114,6 +116,7 @@ pieces = [Rabbit .. Elephant]
 
 ---------------------------------------------------------------------
 
+-- | Product of two players. Gold is 1, Silver -1.
 (<#>) :: Num a => Player -> Player -> a
 p1 <#> p2 | p1 == p2  =  1
           | otherwise = -1
@@ -124,6 +127,7 @@ showPiece Silver Camel = 'm'
 showPiece col piece    = (if col == Gold then id else toLower)
                             $ head $ show piece
 
+-- | Second argument is: use noflat format or flat.
 displayBoard :: Board -> Bool -> String
 displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
         , let pp | i .&. whole b ! Gold   /= 0 = g Gold i
@@ -207,6 +211,7 @@ parseStep (p:x:y:o:[]) =
         to   = case o of 'n' -> from+8; 's' -> from-8; 'x' -> -1
                          'w' -> from+1; 'e' -> from-1
                          _   -> error "Invalid move direction"
+parseStep "" = Pass
 parseStep s = error ("Wrong step given: " ++ s)
 
 createBoard :: Player -> [(Player, Piece, Position)] -> Board
@@ -259,7 +264,8 @@ generateSteps b activePl canPullPush =
         op = figures b ! oponentPl
 
         oArr = op  -- oponents array
-        aWhole = whole b ! activePl; oWhole = whole b ! oponentPl
+        aWhole = whole b ! activePl
+        oWhole = whole b ! oponentPl
         allWhole = aWhole .|. oWhole -- all used squares
         empty = complement allWhole
 
@@ -322,6 +328,37 @@ stepsFromPosition pl pie pos =
 adjecent :: Int64 -> Int64
 adjecent = stepsFromPosition Gold Elephant
 {-# INLINE adjecent #-}
+
+-- | Controls if old valid step is valid step in this board position
+canMakeStep :: Board -> Step -> Bool
+canMakeStep = canMakeStep' True
+
+canMakeStep' :: Bool -> Board -> Step -> Bool
+canMakeStep' _ _ Pass = False
+canMakeStep' couldFreeze b (Step pie pl from to) =
+        figures b ! pl ! pie .&. from /= 0
+        && whole b ! Gold   .&. to == 0
+        && whole b ! Silver .&. to == 0
+        && (not couldFreeze || not (isFrozen b pie pl from))
+
+-- | See canMakeStep
+-- Note: it don't check validity of double step, it was valid somewhere else
+canMakeStep2 :: Board -> (Step,Step) -> Bool
+canMakeStep2 _ (Pass,_) = False
+canMakeStep2 b (s, Pass) = canMakeStep b s
+canMakeStep2 b (s1@(Step pie1 pl1 f1 _), Step pie2 pl2 f2 _) =
+        canMakeStep b s1
+        && figures b ! pl2 ! pie2 .&. f2 /= 0
+        && not (isFrozen b pie pl f)
+    where
+        (pie,pl,f) | pie1 > pie2 = (pie1,pl1,f1)
+                   | otherwise   = (pie2,pl2,f2)
+
+isFrozen :: Board -> Piece -> Player -> Int64 -> Bool
+isFrozen b pie pl pos = immobilised (whole b ! pl) opStronger pos
+    where
+        opStronger = foldr (.|.) 0
+                   $ map (figures b ! oponent pl !) $ tail [pie .. Elephant]
 
 ---------------------------------------------------------------------
 

@@ -71,8 +71,7 @@ clean:
 	@echo Cleaning
 	rm -f *.prof *.tix
 	rm -f {,libs/,libs/*/,tools/}{*.o,*.hi}
-	rm -f data/staticeval_g.c
-	rm -f data/staticeval_s.c
+	rm -f ${STATIC_EVAL_TABLES}
 
 # Download and instal GUI
 play: IterativeAB aei-1.1/roundrobin.py arimaa-client/gui.py aei-1.1/roundrobin.cfg

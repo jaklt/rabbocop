@@ -15,6 +15,7 @@ getValueByMC b mp = do
     s <- mapM (randomSimulation mp depth) $ replicate simulations b
     return $ sum s `div` simulations
 -- TODO 1/1+e^{-\lambda x} -> change ints to doubles
+-- near optimal: Plot[1/(1+e^(-0.0003x)), {y, 0,1}, {x, -10000, 10000}]
 
 -- TODO +/- 1 discussion on empty steps
 randomSimulation :: MovePhase -> Int -> Board -> IO Int

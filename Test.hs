@@ -2,6 +2,7 @@ module Main where
 
 import Data.Bits
 import Control.Concurrent
+import Control.Monad
 import Prelude
 
 import AlphaBeta
@@ -16,8 +17,71 @@ import Bits.MyBits
 import Test.TestPositions
 
 
+printBoard :: Board -> IO ()
+printBoard b = putStrLn $ displayBoard b True
+
 testMyBits :: Bool
-testMyBits = and [bitIndex (bit i) == i | i <- [0..63]] -- && bitIndex 222 == -1
+testMyBits = and [bitIndex (bit i) == i | i <- [0..63]]
+
+testSteps :: IO ()
+testSteps = do
+        let cases1 =
+                [ ( "Rd4", ["Rd4n", "Rd5n", "Rd6n"], "Rd7")
+                , ( "Rb3 Ra3 Mf4 dg4 db2 re8"
+                  , ["Rb3e", "db2n"]
+                  , "Ra3 Mf4 dg4 db3 re8")
+                ]
+
+        putStr "- test makeMove"
+        forM_ cases1 (\a@(b,steps,c) -> do
+                        let b1 = parseBoard Gold b
+                        let b2 = fst $ makeMove b1 $ map parseStep steps
+
+                        when (b2 /= parseBoard Gold c)
+                            (putStrLn $ ", " ++ show a ++ " failed")
+                    )
+        putStrLn " - DONE"
+
+        let cases2 =
+                [ ("Rd4", ("Rd4n", ""), True)
+                , ("Ra1 ra2", ("Ra1n", ""), False)
+                , ("", ("Rb2n", ""), False)
+                , ("Rd4 Re3 dd3", ("dd3n", "Re3w"), False)
+                , ("Rd4 Rd3 de3", ("Rd3n", "de3w"), False)
+                , ("Ra3 Rb3 Mf4 dg4 db2 re8" , ("Rb3e", "db2n"), True)
+                , ("Ra3 Rb3 Mf4 dg4 db2 re8" , ("db2e", "Rb3s"), True)
+                , ("Ra1 cb1", ("Ra1n", ""), False) -- frozen
+                , ("Ra1 cb1 Db2", ("Ra1n", "cb1w"), False) -- frozen
+                , ("Ra1 cb1 Db2", ("cb1e", "Ra1e"), False)
+                ]
+
+        putStr "- test canMakeStep"
+        forM_ cases2 (\a@(b,(s1,s2), bo) -> do
+                        let b' = parseBoard Gold b
+                        unless (canMakeStep2 b' (parseStep s1,parseStep s2)
+                                == bo)
+                            (putStrLn (", " ++ show (s1,s2,bo) ++ " failed")
+                             >> printBoard b')
+                    )
+        putStrLn " - DONE"
+
+        let cases3 =
+                [ ("Ra1", [("Ra1n",""), ("Ra1e","")], Gold, True)
+                ]
+
+        putStr "- test generateSteps"
+        forM_ cases3 (\(b, ss, pl, bo) -> do
+                        let b' = parseBoard Gold b
+                        let generated = generateSteps b' pl bo
+                        let expected =
+                                map (\(a,b) -> (parseStep a, parseStep b)) ss
+
+                        unless (generated == expected)
+                            (putStrLn (", " ++ show ss ++ " failed")
+                             >> printBoard b')
+                    )
+        putStrLn " - DONE (don't work)"
+
 
 {- -------------------------------------------------------
  - Testing Timing
@@ -40,7 +104,7 @@ testTiming = do
         best <- alphaBeta testBoard' tt [] (-iNFINITY, iNFINITY) 7 0 pl
         print best
         -- -}
-        putStrLn $ displayBoard testBoard' True
+        -- printBoard testBoard'
     where
         pl = Silver
         testBoard' = parseFlatBoard pl
@@ -101,7 +165,7 @@ testMCTS = do
         let (bst,_) = descendByUCB1 mt3
         print $ step bst
 
-        putStrLn $ displayBoard b True
+        printBoard b
 
 {- ------------------------------------------------------- -}
 
@@ -113,13 +177,14 @@ showMove (ss,a) = "( " ++ foldr (\c b -> show c ++ " " ++ b) "" ss' ++ ", " ++ s
 
 main :: IO ()
 main = do
-    putStrLn $ "- testMyBits: " ++ show testMyBits
-    putStrLn $ "- testMakeMove: " ++ show (testBoard3 == testBoard4)
+    putStrLn $ "- testMyBits - " ++ show testMyBits
+    testSteps
+    testEval
 
     testPositions
-    testEval
     -- testTiming
     -- testMCTS
+
 
     {-
     forM_ [1 .. 20 :: Int] $ \_ ->
@@ -134,12 +199,7 @@ startSilver, startGold :: String
 startSilver = "ra8 rb8 rc8 rd8 re8 rf8 rg8 rh8 ha7 db7 cc7 ed7 me7 cf7 dg7 hh7 "
 startGold   = "Ra1 Rb1 Rc1 Rd1 Re1 Rf1 Rg1 Rh1 Ha2 Db2 Cc2 Md2 Ee2 Cf2 Dg2 Hh2 "
 
-testBoard, testBoard2, testBoard3, testBoard4, testBoard5
-    :: Board
+testBoard, testBoard2, testBoard5 :: Board
 testBoard  = parseBoard Gold $ startSilver ++ startGold
 testBoard2 = parseBoard Gold "Rb3 Ra3 Mf4 dg4 db2 re8"
-testBoard3 = fst $ makeMove testBoard2
-                             [ Step Rabbit Gold (bit 22) (bit 21)
-                             , Step Dog Silver (bit 14) (bit 22)]
-testBoard4 = parseBoard Gold "Ra3 Mf4 dg4 db3 re8"
 testBoard5 = parseBoard Gold "Rc1 Rf1 rf8"
