@@ -40,7 +40,7 @@ testSteps = do
                         when (b2 /= parseBoard Gold c)
                             (putStrLn $ ", " ++ show a ++ " failed")
                     )
-        putStrLn " - DONE"
+        putStrLn "\t- DONE"
 
         let cases2 =
                 [ ("Rd4", ("Rd4n", ""), True)
@@ -52,21 +52,35 @@ testSteps = do
                 , ("Ra3 Rb3 Mf4 dg4 db2 re8" , ("db2e", "Rb3s"), True)
                 , ("Ra1 cb1", ("Ra1n", ""), False) -- frozen
                 , ("Ra1 cb1 Db2", ("Ra1n", "cb1w"), False) -- frozen
-                , ("Ra1 cb1 Db2", ("cb1e", "Ra1e"), False)
+                , ("Ra1 cb1 Db2", ("cb1e", "Ra1e"), False) -- frozen
                 ]
 
         putStr "- test canMakeStep"
-        forM_ cases2 (\a@(b,(s1,s2), bo) -> do
+        forM_ cases2 (\(b,(s1,s2), bo) -> do
                         let b' = parseBoard Gold b
                         unless (canMakeStep2 b' (parseStep s1,parseStep s2)
                                 == bo)
                             (putStrLn (", " ++ show (s1,s2,bo) ++ " failed")
                              >> printBoard b')
                     )
-        putStrLn " - DONE"
+        putStrLn "\t- DONE"
 
         let cases3 =
-                [ ("Ra1", [("Ra1n",""), ("Ra1e","")], Gold, True)
+                [ ( "Ra1", [("Ra1n",""), ("Ra1e","")], Gold, True)
+                , ( "Rd5 ce5", [], Gold, True)
+                , ( "Rd5 ce5"
+                  , [("ce5n", ""), ("ce5e", ""), ("ce5s","")]
+                  , Silver, False)
+                , ( "Rd5 ce5"
+                  , [ ("ce5n", ""), ("ce5e", ""), ("ce5s","")
+                    , ("ce5n", "Rd5e"), ("ce5e", "Rd5e"), ("ce5s", "Rd5e")
+                    , ("Rd5n", "ce5w"), ("Rd5s", "ce5w"), ("Rd5w", "ce5w")]
+                  , Silver, True)
+                , ( "Ca1 cb1", [("Ca1n", "")], Gold, True)
+                , ( "Ca1 cb1", [("Ca1n", "")], Gold, False)
+                , ( "Ca1 ra2 cb1", [("ra2n", "Ca1n"), ("ra2e", "Ca1n")]
+                  , Gold, True)
+                , ( "Ca1 ca2 cb1", [], Gold, True)
                 ]
 
         putStr "- test generateSteps"
@@ -74,13 +88,14 @@ testSteps = do
                         let b' = parseBoard Gold b
                         let generated = generateSteps b' pl bo
                         let expected =
-                                map (\(a,b) -> (parseStep a, parseStep b)) ss
+                                map (\(j,k) -> (parseStep j, parseStep k)) ss
+                        let lns = length expected == length generated
 
-                        unless (generated == expected)
-                            (putStrLn (", " ++ show ss ++ " failed")
+                        unless (and $ map (`elem` generated) expected ++ [lns])
+                            (putStrLn (", " ++ show (ss,pl,bo) ++ " failed")
                              >> printBoard b')
                     )
-        putStrLn " - DONE (don't work)"
+        putStrLn "\t- DONE"
 
 
 {- -------------------------------------------------------
