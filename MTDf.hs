@@ -28,7 +28,7 @@ mtdf :: Board        -- ^ start position
      -> Int          -- ^ upper bound
      -> IO (DMove, Int) -- ^ IO (steps to go, best value)
 mtdf !b tt (!best, bestValue) depth !lb !ub = do
-        best'@(_, bestV') <- alphaBeta b tt best (beta - 1, beta) depth 0 pl
+        best'@(_, bestV') <- alphaBeta b tt best (beta - 1, beta) depth pl
 
         let (lb', ub') | bestV' < beta = (lb, bestV')
                        | otherwise     = (bestV', ub)

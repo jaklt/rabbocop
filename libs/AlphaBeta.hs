@@ -8,10 +8,13 @@ module AlphaBeta
 import Bits.BitRepresentation
 import Eval.BitEval
 import Hash
+import Control.Applicative ((<$>))
 import Data.Bits
 import Data.Int (Int64, Int32)
 
 type ABTTable = TTable (DMove, Int, Int) HObject (Int64, Int, MovePhase)
+type KMoves = (DMove, DMove) -- ^ Killer moves
+-- TODO make suggestions more general
 
 
 alphaBeta :: Board
@@ -19,22 +22,21 @@ alphaBeta :: Board
           -> DMove       -- ^ best PV so far
           -> (Int, Int)  -- ^ (alpha, beta)
           -> Int         -- ^ maximal depth
-          -> Int         -- ^ actual depth
           -> Player      -- ^ actual player
           -> IO (DMove, Int) -- ^ (steps to go, best value)
-alphaBeta board tt pv (alpha, beta) maxDepth actualDepth pl =
-        alphaBeta' board tt pv (alpha, beta) remDepth (pl, actualDepth `mod` 4)
+alphaBeta board tt pv (alpha, beta) maxDepth pl =
+        proj <$> alphaBeta' board tt (pv, emptyKM) (alpha, beta) maxDepth (pl, 0)
     where
-        remDepth = maxDepth - actualDepth
+        proj (a,b,_) = (a,b)
 
 alphaBeta' :: Board
            -> ABTTable
-           -> DMove       -- ^ best PV so far
-           -> (Int, Int)  -- ^ (alpha, beta)
-           -> Int         -- ^ depth remaining
+           -> (DMove, KMoves) -- ^ suggestions: best PV so far, killer moves
+           -> (Int, Int)      -- ^ (alpha, beta)
+           -> Int             -- ^ depth remaining
            -> MovePhase
-           -> IO (DMove, Int) -- ^ (steps to go, best value)
-alphaBeta' !board tt !pv aB@(!alpha, !beta) !remDepth mp@(!pl, !stepCount) = do
+           -> IO (DMove, Int, KMoves) -- ^ (steps to go, best value, killers)
+alphaBeta' !board tt !sugg aB@(!alpha, !beta) !remDepth mp@(!pl, !stepCount) = do
 
         inTranspositionTable <- findHash tt ((hash board),remDepth,mp)
         (ttBounds@(al', bet'), maybeBest) <- if inTranspositionTable
@@ -49,54 +51,71 @@ alphaBeta' !board tt !pv aB@(!alpha, !beta) !remDepth mp@(!pl, !stepCount) = do
         forbidden <- isForbidden board mp
 
         case maybeBest of
-            _ | forbidden -> return ([], -iNFINITY) -- to omit repetitions
+            -- to omit repetitions
+            _ | forbidden -> return ([], -iNFINITY, emptyKM)
+
             Just bestResult -> return bestResult
             Nothing -> do
                 res <- if remDepth <= 0 || isEnd board
                             then do
                                 e <- eval board pl
-                                return ([], e * Gold <#> mySide board)
-                            else findBest newAB board tt tailPV
-                                          remDepth mp ([], inf) steps
+                                return ([], e * Gold <#> mySide board, [])
+                            else findBest board tt (tailPV, tailKM) newAB
+                                          remDepth mp ([], negInf) steps
                 addHash tt ((hash board),remDepth,mp)
                         (changeTTBounds res ttBounds newAB)
 
-                return res
+                return $ repairKM (snd sugg) res
     where
-        inf = -iNFINITY * mySide board <#> pl
-        (headPV,tailPV) = case pv of (h:t) -> ([h],t); _ -> ([],[])
-        steps = headPV ++ generateSteps board pl (stepCount < 3)
+        negInf = -iNFINITY * mySide board <#> pl
+        (headPV,tailPV) = case fst sugg of (h:t) -> ([h],t); _ -> ([],[])
+        (headKM,tailKM) = case snd sugg of
+                            ([],[])      -> ([],    emptyKM)
+                            (a:as, [])   -> ([a],   (as,[]))
+                            (a:as, b:bs) -> ([a,b], (as,bs))
+                            _            -> ([],    emptyKM)
+        headKM' = filter (canMakeStep2 board) headKM
+        steps = headPV ++ headKM' ++ generateSteps board pl (stepCount < 3)
 
-        maybeResult low upp mv | low >= beta  = Just (mv, low)
-                               | upp <= alpha = Just (mv, upp)
+        maybeResult low upp mv | low >= beta  = Just (mv, low, emptyKM)
+                               | upp <= alpha = Just (mv, upp, emptyKM)
                                | otherwise    = Nothing
 
-changeTTBounds :: (DMove, Int) -- recursively computed or eval result
+emptyKM :: KMoves
+emptyKM = ([],[])
+
+repairKM :: KMoves -> (DMove, Int, DMove) -> (DMove, Int, KMoves)
+repairKM (km1,km2) (dm,sc,km') = (dm,sc,kms)
+    where
+        kms | km' == [] || km1 == km' = (km1,km2)
+            | otherwise               = (km',km1)
+
+changeTTBounds :: (DMove, Int, DMove) -- recursively computed or eval result
                -> (Int, Int)   -- old bounds
                -> (Int, Int)   -- used alphaBeta window
                -> (DMove, Int, Int)
-changeTTBounds (mv, score) (ttAlpha, ttBeta) (alpha,beta)
+changeTTBounds (mv, score, _) (ttAlpha, ttBeta) (alpha,beta)
         | score <= alpha = (mv, ttAlpha, score)  -- change upper bound in TT
+        | score >= beta  = (mv, score,  ttBeta)  -- change lower bound in TT
         | alpha < score && score < beta = (mv, score, score)
-        | score >= beta = (mv, score, ttBeta)  -- change lower bound in TT
         | otherwise = (mv, ttAlpha, ttBeta)
 
 
-findBest :: (Int, Int)   -- ^ Alpha,Beta
-         -> Board
+findBest :: Board
          -> ABTTable
-         -> DMove        -- ^ Principal variation
+         -> (DMove, KMoves) -- ^ Principal variation, Killer moves
+         -> (Int, Int)   -- ^ Alpha,Beta
          -> Int          -- ^ remaining depth
          -> MovePhase
          -> (DMove, Int)
          -> DMove        -- ^ next steps to try
-         -> IO (DMove, Int)
-findBest _ _ _ _ _ _ bestResult [] = return bestResult
-findBest bounds@(!a,!b) !board tt !pv !remDepth mp@(!pl,_)
+         -> IO (DMove, Int, DMove) -- ^ (PV, score, killer move)
+findBest _ _ _ _ _ _ bestResult [] = return $ makeTriple bestResult []
+findBest !board tt !sugg bounds@(!a,!b) !remDepth mp@(!pl,_)
              best0@(!_, !bestValue) ((!s1,!s2):ss)
     = do
-        (!childPV, !childValue) <-
-            alphaBeta' board' tt pv bounds remDepth' mp'
+        (!childPV, !childValue, childKM) <-
+            alphaBeta' board' tt sugg bounds remDepth' mp'
 
         let bestValue' = cmp bestValue childValue
         let !bounds' | isMaxNode = (max a childValue, b)
@@ -104,9 +123,10 @@ findBest bounds@(!a,!b) !board tt !pv !remDepth mp@(!pl,_)
         let !best' | bestValue /= bestValue' = ((s1,s2):childPV, childValue)
                    | otherwise               = best0
 
-        if boundsOK bounds' then findBest bounds' board tt []
+        if boundsOK bounds' then findBest board tt ([],childKM) bounds'
                                           remDepth mp best' ss
-                            else return best' -- Cut off
+                            -- Cut off
+                            else return $ makeTriple best' ((s1,s2):fst childKM)
     where
         mp' = stepInMove mp s2
         remDepth' = remDepth - if s2 == Pass then 1 else 2
@@ -116,13 +136,16 @@ findBest bounds@(!a,!b) !board tt !pv !remDepth mp@(!pl,_)
         isMaxNode = mySide board == pl
         cmp = if isMaxNode then max else min
 
+makeTriple :: (a,b) -> c -> (a,b,c)
+makeTriple (a,b) c = (a,b,c)
 
-{-
+
+{-|
  - Implementing object for TTable, where we match type parameters as:
  -  e ~ (DMove, Int, Int) { for (PV, lower bound, upper bound) }
  -  o ~ HObject
  -  i ~ (Int64, Int, MovePhase)  { for hash, depth, move phase }
- -}
+|-}
 data HObject = HO { hash0 :: Int64
                   , best  :: (DMove, Int, Int)
                   , depth :: Int

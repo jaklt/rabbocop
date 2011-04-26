@@ -116,7 +116,7 @@ testTiming = do
         -- -}
         {-
         tt <- newTT 200
-        best <- alphaBeta testBoard' tt [] (-iNFINITY, iNFINITY) 7 0 pl
+        best <- alphaBeta testBoard' tt [] (-iNFINITY, iNFINITY) 7 pl
         print best
         -- -}
         -- printBoard testBoard'
@@ -192,7 +192,7 @@ showMove (ss,a) = "( " ++ foldr (\c b -> show c ++ " " ++ b) "" ss' ++ ", " ++ s
 
 main :: IO ()
 main = do
-    putStrLn $ "- testMyBits - " ++ show testMyBits
+    putStrLn $ "- testMyBits\t- " ++ show testMyBits
     testSteps
     testEval
 

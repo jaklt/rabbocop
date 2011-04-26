@@ -31,7 +31,7 @@ iterative tt board mvar = search' 1 ([], 0)
 #endif
             hFlush stdout
             m <- alphaBeta board tt (fst best) (-iNFINITY, iNFINITY)
-                           depth 0 (mySide board)
+                           depth (mySide board)
             _ <- m `seq` swapMVar mvar m
             search' (depth+1) m
 
