@@ -55,9 +55,10 @@ $(BINs): % : %.hs ${SRC} ${LINK_O}
 runtest: Test
 	time -p ./Test # ${RUN_PARAMS}
 
-${LINK_O}: ${LINK_C} ${LINK_H}
-
+# Additional dependencies
+Test: libs/Test/TestPositions.hs
 libs/Eval/eval.o: ${STATIC_EVAL_TABLES}
+${LINK_O}: ${LINK_C} ${LINK_H}
 
 # Prepare part of static evaluation based on considering actual position
 tools/BoardToCode: tools/BoardToCode.hs

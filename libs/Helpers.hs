@@ -25,7 +25,9 @@ justOneMove b pv = snd $ makeMove b $ justOneMove' pv 4
         justOneMove' (s:ss) n
             | n <= 0 = []
             | otherwise = case s of
-                 (s1, Pass) -> s1 : justOneMove' ss (n-1)
+                 (s1@(Step _ pl1 _ _), Pass)
+                    | pl1 == pl -> s1 : justOneMove' ss (n-1)
+                    | otherwise -> []
                  (s1@(Step pie1 pl1 _ _), s2@(Step pie2 _ _ _)) ->
                     if (pl1 == pl && pie1 > pie2) || (pl1 /= pl && pie1 < pie2)
                         then [s1,s2] ++ justOneMove' ss (n-2)
