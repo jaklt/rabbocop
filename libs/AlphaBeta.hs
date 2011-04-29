@@ -8,7 +8,7 @@ module AlphaBeta
 import Bits.BitRepresentation
 import Eval.BitEval
 import Hash
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>),(<*>))
 import Data.Bits
 import Data.Int (Int64, Int32)
 
@@ -53,6 +53,7 @@ alphaBeta' !board tt !sugg aB@(!alpha, !beta) !remDepth mp@(!pl, !stepCount) = d
         case maybeBest of
             -- to omit repetitions
             _ | forbidden -> return ([], -iNFINITY, emptyKM)
+            -- TODO +/- if starting aB seach as "oponent (mySide board)"?
 
             Just bestResult -> return bestResult
             Nothing -> do
@@ -74,7 +75,7 @@ alphaBeta' !board tt !sugg aB@(!alpha, !beta) !remDepth mp@(!pl, !stepCount) = d
                             (a:as, [])   -> ([a],   (as,[]))
                             (a:as, b:bs) -> ([a,b], (as,bs))
                             _            -> ([],    emptyKM)
-        headKM' = filter (canMakeStep2 board) headKM
+        headKM' = filter ((&&) <$> canMakeStep2 board <*> stepBy pl) headKM
         steps = headPV ++ headKM' ++ generateSteps board pl (stepCount < 3)
 
         maybeResult low upp mv | low >= beta  = Just (mv, low, emptyKM)

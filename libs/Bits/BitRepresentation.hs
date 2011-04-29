@@ -35,6 +35,7 @@ module Bits.BitRepresentation (
     generateSteps,
     canMakeStep,
     canMakeStep2,
+    stepBy,
 
     -- * Projections
     playerFromChar,
@@ -359,6 +360,11 @@ isFrozen b pie pl pos = immobilised (whole b ! pl) opStronger pos
     where
         opStronger = foldr (.|.) 0
                    $ map (figures b ! oponent pl !) $ tail [pie .. Elephant]
+
+stepBy :: Player -> (Step,Step) -> Bool
+stepBy pl (Step _ pl1 _ _, Pass) = pl == pl1
+stepBy pl (Step pie1 pl1 _ _, Step pie2 pl2 _ _) = pl == pl1 && pie1 > pie2
+                                                || pl == pl2 && pie1 < pie2
 
 ---------------------------------------------------------------------
 
