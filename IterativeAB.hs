@@ -13,7 +13,9 @@ import Eval.BitEval (iNFINITY)
 
 import Control.Applicative ((<$>))
 import Control.Concurrent (MVar, swapMVar)
+#ifdef VERBOSE
 import System.IO (hFlush, stdout)
+#endif
 
 
 newSearch :: Int  -- ^ table size
@@ -28,10 +30,21 @@ iterative tt board mvar = search' 1 ([], 0)
         search' !depth best = do
 #ifdef VERBOSE
             putStrLn $ "info actual " ++ show best
-#endif
             hFlush stdout
+#endif
+#ifdef WINDOW
+            let val = snd best
+            let win = (val-WINDOW, val+WINDOW)
+            n@(_,val') <- alphaBeta board tt (fst best) win depth (mySide board)
+
+            m <- if val' < fst win || snd win < val'
+                    then alphaBeta board tt (fst best) (-iNFINITY, iNFINITY)
+                                   depth (mySide board)
+                    else return n
+#else
             m <- alphaBeta board tt (fst best) (-iNFINITY, iNFINITY)
                            depth (mySide board)
+#endif
             _ <- m `seq` swapMVar mvar m
             search' (depth+1) m
 

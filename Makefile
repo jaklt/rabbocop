@@ -35,8 +35,8 @@ HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap -threaded -ilibs
 CC = gcc
 CFLAGS = -O2 -std=c99 -Wall -pedantic
 
-ENABLED_DEFINES = JUDY VERBOSE
-HFLAGS += $(foreach v, $(ENABLED_DEFINES), $(if $($(v)), -D$(v)))
+ENABLED_DEFINES = JUDY VERBOSE WINDOW
+HFLAGS += $(foreach v, $(ENABLED_DEFINES), $(if $($(v)), -D$(v)=$($(v))))
 
 ifdef PROF
 	HFLAGS += -prof -fforce-recomp -auto-all
