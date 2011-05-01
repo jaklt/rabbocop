@@ -1,9 +1,11 @@
 module Main where
 
 import Data.Bits
+import Data.List
 import Control.Concurrent
 import Control.Monad
 import Prelude
+
 
 import AlphaBeta
 import Eval.BitEval
@@ -119,18 +121,18 @@ testTiming = do
         best <- alphaBeta testBoard' tt [] (-iNFINITY, iNFINITY) 7 pl
         print best
         -- -}
-        -- printBoard testBoard'
+        printBoard testBoard'
     where
-        pl = Silver
+        pl = Gold
         testBoard' = parseFlatBoard pl
-                        $ "[        "
-                        ++ "     r  "
-                        ++ "  x  x  "
-                        ++ "  D     "
-                        ++ "     d  "
-                        ++ "  x  x  "
-                        ++ "  R     "
-                        ++ "        ]"
+                        $ "[r r cr r"
+                        ++ "r    rdr"
+                        ++ " dxEcxh "
+                        ++ "        "
+                        ++ " h e C  "
+                        ++ "HmxR x R"
+                        ++ "RR rCRD "
+                        ++ "RDR    R]"
 
 
 {- -------------------------------------------------------
@@ -144,12 +146,12 @@ instance Show a => Show (CTree a) where
         s i (CT a subtrs) = replicate (4*i) ' ' ++ show a
                           ++ "\n" ++ (concat $ map (s (i+1)) subtrs)
 
-mm2c :: MMTree -> CTree (MovePhase, Int, Int, (Step,Step))
-mm2c mt = CT (movePhase mt, val, num, step mt) subtrees
+mm2c :: MMTree -> CTree (MovePhase, String, Int, (Step,Step))
+mm2c mt = CT (movePhase mt, show val, num, step mt) subtrees
     where
         (val,num,subtrees) = case treeNode mt of
                                 Leaf -> (0,0,[])
-                                tn -> (value tn, number tn, map mm2c $ children tn)
+                                tn -> (value tn, visitCount tn, map mm2c $ children tn)
 
 simpleMMTree :: Board -> MMTree
 simpleMMTree b =
@@ -159,28 +161,51 @@ simpleMMTree b =
        , step = (Pass, Pass)
        }
 
+printChildrens :: MMTree -> IO ()
+printChildrens mt = do
+        putStrLn "-------------------- (showing averages)"
+        forM_ (sortBy (toOrdered) $ children $ treeNode mt) (\ch -> do
+                putStrLn $ show (val ch, num ch)
+                         ++ "  " ++ show (step ch)
+                         ++ "  " ++ show (valueUCB ch (visitCount $ treeNode mt)))
+        putStrLn "--------------------"
+    where
+        toOrdered n1 n2 | (val n1) * fromIntegral (num n2)
+                           - (val n2) * fromIntegral (num n2) < 0 = LT
+                        | otherwise = GT
+        val = value  . treeNode
+        num = visitCount . treeNode
+
+
 testMCTS :: IO ()
 testMCTS = do
-        let b = testBoard5
+        -- let b = testBoard5
         showHeader "starting MonteCarlo test:"
         getValueByMC b (Gold, 0) >>= putStrLn.("MonteCarlo:\t"++).show
         putStrLn $ "iNFINITY:\t" ++ show (iNFINITY :: Int)
 
         showHeader "starting MCTS test:"
-        (mt1,_) <- improveTree $ simpleMMTree b
-        (mt2,_) <- improveTree mt1
-        (mt3,_) <- improveTree mt2
-        (mt4,_) <- improveTree mt3
+        mt' <- foldM (\mt _ -> do
+                (mt1,_) <- improveTree mt
+                let (bst,_) = descendByUCB1 mt1
+                print $ step bst
+                -- print $ mm2c mt1
+                return mt1
+                ) (simpleMMTree b) [1 .. 31 :: Int]
 
-        print $ mm2c mt1
-        print $ mm2c mt2
-        print $ mm2c mt3
-        print $ mm2c mt4
+        printChildrens mt'
 
-        let (bst,_) = descendByUCB1 mt3
+        let (bst,_) = descendByUCB1 mt'
         print $ step bst
+        -- print $ mm2c mt'
+        (mt'',_) <- improveTree mt'
+        print.step.fst.descendByUCB1 $ mt''
+
+        printChildrens mt''
 
         printBoard b
+    where
+        b = parseFlatBoard Silver "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
 
 {- ------------------------------------------------------- -}
 

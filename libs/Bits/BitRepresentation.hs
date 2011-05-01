@@ -365,6 +365,7 @@ stepBy :: Player -> (Step,Step) -> Bool
 stepBy pl (Step _ pl1 _ _, Pass) = pl == pl1
 stepBy pl (Step pie1 pl1 _ _, Step pie2 pl2 _ _) = pl == pl1 && pie1 > pie2
                                                 || pl == pl2 && pie1 < pie2
+stepBy _ _ = False
 
 ---------------------------------------------------------------------
 

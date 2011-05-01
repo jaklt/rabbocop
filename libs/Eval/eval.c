@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include "../clib.h"
 
-long int random(void);
+extern long int random(void);
 
 
 static int weight_table[6] = {

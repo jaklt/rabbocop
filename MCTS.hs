@@ -10,10 +10,12 @@ module MCTS (
     newSearch,
     improveTree,
     descendByUCB1,
+    valueUCB,
     createNode,
 ) where
 #endif
 
+import Control.Applicative ((<$>))
 import Control.Concurrent
 import Bits.BitRepresentation
 import Eval.BitEval
@@ -33,9 +35,9 @@ data MMTree = MT { board     :: !Board
                  } deriving (Show, Eq)
 
 data TreeNode = Leaf
-              | Node { children :: [MMTree] -- ^ possible steps from this
-                     , value    :: !Int     -- ^ actual value of this node
-                     , number   :: !Int     -- ^ visits count
+              | Node { children   :: [MMTree] -- ^ possible steps from this
+                     , value      :: !Double  -- ^ actual value of this node
+                     , visitCount :: !Int
                      } deriving (Show, Eq)
 
 stepCount :: MMTree -> Int
@@ -62,7 +64,7 @@ search b = search' MT { board = b
 search' :: MMTree -> MVar (DMove, Int) -> IO ()
 search' !mt mvar = do
         (mt',score) <- improveTree mt
-        _ <- move `seq` swapMVar mvar (move,score)
+        _ <- move `seq` swapMVar mvar (move,0)
         -- putStrLn $ "info actual " ++ show (move,score)
         search' mt' mvar
     where
@@ -77,30 +79,32 @@ constructMove !mt !n = (s `seq` subTreeMove) `seq` s : subTreeMove
         s = step mt'
         subTreeMove = constructMove mt' (n-1)
 
-improveTree :: MMTree -> IO (MMTree, Int)
+improveTree :: MMTree -> IO (MMTree, Double)
 improveTree mt
     | treeNode mt == Leaf = do
-        val <- getValueByMC (board mt) (movePhase mt)
-        return (createNode mt (val * (player mt <#> Gold)), val)
+        val <- normaliseValue . (* (mySide (board mt) <#> Gold))
+               <$> getValueByMC (board mt) (movePhase mt)
+        return (createNode mt val, val)
 
     -- immobilization
     | rest == [] && movePhase mt == movePhase node = do
-        inf <- evalImmobilised (board mt) (player mt)
+        inf <- normaliseValue
+               <$> evalImmobilised (board mt) (player mt)
         return ( mt { treeNode = Node
                         { value = inf
-                        , number = number root + 1
+                        , visitCount = visitCount root + 1
                         , children = []
                         }
                     }
                , inf)
+    -- TODO test +/-
 
     | otherwise = do
         (nodeNew, improvement) <- improveTree node
-        let improvement' = player mt <#> Gold * improvement
 
         return ( mt { treeNode = Node
-                        { value    = value root + improvement'
-                        , number   = number root + 1
+                        { value    = value root + improvement
+                        , visitCount = visitCount root + 1
                         , children = nodeNew : rest
                         }
                     }
@@ -109,12 +113,12 @@ improveTree mt
         (node, rest) = descendByUCB1 mt
         root = treeNode mt
 
-createNode :: MMTree -> Int -> MMTree
+createNode :: MMTree -> Double -> MMTree
 createNode mt val =
         mt { treeNode =
                 Node { children = map (leafFromStep mt) steps
                      , value = val
-                     , number = 1
+                     , visitCount = 1
                      }
            }
     where
@@ -132,7 +136,7 @@ leafFromStep mt s@(s1,s2) =
 descendByUCB1 :: MMTree -> (MMTree, [MMTree])
 descendByUCB1 mt = case chs of
                     [] -> (mt, []) -- immobilization
-                    _  -> descendByUCB1' chs (number $ treeNode mt)
+                    _  -> descendByUCB1' chs (visitCount $ treeNode mt)
     where
         chs = (children $ treeNode mt)
 
@@ -158,8 +162,11 @@ valueUCB :: MMTree -> Int -> Double
 valueUCB mt count =
         case tn of
             Leaf -> iNFINITY'
-            n@Node { children = [] } -> fromIntegral $ value n
-            _ -> (vl / nb) + sqrt (2 * log cn / nb)
+            n@Node { children = [] } -> value n
+            _ -> (value tn / nb) + 0.01 * sqrt (log cn / nb)
     where
         tn = treeNode mt
-        [vl,nb,cn] = map fromIntegral [value tn, number tn, count]
+        [nb,cn] = map fromIntegral [visitCount tn, count]
+
+normaliseValue :: Int -> Double
+normaliseValue v = 1/(1 + exp (-0.0003 * fromIntegral v))
