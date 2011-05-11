@@ -66,7 +66,7 @@ testSearchFunction newSrch = go positionCases 1 >> putStrLn ""
             (pv, sc) <- takeMVar mvar
             killThread thread
             let move = justOneMove board' pv
-            let (board'', move') = makeMove board' move
+            let (board'', _) = makeMove board' move
 
             putStr $ show i ++ ". test"
             if positive (map show move)
@@ -77,8 +77,9 @@ testSearchFunction newSrch = go positionCases 1 >> putStrLn ""
                     putStrLn $ unlines $ mergeStrings
                                             [ lines $ displayBoard board'  True
                                             , boardSizedSpace
-                                            , lines $ displayBoard board'' True ]
-                    putStrLn $ show (move', sc) ++ "\n"
+                                            , lines $ displayBoard board'' True
+                                            ]
+                    putStrLn $ show (pv, sc) ++ "\n"
             go rest (i+1)
 
 testPositions :: IO ()

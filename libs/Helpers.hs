@@ -2,7 +2,8 @@ module Helpers (
     ltrim,
     firstWord,
     justOneMove,
-    showHeader
+    showHeader,
+    (~=~)
 ) where
 
 import Bits.BitRepresentation
@@ -40,4 +41,8 @@ showHeader :: String -> IO ()
 showHeader h = do
         putStrLn $ '\n' : h
         putStrLn $ map (\_ -> '-') h  -- underline
+
+-- | Are those sets made of lists equal?
+(~=~) :: Eq a => [a] -> [a] -> Bool
+l1 ~=~ l2 = and $ [length l1 == length l2] ++ map (`elem` l1) l2
 

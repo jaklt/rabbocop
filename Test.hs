@@ -8,13 +8,13 @@ import Prelude
 
 
 import AlphaBeta
+import Bits.BitRepresentation
 import Eval.BitEval
 import Eval.MonteCarloEval
-import Bits.BitRepresentation
+import Helpers
 import MTDf
 import MCTS
 import IterativeAB
-import Helpers
 import Bits.MyBits
 import Test.TestPositions
 
@@ -91,10 +91,10 @@ testSteps = do
                         let generated = generateSteps b' pl bo
                         let expected =
                                 map (\(j,k) -> (parseStep j, parseStep k)) ss
-                        let lns = length expected == length generated
 
-                        unless (and $ map (`elem` generated) expected ++ [lns])
-                            (putStrLn (", " ++ show (ss,pl,bo) ++ " failed")
+                        unless (generated ~=~ expected)
+                            (print generated
+                             >> putStrLn (", " ++ show (ss,pl,bo) ++ " failed")
                              >> printBoard b')
                     )
         putStrLn "\t- DONE"
@@ -107,7 +107,7 @@ testSteps = do
 testTiming :: IO ()
 testTiming = do
         showHeader "testTiming"
-        -- {-
+        {-
         mvar <- newMVar ([],0)
         search <- IterativeAB.newSearch 200
         thread <- forkIO $ search testBoard'  mvar
@@ -116,7 +116,7 @@ testTiming = do
         print (pv, val)
         killThread thread
         -- -}
-        {-
+        -- {-
         tt <- newTT 200
         best <- alphaBeta testBoard' tt [] (-iNFINITY, iNFINITY) 7 pl
         print best
@@ -187,21 +187,22 @@ testMCTS = do
         showHeader "starting MCTS test:"
         mt' <- foldM (\mt _ -> do
                 (mt1,_) <- improveTree mt
-                let (bst,_) = descendByUCB1 mt1
-                print $ step bst
+                -- let (bst,_) = descendByUCB1 mt1
+                -- print $ step bst
                 -- print $ mm2c mt1
                 return mt1
-                ) (simpleMMTree b) [1 .. 31 :: Int]
-
-        printChildrens mt'
+                ) (simpleMMTree b) [1 .. 310 :: Int]
 
         let (bst,_) = descendByUCB1 mt'
         print $ step bst
+        {-
+        printChildrens mt'
         -- print $ mm2c mt'
         (mt'',_) <- improveTree mt'
         print.step.fst.descendByUCB1 $ mt''
 
         printChildrens mt''
+        -}
 
         printBoard b
     where
@@ -221,14 +222,14 @@ main = do
     testSteps
     testEval
 
-    testPositions
-    -- testTiming
+    -- testPositions
+    testTiming
     -- testMCTS
 
-
     {-
-    forM_ [1 .. 20 :: Int] $ \_ ->
-        print =<< getValueByMC testBoard' (Silver, 0)
+    let n = 500 :: Int
+    print.(`div`n).sum =<< mapM (\_ -> getValueByMC testBoard' (Silver, 0)) [1 .. n]
+    printBoard testBoard'
 
     where
         testBoard' = parseFlatBoard Silver "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"

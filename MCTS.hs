@@ -169,4 +169,4 @@ valueUCB mt count =
         [nb,cn] = map fromIntegral [visitCount tn, count]
 
 normaliseValue :: Int -> Double
-normaliseValue v = 1/(1 + exp (-0.0003 * fromIntegral v))
+normaliseValue v = 2/(1 + exp (-0.0003 * fromIntegral v)) - 1

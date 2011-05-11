@@ -32,6 +32,8 @@ module Bits.BitRepresentation (
     -- * Stepping
     makeMove,
     makeStep,
+    generatePiecesSteps, -- :: Board -> Player -> Bool -> [(Piece,Int64)] -> DMove
+    generateMoveable,    -- :: Board -> Player -> [(Piece, Int64)]
     generateSteps,
     canMakeStep,
     canMakeStep2,
@@ -49,6 +51,7 @@ import Data.Bits ((.&.), (.|.), xor, complement, bit)
 import Data.Char (digitToInt, isUpper, toLower)
 import Data.Int (Int64)
 import Bits.MyBits
+
 
 foreign import ccall "clib.h hash_piece" c_hashPiece :: Int -> Int -> Int
                                                      -> Int64
@@ -130,6 +133,7 @@ showPiece col piece    = (if col == Gold then id else toLower)
 
 -- | Second argument is: use noflat format or flat.
 displayBoard :: Board -> Bool -> String
+displayBoard EmptyBoard _ = "<EmptyBoard>"
 displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
         , let pp | i .&. whole b ! Gold   /= 0 = g Gold i
                  | i .&. whole b ! Silver /= 0 = g Silver i
@@ -254,59 +258,80 @@ makeStep b s@(Step piece player from to) =
         wholeDiff = [(player
                      , foldr (\(Step _ _ f t) x -> x `xor` f `xor` t) 0 steps)]
 
+generateMoveable :: Board -> Player -> [(Piece, Int64)]
+generateMoveable b pl =
+    nimm (allPieces b pl) (allPieces b (oponent pl)) (whole b ! pl) 0
+
+allPieces :: Board -> Player -> [(Piece, Int64)]
+allPieces b pl = zip pieces' $ map ((!) (figures b ! pl)) pieces'
+    where
+        pieces' = [Elephant, Camel .. Rabbit]
+
+-- Filter not immobilised pieces
+-- Lists of pieces needs to be sorted by stronger
+nimm :: [(Piece, Int64)] -- ^ players pieces to check
+     -> [(Piece, Int64)] -- ^ all oponents pieces
+     -> Int64            -- ^ map of all player pieces
+     -> Int64            -- ^ map of oponents stronger pieces
+     -> [(Piece,Int64)]
+nimm [] _ _ _ = []
+nimm ((pie,poss):plPieRest) ops relatives stronger =
+        [(pie,b) | b <- bits poss
+                 , not $ immobilised relatives stronger' b]
+        ++ nimm plPieRest ops' relatives stronger'
+    where
+        (ops1,ops2) = span ((> pie) . fst) ops
+        bitSum = foldr (.|.) 0 $ map snd ops1
+        (ops',stronger') = (ops2, stronger .|. bitSum)
+
+-- | Doesn't check wheather pieces can move.
+generatePiecesSteps :: Board -> Player -> Bool -> [(Piece,Int64)] -> DMove
+generatePiecesSteps b pl canPP pies =
+        genPiecesSteps' b pl canPP pies opPie empty
+    where
+        opPie = whole b ! oponent pl
+        empty = complement $ whole b ! Gold .|. whole b ! Silver
+
+genPiecesSteps' :: Board
+                -> Player
+                -> Bool            -- ^ can push/pull
+                -> [(Piece,Int64)] -- ^ pieces to move
+                -> Int64           -- ^ weaker oponents peaces
+                -> Int64           -- ^ empty places
+                -> DMove
+genPiecesSteps' _ _ _ [] _ _ = []
+genPiecesSteps' b pl canPullPush ((pie,pos):rest) opWeak empty =
+        -- pulls
+        [(cStep w, Step (findPiece oArr pull) op pull pos)
+            | canPullPush
+            , w <- bits $! empty .&. adjecent pos
+            , pull <- bits $! adjecent pos .&. opWeak']
+
+        -- pushs
+        ++
+        [(Step (findPiece oArr w) op w to, cStep w)
+            | canPullPush
+            , w <- bits $! opWeak' .&. adjecent pos
+            , to <- bits $! empty .&. adjecent w]
+
+        -- simple steps
+        ++ zip
+            (map cStep $ bits $!
+                empty .&. stepsFromPosition pl pie pos)
+            [Pass, Pass, Pass, Pass]
+
+        ++ genPiecesSteps' b pl canPullPush rest opWeak' empty
+    where
+        cStep = Step pie pl pos
+        oArr = figures b ! op
+        op = oponent pl
+
+        opStrPies = foldr (.|.) 0 $ map (oArr !) [pie .. Elephant]
+        opWeak' = opWeak .&. complement opStrPies
+
 -- TODO better ordering
 generateSteps :: Board -> Player -> Bool -> DMove
-generateSteps b activePl canPullPush =
-            gen (0 :: Int64) oWhole [Elephant,Camel .. Rabbit]
-    where
-        -- a* are for active player, o* are for his oponent
-        oponentPl = oponent activePl -- active players oponent
-        ap = figures b ! activePl
-        op = figures b ! oponentPl
-
-        oArr = op  -- oponents array
-        aWhole = whole b ! activePl
-        oWhole = whole b ! oponentPl
-        allWhole = aWhole .|. oWhole -- all used squares
-        empty = complement allWhole
-
-        gen :: Int64 -> Int64 -> [Piece] -> DMove
-        gen _  _ [] = []
-        gen opStrong opWeak (p:ps) = gen' opStrong opWeakNew p (bits $! ap ! p)
-                                        ++ gen opStrongNew opWeakNew ps
-            where
-                oponentsEqualPiece = oArr ! p
-                opStrongNew  = opStrong `xor` oponentsEqualPiece
-                opWeakNew = opWeak `xor` oponentsEqualPiece
-
-        gen' :: Int64 -> Int64 -> Piece -> [Int64] -> DMove
-        gen' _ _ _ [] = []
-        gen' opStrong opWeak pie (pos:xs) =
-            (if immobilised aWhole opStrong pos
-            then
-                []
-            else
-                -- pulls
-                [(cStep w, Step (findPiece oArr pull) oponentPl pull pos)
-                    | canPullPush, w <- bits $! empty .&. adjecent pos
-                    , pull <- bits $! adjecent pos .&. opWeak]
-
-                -- pushs
-                ++
-                [(Step (findPiece oArr w) oponentPl w to, cStep w)
-                    | canPullPush, w <- bits $! opWeak .&. adjecent pos
-                    , to <- bits $! empty .&. adjecent w]
-
-                -- simple steps
-                ++
-                zip
-                    (map cStep $ bits $!
-                        empty .&. stepsFromPosition activePl pie pos)
-                    [Pass, Pass, Pass, Pass]
-            ) ++
-                gen' opStrong opWeak pie xs
-            where
-                cStep = Step pie activePl pos
+generateSteps b pl canPP = generatePiecesSteps b pl canPP $ generateMoveable b pl
 
 -- | Find in array of pieces which piece is on given position
 -- | second argument: only one bit number
