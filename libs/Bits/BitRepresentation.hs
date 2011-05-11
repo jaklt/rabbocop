@@ -12,38 +12,39 @@ module Bits.BitRepresentation (
     MovePhase,
 
     -- * Species lists
-    pieces,
-    players,
+    pieces,              -- :: [Piece]
+    players,             -- :: [Player]
 
     -- * Other helper functions
-    (<#>),
-    displayBoard,
-    oponent,
-    stepInMove,
-    isEnd,
+    (<#>),               -- :: Num a => Player -> Player -> a
+    displayBoard,        -- :: Board -> Bool -> String
+    oponent,             -- :: Player -> Player
+    stepInMove,          -- :: MovePhase -> Step -> MovePhase
+    isEnd,               -- :: Board -> Bool
 
     -- * Parsing/creating board or position
-    parseBoard,
-    parseFlatBoard,
-    parsePosition,
-    parseStep,
-    createBoard,
+    parseBoard,          -- :: Player -> String -> Board
+    parseFlatBoard,      -- :: Player -> String -> Board
+    parsePosition,       -- :: String -> (Player, Piece, Position)
+    parseStep,           -- :: String -> Step
+    createBoard,         -- :: Player -> [(Player, Piece, Position)] -> Board
 
     -- * Stepping
-    makeMove,
-    makeStep,
-    generatePiecesSteps, -- :: Board -> Player -> Bool -> [(Piece,Int64)] -> DMove
+    makeMove,            -- :: Board -> Move -> (Board, Move)
+    makeStep,            -- :: Board -> Step -> (Board, Move)
+    generatePiecesSteps, -- :: Board -> Player -> Bool -> [(Piece,Int64)]
+                         --          -> DMove
     generateMoveable,    -- :: Board -> Player -> [(Piece, Int64)]
-    generateSteps,
-    canMakeStep,
-    canMakeStep2,
-    stepBy,
+    generateSteps,       -- :: Board -> Player -> Bool -> DMove
+    canMakeStep,         -- :: Board -> Step -> Bool
+    canMakeStep2,        -- :: Board -> (Step,Step) -> Bool
+    stepBy,              -- :: Player -> (Step,Step) -> Bool
 
     -- * Projections
-    playerFromChar,
-    pieceFromChar,
-    playerToInt,
-    positionToStep,
+    playerFromChar,      -- :: Char -> Player
+    pieceFromChar,       -- :: Char -> Piece
+    playerToInt,         -- :: Player -> Int
+    positionToStep,      -- :: (Player, Piece, Position) -> Step
 ) where
 
 import Data.Array
@@ -285,6 +286,7 @@ nimm ((pie,poss):plPieRest) ops relatives stronger =
         (ops',stronger') = (ops2, stronger .|. bitSum)
 
 -- | Doesn't check wheather pieces can move.
+-- in (piece,position) - position can contain multiple figures
 generatePiecesSteps :: Board -> Player -> Bool -> [(Piece,Int64)] -> DMove
 generatePiecesSteps b pl canPP pies =
         genPiecesSteps' b pl canPP pies opPie empty
