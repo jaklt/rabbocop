@@ -38,7 +38,7 @@ module Bits.BitRepresentation (
     generateSteps,       -- :: Board -> Player -> Bool -> DMove
     canMakeStep,         -- :: Board -> Step -> Bool
     canMakeStep2,        -- :: Board -> (Step,Step) -> Bool
-    stepBy,              -- :: Player -> (Step,Step) -> Bool
+    isStepBy,            -- :: Player -> (Step,Step) -> Bool
 
     -- * Projections
     playerFromChar,      -- :: Char -> Player
@@ -51,6 +51,7 @@ import Data.Array
 import Data.Bits ((.&.), (.|.), xor, complement, bit)
 import Data.Char (digitToInt, isUpper, toLower)
 import Data.Int (Int64)
+import Data.List (foldl')
 import Bits.MyBits
 
 
@@ -233,7 +234,7 @@ createBoard pl xs = fst $ makeMove bo $ map positionToStep xs
 ---------------------------------------------------------------------
 
 makeMove :: Board -> Move -> (Board, Move)
-makeMove b = foldl (\(b1, ss1) s -> case makeStep b1 s of
+makeMove b = foldr (\s (b1, ss1) -> case makeStep b1 s of
                                    (b2, ss2) -> (b2, ss1 ++ ss2)) (b, [])
 {-# INLINE makeMove #-}
 
@@ -251,17 +252,17 @@ makeStep b s@(Step piece player from to) =
                                          , let pie = findPiece (figures b ! player) tr]
         steps = s : trapped
         diffs = [(pie, f `xor` t) | (Step pie _ f t) <- steps]
-        hash' = foldr (\(Step pie pl f t) h -> h
+        hash' = foldl' (\h (Step pie pl f t) -> h
                         `xor` hashPiece pl pie (bitIndex f)
                         `xor` hashPiece pl pie (bitIndex t)) (hash b) steps
 
         boardDiff = [(player, accum xor (figures b ! player) diffs)]
-        wholeDiff = [(player
-                     , foldr (\(Step _ _ f t) x -> x `xor` f `xor` t) 0 steps)]
+        wholeDiff = [( player
+                     , foldl' (\x (Step _ _ f t) -> x `xor` f `xor` t) 0 steps)]
 
 generateMoveable :: Board -> Player -> [(Piece, Int64)]
 generateMoveable b pl =
-    nimm (allPieces b pl) (allPieces b (oponent pl)) (whole b ! pl) 0
+    notImmobilised (allPieces b pl) (allPieces b (oponent pl)) (whole b ! pl) 0
 
 allPieces :: Board -> Player -> [(Piece, Int64)]
 allPieces b pl = zip pieces' $ map ((!) (figures b ! pl)) pieces'
@@ -270,16 +271,17 @@ allPieces b pl = zip pieces' $ map ((!) (figures b ! pl)) pieces'
 
 -- Filter not immobilised pieces
 -- Lists of pieces needs to be sorted by stronger
-nimm :: [(Piece, Int64)] -- ^ players pieces to check
-     -> [(Piece, Int64)] -- ^ all oponents pieces
-     -> Int64            -- ^ map of all player pieces
-     -> Int64            -- ^ map of oponents stronger pieces
-     -> [(Piece,Int64)]
-nimm [] _ _ _ = []
-nimm ((pie,poss):plPieRest) ops relatives stronger =
+notImmobilised :: [(Piece, Int64)] -- ^ players pieces to check
+               -> [(Piece, Int64)] -- ^ all oponents pieces
+               -> Int64            -- ^ positions of all player pieces
+               -> Int64            -- ^ positions of oponents stronger pieces
+               -> [(Piece,Int64)]
+notImmobilised [] _ _ _ = []
+notImmobilised ((pie,poss):plPieRest) ops relatives stronger =
         [(pie,b) | b <- bits poss
                  , not $ immobilised relatives stronger' b]
-        ++ nimm plPieRest ops' relatives stronger'
+
+        ++ notImmobilised plPieRest ops' relatives stronger'
     where
         (ops1,ops2) = span ((> pie) . fst) ops
         bitSum = foldr (.|.) 0 $ map snd ops1
@@ -322,7 +324,7 @@ genPiecesSteps' b pl canPullPush ((pie,pos):rest) opWeak empty =
                 empty .&. stepsFromPosition pl pie pos)
             [Pass, Pass, Pass, Pass]
 
-        ++ genPiecesSteps' b pl canPullPush rest opWeak' empty
+        ++ genPiecesSteps' b pl canPullPush rest opWeak empty
     where
         cStep = Step pie pl pos
         oArr = figures b ! op
@@ -333,7 +335,8 @@ genPiecesSteps' b pl canPullPush ((pie,pos):rest) opWeak empty =
 
 -- TODO better ordering
 generateSteps :: Board -> Player -> Bool -> DMove
-generateSteps b pl canPP = generatePiecesSteps b pl canPP $ generateMoveable b pl
+generateSteps b pl canPP =
+        generatePiecesSteps b pl canPP $ generateMoveable b pl
 
 -- | Find in array of pieces which piece is on given position
 -- | second argument: only one bit number
@@ -385,14 +388,14 @@ canMakeStep2 b (s1@(Step pie1 pl1 f1 _), Step pie2 pl2 f2 _) =
 isFrozen :: Board -> Piece -> Player -> Int64 -> Bool
 isFrozen b pie pl pos = immobilised (whole b ! pl) opStronger pos
     where
-        opStronger = foldr (.|.) 0
+        opStronger = foldl' (.|.) 0
                    $ map (figures b ! oponent pl !) $ tail [pie .. Elephant]
 
-stepBy :: Player -> (Step,Step) -> Bool
-stepBy pl (Step _ pl1 _ _, Pass) = pl == pl1
-stepBy pl (Step pie1 pl1 _ _, Step pie2 pl2 _ _) = pl == pl1 && pie1 > pie2
-                                                || pl == pl2 && pie1 < pie2
-stepBy _ _ = False
+isStepBy :: Player -> (Step,Step) -> Bool
+isStepBy pl (Step _ pl1 _ _, Pass) = pl == pl1
+isStepBy pl (Step pie1 pl1 _ _, Step pie2 pl2 _ _) = pl == pl1 && pie1 > pie2
+                                                  || pl == pl2 && pie1 < pie2
+isStepBy _ _ = False
 
 ---------------------------------------------------------------------
 
