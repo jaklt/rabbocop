@@ -146,21 +146,26 @@ instance Show a => Show (CTree a) where
         s i (CT a subtrs) = replicate (4*i) ' ' ++ show a
                           ++ "\n" ++ (concat $ map (s (i+1)) subtrs)
 
+{-
 mm2c :: MMTree -> CTree (MovePhase, String, Int, (Step,Step))
 mm2c mt = CT (movePhase mt, show val, num, step mt) subtrees
     where
         (val,num,subtrees) = case treeNode mt of
                                 Leaf -> (0,0,[])
                                 tn -> (value tn, visitCount tn, map mm2c $ children tn)
+-}
 
-simpleMMTree :: Board -> MMTree
-simpleMMTree b =
-    MT { board = b
-       , movePhase = (mySide b, 0)
-       , treeNode = Leaf
-       , step = (Pass, Pass)
-       }
+simpleMMTree :: Board -> IO MMTree
+simpleMMTree b = do
+    newLeaf <- newMVar Leaf
+    return $ MT
+        { board = b
+        , movePhase = (mySide b, 0)
+        , treeNode = newLeaf
+        , step = (Pass, Pass)
+        }
 
+{-
 printChildrens :: MMTree -> IO ()
 printChildrens mt = do
         putStrLn "-------------------- (showing averages)"
@@ -175,6 +180,7 @@ printChildrens mt = do
                         | otherwise = GT
         val = value  . treeNode
         num = visitCount . treeNode
+-}
 
 
 testMCTS :: IO ()
@@ -185,15 +191,16 @@ testMCTS = do
         putStrLn $ "iNFINITY:\t" ++ show (iNFINITY :: Int)
 
         showHeader "starting MCTS test:"
+        tree <- simpleMMTree b
         mt' <- foldM (\mt _ -> do
-                (mt1,_) <- improveTree mt
+                _ <- improveTree mt
                 -- let (bst,_) = descendByUCB1 mt1
                 -- print $ step bst
                 -- print $ mm2c mt1
-                return mt1
-                ) (simpleMMTree b) [1 .. 310 :: Int]
+                return mt
+                ) tree [1 .. 310 :: Int]
 
-        let (bst,_) = descendByUCB1 mt'
+        bst <- descendByUCB1 mt'
         print $ step bst
         {-
         printChildrens mt'
@@ -222,8 +229,8 @@ main = do
     testSteps
     testEval
 
-    -- testPositions
-    testTiming
+    testPositions
+    -- testTiming
     -- testMCTS
 
     {-
