@@ -18,7 +18,7 @@ module MCTS
 #endif
 
 import Control.Applicative ((<$>))
-import Control.Concurrent
+import Control.Concurrent.MVar
 import Control.Monad (foldM)
 import Bits.BitRepresentation
 import Eval.BitEval

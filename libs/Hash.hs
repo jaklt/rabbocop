@@ -15,8 +15,10 @@ import Data.Int (Int32)
 
 #ifdef JUDY
 #include "Hash/JudyHash.hs"
-#else
+#elif HASKELL_HASH
 #include "Hash/HaskellHash.hs"
+#else
+#include "Hash/IntMapHash.hs"
 #endif
 
 data TTable e o i

@@ -35,7 +35,7 @@ HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap -threaded -ilibs # -prof
 CC = gcc
 CFLAGS = -O2 -std=c99 -Wall -pedantic
 
-ENABLED_DEFINES = JUDY VERBOSE WINDOW
+ENABLED_DEFINES = JUDY HASKELL_HASH VERBOSE WINDOW
 HFLAGS += $(foreach v, $(ENABLED_DEFINES), $(if $($(v)), -D$(v)=$($(v))))
 
 ifdef PROF
