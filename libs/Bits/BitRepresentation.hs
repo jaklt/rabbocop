@@ -140,8 +140,11 @@ displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
         , let pp | i .&. whole b ! Gold   /= 0 = g Gold i
                  | i .&. whole b ! Silver /= 0 = g Silver i
                  | i .&. traps /= 0 = 'x'
-                 | otherwise = '.']
+                 | otherwise = empty]
     where
+        empty | nonFlat   = '.'
+              | otherwise = ' '
+
         -- players piece on i position
         g :: Player -> Int64 -> Char
         g pl i = showPiece pl $ head [p | p <- pieces
@@ -234,7 +237,7 @@ createBoard pl xs = fst $ makeMove bo $ map positionToStep xs
 ---------------------------------------------------------------------
 
 makeMove :: Board -> Move -> (Board, Move)
-makeMove b = foldr (\s (b1, ss1) -> case makeStep b1 s of
+makeMove b = foldl' (\(b1, ss1) s -> case makeStep b1 s of
                                    (b2, ss2) -> (b2, ss1 ++ ss2)) (b, [])
 {-# INLINE makeMove #-}
 

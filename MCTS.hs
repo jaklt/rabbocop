@@ -8,12 +8,14 @@ module MCTS
     ( MMTree(..)
     , TreeNode(..)
     , newSearch
+    , constructMove
     , improveTree
     , descendByUCB1
     , valueUCB
     , createNode
     , nodeValue
     , nodeVisitCount
+    , nodeTreeNode
     ) where
 #endif
 

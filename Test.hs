@@ -2,6 +2,7 @@ module Main where
 
 import Data.Bits
 import Data.List
+import Control.Applicative
 import Control.Concurrent
 import Control.Monad
 import Prelude
@@ -146,14 +147,21 @@ instance Show a => Show (CTree a) where
         s i (CT a subtrs) = replicate (4*i) ' ' ++ show a
                           ++ "\n" ++ (concat $ map (s (i+1)) subtrs)
 
-{-
-mm2c :: MMTree -> CTree (MovePhase, String, Int, (Step,Step))
-mm2c mt = CT (movePhase mt, show val, num, step mt) subtrees
+
+mm2c :: MMTree -> IO (CTree (MovePhase, String, Int, (Step,Step)))
+mm2c mt = do
+        tn <- nodeTreeNode mt
+        case tn of
+            Leaf -> return $ CT (mp, "Leaf", 0, st) [] 
+            _    -> do
+                ch  <- mapM mm2c $ children tn
+                val <- nodeValue mt
+                nb  <- nodeVisitCount mt
+                return $ CT (mp, show val, nb, st) ch 
     where
-        (val,num,subtrees) = case treeNode mt of
-                                Leaf -> (0,0,[])
-                                tn -> (value tn, visitCount tn, map mm2c $ children tn)
--}
+        mp = movePhase mt
+        st = step mt
+
 
 simpleMMTree :: Board -> IO MMTree
 simpleMMTree b = do
@@ -194,17 +202,13 @@ testMCTS = do
         tree <- simpleMMTree b
         mt' <- foldM (\mt _ -> do
                 _ <- improveTree mt
-                -- let (bst,_) = descendByUCB1 mt1
-                -- print $ step bst
-                -- print $ mm2c mt1
                 return mt
                 ) tree [1 .. 310 :: Int]
 
-        bst <- descendByUCB1 mt'
-        print $ step bst
+        print =<< step <$> descendByUCB1 mt'
         {-
         printChildrens mt'
-        -- print $ mm2c mt'
+        -- print =<< mm2c mt'
         (mt'',_) <- improveTree mt'
         print.step.fst.descendByUCB1 $ mt''
 

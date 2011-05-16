@@ -7,7 +7,7 @@ import System.Random
 
 depth, simulations :: Int
 depth       =  16 -- ^ simulation depth
-simulations =  50 -- ^ number of simulations
+simulations =  10 -- ^ number of simulations
 
 getValueByMC :: Board -> MovePhase -> IO Int
 getValueByMC b mp = do
