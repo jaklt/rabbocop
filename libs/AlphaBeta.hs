@@ -12,7 +12,6 @@ import Control.Applicative ((<$>),(<*>))
 import Data.Bits
 import Data.Int (Int64, Int32)
 
-type ABTTable = TTable (DMove, Int, Int) HObject (Int64, Int, MovePhase)
 type KMoves = (DMove, DMove) -- ^ Killer moves
 -- TODO make suggestions more general (with mark for Null move)
 
@@ -140,6 +139,8 @@ findBest !board tt !sugg bounds@(!a,!b) !remDepth mp@(!pl,_)
 makeTriple :: (a,b) -> c -> (a,b,c)
 makeTriple (a,b) c = (a,b,c)
 
+
+type ABTTable = TTable (DMove, Int, Int) HObject (Int64, Int, MovePhase)
 
 {-|
  - Implementing object for TTable, where we match type parameters as:

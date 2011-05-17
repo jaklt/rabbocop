@@ -29,3 +29,8 @@ data TTable e o i
          , saveEntry :: e -> i -> o
          , empty     :: e
          }
+
+
+-- TODO add stg like: shouldReplaceWith? :: o -> o -> Bool
+
+-- TODO add stg like: getValidHash :: TTable e o i -> i -> IO (Maybe e)

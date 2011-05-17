@@ -118,7 +118,7 @@ testTiming = do
         killThread thread
         -- -}
         -- {-
-        tt <- newTT 200
+        tt <- AlphaBeta.newTT 200
         best <- alphaBeta testBoard' tt [] (-iNFINITY, iNFINITY) 7 pl
         print best
         -- -}
@@ -193,15 +193,15 @@ printChildrens mt = do
 
 testMCTS :: IO ()
 testMCTS = do
-        -- let b = testBoard5
         showHeader "starting MonteCarlo test:"
         getValueByMC b (Gold, 0) >>= putStrLn.("MonteCarlo:\t"++).show
         putStrLn $ "iNFINITY:\t" ++ show (iNFINITY :: Int)
 
         showHeader "starting MCTS test:"
         tree <- simpleMMTree b
+        tt   <- MCTS.newTT 200
         mt' <- foldM (\mt _ -> do
-                _ <- improveTree mt
+                _ <- improveTree mt tt 0
                 return mt
                 ) tree [1 .. 310 :: Int]
 
