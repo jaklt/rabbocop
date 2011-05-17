@@ -196,7 +196,7 @@ nodeTreeNode :: MMTree -> IO TreeNode
 nodeTreeNode = readMVar . treeNode
 
 changeMVar :: MVar a -> (a -> a) -> IO ()
-changeMVar mv f = (takeMVar mv) >>= return . f >>= putMVar mv
+changeMVar mv f = modifyMVar_ mv $ return . f
 
 changeMVar' :: MVar a -> (a -> a) -> IO ()
 changeMVar' mv f = changeMVar mv (dseq . f)
