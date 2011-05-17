@@ -20,7 +20,7 @@ module MCTS
     ) where
 #endif
 
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>), (<*>))
 import Control.Concurrent.MVar
 import Control.Monad (foldM)
 import Bits.BitRepresentation
@@ -215,8 +215,7 @@ changeMVar :: MVar a -> (a -> a) -> IO ()
 changeMVar mv f = modifyMVar_ mv $ return . f
 
 changeMVar' :: MVar a -> (a -> a) -> IO ()
-changeMVar' mv f = changeMVar mv (dseq . f)
-    where dseq x = seq x x
+changeMVar' mv f = modifyMVar_ mv $ (seq <$> id <*> return) . f
 
 
 type MCTSTable = TTable TreeNode HObject (Board, Int, MovePhase)
@@ -246,6 +245,7 @@ isValid' :: HObject -> (Board, Int, MovePhase) -> Bool
 isValid' e (b,d,mp) =  phase e == mp
                    && depth0 e == d
                    && hash (board0 e) == hash b
+                   && board0 e == b
 
 key' :: Int32 -> (Board, Int, MovePhase) -> Int32
 key' tableSize (b, de, (pl,s)) = fromIntegral . (`mod` tableSize) $
