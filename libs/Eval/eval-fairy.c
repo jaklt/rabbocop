@@ -1,3 +1,7 @@
+/**
+ * This evaluation function comes from bot_Fairy by Ola Hansson, as can be
+ * found in arimaa.com, with few modifications.
+ */
 #include <stdint.h>
 #include "../clib.h"
 
@@ -484,8 +488,6 @@ int EVAL_Eval(board_t *bp)
     value+=material_value[0]-material_value[1];
     value+=trap_value[0]-trap_value[1];
     value+=rabbit_value[0]-rabbit_value[1];
-
-    // Adjust evaluation to be from the perspective of the present player.
 
     return value; /* From golds perspective */
 }
