@@ -131,11 +131,12 @@ createNode mt val tt depth = do
                 newVal <- newMVar val
                 newVisitCount <- newMVar 1
 
-                changeMVar (treeNode mt)
-                    (const Node { children   = chls
-                                , value      = newVal
-                                , visitCount = newVisitCount
-                                })
+                let tn = Node { children   = chls
+                              , value      = newVal
+                              , visitCount = newVisitCount
+                              }
+                changeMVar (treeNode mt) (const tn)
+                addHash tt index tn
     where
         steps = generateSteps (board mt) (player mt) (stepCount mt < 3)
         index = (board mt, depth, movePhase mt)
