@@ -55,14 +55,15 @@ iNFINITY' :: Num a => a
 iNFINITY' = iNFINITY * iNFINITY
 
 newSearch :: Int -> IO (Board -> MVar (DMove, Int) -> IO ())
-newSearch tableSize = search <$> newTT tableSize
+newSearch = return . search
 
-search :: MCTSTable
+search :: Int               -- ^ table size
        -> Board             -- ^ starting position
        -> MVar (DMove, Int) -- ^ best results to store here
        -> IO ()
-search tt b mv = do
+search tableSize b mv = do
         newLeaf <- newMVar Leaf
+        tt <- newTT tableSize
         search' MT { board = b
                    , movePhase = (mySide b, 0)
                    , treeNode = newLeaf
