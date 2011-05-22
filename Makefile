@@ -1,5 +1,5 @@
 NAME = rabbocop
-BINs = IterativeAB MCTS MTDf Test
+BINs = IterativeAB MCTS MTDf Test Fight
 
 SRC_Hs = \
 	libs/AEI.hs \

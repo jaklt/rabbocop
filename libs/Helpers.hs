@@ -2,6 +2,7 @@ module Helpers (
     ltrim,
     firstWord,
     justOneMove,
+    manageJustOneMove,
     showHeader,
     (~=~)
 ) where
@@ -19,7 +20,10 @@ firstWord str = f [] $ ltrim str
                       | otherwise = f (word ++ [s]) ss
 
 justOneMove :: Board -> DMove -> Move
-justOneMove b pv = snd $ makeMove b $ justOneMove' pv 4
+justOneMove b = snd . manageJustOneMove b
+
+manageJustOneMove :: Board -> DMove -> (Board, Move)
+manageJustOneMove b pv = makeMove b $ justOneMove' pv 4
     where
         justOneMove' :: DMove -> Int -> Move
         justOneMove' [] _ = []

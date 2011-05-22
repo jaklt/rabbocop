@@ -123,7 +123,8 @@ action str line game = case str of
                     ("event",_) -> return game
                     ("depth",_) -> return game
                     -}
-                    _ -> {- putStrLn "log Warning: unsupported setoption" >> -} return game
+                    _ -> {- putStrLn "log Warning: unsupported setoption" >> -}
+                         return game
             _ -> putStrLn "log Error: corrupted 'setoption name <id> [value <x>]' command"
                  >> return game
     "newgame"     -> return game { board = EmptyBoard }
