@@ -3,18 +3,19 @@ module Main (main) where
 import System.Environment
 import AEI (SearchEngine)
 import Control.Concurrent
+import Control.Monad
 
-import Eval.BitEval (forbidBoard)
 import Bits.BitRepresentation
 import Helpers
+import Eval.BitEval
 import qualified MCTS
 import qualified IterativeAB
 import qualified MTDf
 
 hashSize, time, maxTime :: Num a => a
 hashSize = 200 -- in MB
-time     = 3   -- in seconds
-maxTime  = 20  -- in minutes
+time     = 10  -- in seconds
+maxTime  = 60  -- in minutes
 
 board :: Board
 board = parseFlatBoard Gold
@@ -29,8 +30,8 @@ newEngine engName =
         "MTDf"        -> MTDf.newSearch hashSize
         _ -> error "Unknown engine"
 
-fight :: Int -> SearchEngine -> SearchEngine -> IO ()
-fight n srch1 srch2 = go board Gold
+fight :: Int -> MVar Int -> SearchEngine -> SearchEngine -> IO ()
+fight n mv srch1 srch2 = go board Gold
     where
         go :: Board -> Player -> IO ()
         go b pl
@@ -45,7 +46,7 @@ fight n srch1 srch2 = go board Gold
                 let b' = b { mySide = pl }
 
                 thread <- forkIO $ engine b' mvar
-                threadDelay (3000000 * time * n' `div` 4)
+                threadDelay (1000000 * time * n')
                 (pv, val) <- takeMVar mvar
                 killThread thread
 
@@ -53,8 +54,13 @@ fight n srch1 srch2 = go board Gold
                 putStrLn $ "\t" ++ show pl ++ "'s PV " ++ show (pv,val)
                 print b''
 
+                when (pl == Silver)
+                    (return . const () =<< swapMVar mv =<< eval b'' Gold)
+
                 if pv == []
-                    then putStrLn "empty move!"
+                    then do
+                        _ <- swapMVar mv =<< evalImmobilised b'' pl
+                        putStrLn "empty move!"
                     else go b'' (oponent pl)
 
 main :: IO ()
@@ -62,11 +68,13 @@ main = do
     args <- getArgs
     [e1,e2] <- mapM newEngine $ take 2 args
     lock <- newEmptyMVar :: IO (MVar ())
+    score <- newMVar 0
 
     thread <- forkIO $ do
         case drop 2 args of
-            "nxtime":n:_ -> fight (read n) e1 e2
-            _ ->            fight 1 e1 e2
+            "nxtime":n:_ -> fight (read n) score e1 e2
+            []           -> fight 1        score e1 e2
+            _            -> putMVar lock ()
             -- "eqtime":depth:_ ->
         putMVar lock ()
     _ <- forkIO $ do
@@ -74,5 +82,13 @@ main = do
         killThread thread
         putMVar lock ()
     _ <- readMVar lock
+
+    res <- readMVar score
+    putStr $ case res of
+                _ | res > 0 -> "Gold"
+                _ | res < 0 -> "Silver"
+                _ -> "none"
+    putStrLn $ " won " ++ show res
+
     putStrLn "quit"
 
