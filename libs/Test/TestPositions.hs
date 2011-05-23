@@ -47,7 +47,7 @@ moveContainOR (st:rest) moves = st `elem` moves || moveContainOR rest moves
 
 moveContainAND :: [String] -> [String] -> Bool
 moveContainAND [] _ = True
-moveContainAND (st:rest) moves = st `elem` moves && moveContainOR rest moves
+moveContainAND (st:rest) moves = st `elem` moves && moveContainAND rest moves  
 
 testSearchFunction :: (Int -> IO (Board -> MVar (DMove, Int) -> IO ())) -> IO ()
 testSearchFunction newSrch = go positionCases 1 >> putStrLn ""

@@ -1,4 +1,7 @@
+#include <time.h>
 #include "clib.h"
+extern void srandom(unsigned int);
+
 
 /*
  * In order not to repeat positions, this is forbidden board setup.
@@ -38,6 +41,7 @@ extern void init_eval();
 
 void __attribute((constructor)) init()
 {
+    srandom((unsigned int) time(NULL));
     init_bit_index();
     init_bit_count();
     init_steps_table();

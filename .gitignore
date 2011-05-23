@@ -2,9 +2,13 @@
 *.hi
 *.hp
 *.swp
-Main
-Test
-aei-1.1/*
+IterativeAB
+MCTS
+MTDf
+Fight
+logs/
+aei-1.1/
+arimaa-client/
 data/staticeval_g.c
 data/staticeval_s.c
 tools/BoardToCode
