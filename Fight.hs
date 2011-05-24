@@ -79,6 +79,9 @@ main :: IO ()
 main = do
     args <- getArgs
     putStrLn $ "Starging Fight with args: " ++ show args
+    putStrLn $ "And settings -     time: " ++ show (time     :: Int) ++ "\n"
+            ++ "             -  maxTime: " ++ show (maxTime  :: Int) ++ "\n"
+            ++ "             - hashSize: " ++ show (hashSize :: Int) ++ "\n"
     [e1,e2] <- mapM newEngine $ take 2 args
     lock <- newEmptyMVar :: IO (MVar ())
     score <- newMVar 0
@@ -87,7 +90,7 @@ main = do
         case drop 2 args of
             "nxtime":n:_ -> fight (read n) score e1 e2
             []           -> fight 1        score e1 e2
-            _            -> putMVar lock ()
+            _            -> putStrLn "wrong argument(s)"
             -- "eqtime":depth:_ ->
         putMVar lock ()
     _ <- forkIO $ do
