@@ -1,4 +1,7 @@
 #!/bin/sh
+# Runs simultaneously given script as argument on selected machines in the same
+# directory.
+
 prefix="u-pl"
 machines=`seq 3 23`
 cores="1 2"

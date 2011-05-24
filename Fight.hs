@@ -1,11 +1,8 @@
 module Main (main) where
 
 import System.Environment
-import Control.Arrow
 import Control.Concurrent
 import Control.Monad
-import Data.List
-
 
 import AEI
 import Bits.BitRepresentation
@@ -14,6 +11,7 @@ import Eval.BitEval
 import qualified MCTS
 import qualified IterativeAB
 import qualified MTDf
+
 
 hashSize, time, maxTime :: Num a => a
 quiet :: Bool
@@ -28,11 +26,11 @@ board = parseFlatBoard Gold
             "[rdrccrdrrhremrhr                                RHRMERHRRDRCCRDR]"
 
 wait :: Integer -> IO ()
-wait long = mapM_ threadDelay $ unfoldr divs long
+wait long = mapM_ threadDelay $ map fromIntegral $ divs long
     where
-        divs 0 = Nothing
-        divs n = Just . first fromIntegral . ((`mod` 2^e) &&& (`div` 2^e)) $ n
-        e = 28 :: Int
+        divs 0 = []
+        divs n = (n `mod` d) : replicate (fromIntegral (n `div` d)) d 
+        d = 100000000 :: Integer
 
 newEngine :: String -> IO SearchEngine
 newEngine engName =
