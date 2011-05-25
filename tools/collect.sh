@@ -1,17 +1,21 @@
 #!/bin/bash
 
-function simpletest() {
+function changedirectory() {
     dir="$1"
+    if [ "x$dir" = "x" ]; then
+        dir="./logs/"
+    fi
+    echo $dir
+}
+
+function simpletest() {
+    cd $1
     all=0
     count=0
     gold=0
     error=0
     
-    if [ "x$dir" = "x" ]; then
-        dir="./logs/"
-    fi
-    
-    for i in `ls $dir/*.log`; do
+    for i in `ls *.log`; do
         if [ "`tail -n 3 $i | head -n 1`" = "empty move!" ]; then
             error=`expr $error + 1`
             continue
@@ -31,11 +35,11 @@ function simpletest() {
 }
 
 function aei() {
-    echo "Not implemented yet."
+    awk -f `dirname $0`/collect.awk $1/*.log
 }
 
 case $1 in
-    (simpletest) simpletest $2;;
-    (aei) aei $2;;
-    (*) simpletest $1;;
+    (simpletest) simpletest `changedirectory $2`;;
+    (aei)        aei `changedirectory $2`;;
+    (*)          simpletest `changedirectory $1`;;
 esac
