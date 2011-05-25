@@ -9,9 +9,9 @@ addHash :: TTable e o i
         -> e
         -> IO ()
 addHash tt i e = do
-        (im,f) <- takeMVar (table tt)
-        let im' = I.insert (f $ key tt i) (saveEntry tt e i) im
-        putMVar (table tt) (im',f)
+        (im,f) <- readMVar (table tt)
+        let !im' = I.insert (f $ key tt i) (saveEntry tt e i) im
+        modifyMVar_ (table tt) (return . const (im',f))
 
 findHash :: TTable e o i -> i -> IO Bool
 findHash tt i = do
