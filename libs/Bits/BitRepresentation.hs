@@ -20,6 +20,7 @@ module Bits.BitRepresentation (
     displayBoard,        -- :: Board -> Bool -> String
     oponent,             -- :: Player -> Player
     stepInMove,          -- :: MovePhase -> Step -> MovePhase
+    canPushOrPull,       -- :: MovePhase -> Bool
     isEnd,               -- :: Board -> Bool
 
     -- * Parsing/creating board or position
@@ -175,6 +176,9 @@ stepInMove (pl,steps) s = (pl', steps' `mod` 4)
         pl' = if steps' > 3 then oponent pl
                             else pl
 
+canPushOrPull :: MovePhase -> Bool
+canPushOrPull (_,sc) = sc < 3
+
 isEnd :: Board -> Bool
 isEnd b = bitCount gr == 0 || bitCount sr == 0
        || bitCount ((gr .&. upp) .|. (sr .&. btm)) /= 0
@@ -290,7 +294,7 @@ notImmobilised ((pie,poss):plPieRest) ops relatives stronger =
         bitSum = foldr (.|.) 0 $ map snd ops1
         (ops',stronger') = (ops2, stronger .|. bitSum)
 
--- | Doesn't check wheather pieces can move.
+-- | It doesn't check wheather pieces can move.
 -- in (piece,position) - position can contain multiple figures
 generatePiecesSteps :: Board -> Player -> Bool -> [(Piece,Int64)] -> DMove
 generatePiecesSteps b pl canPP pies =

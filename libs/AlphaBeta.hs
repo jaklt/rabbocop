@@ -75,7 +75,7 @@ alphaBeta' !board tt !sugg aB@(!alpha, !beta) !remDepth mp@(!pl, !stepCount) = d
                             (a:as, b:bs) -> ([a,b], (as,bs))
                             _            -> ([],    emptyKM)
         headKM' = filter ((&&) <$> canMakeStep2 board <*> isStepBy pl) headKM
-        steps = headPV ++ headKM' ++ generateSteps board pl (stepCount < 3)
+        steps = headPV ++ headKM' ++ generateSteps board pl (canPushOrPull mp)
 
         maybeResult low upp mv | low >= beta  = Just (mv, low, emptyKM)
                                | upp <= alpha = Just (mv, upp, emptyKM)

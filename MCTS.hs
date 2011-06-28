@@ -18,6 +18,8 @@ module MCTS
     , nodeTreeNode
     , newTT
     ) where
+
+import AEI (SearchEngine)
 #endif
 
 import Control.Applicative ((<$>), (<*>))
@@ -54,7 +56,7 @@ data TreeNode = Leaf
 iNFINITY' :: Num a => a
 iNFINITY' = iNFINITY * iNFINITY
 
-newSearch :: Int -> IO (Board -> MVar (DMove, Int) -> IO ())
+newSearch :: Int -> IO SearchEngine
 newSearch = return . search
 
 search :: Int               -- ^ table size
@@ -123,11 +125,13 @@ createNode mt val tt depth = do
 
         if inTranspositionTable
             then do
+                -- update value of the item in TT
                 tn <- getHash tt index
                 changeMVar' (visitCount tn) (+1)
                 changeMVar' (value tn)    (+val)
                 changeMVar  (treeNode mt) (const tn)
             else do
+                -- insert new item to TT with right value
                 chls <- mapM (leafFromStep mt) steps
                 newVal <- newMVar val
                 newVisitCount <- newMVar 1
@@ -139,7 +143,8 @@ createNode mt val tt depth = do
                 changeMVar (treeNode mt) (const tn)
                 addHash tt index tn
     where
-        steps = generateSteps (board mt) (player mt) (stepCount mt < 3)
+        steps = generateSteps (board mt) (player mt)
+                (canPushOrPull $ movePhase mt)
         index = (board mt, depth, movePhase mt)
 
 leafFromStep :: MMTree -> (Step, Step) -> IO MMTree

@@ -30,7 +30,7 @@ LINK_O = ${LINK_C:.c=.o}
 SRC = ${SRC_Hs} ${LINK_C} ${LINK_H}
 
 HC = ghc
-HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap -threaded -ilibs # -prof
+HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap -threaded -ilibs -rtsopts # -prof
 #        -fhpc -funbox-strict-fields
 CC = gcc
 CFLAGS = -O2 -std=c99 -Wall -pedantic
