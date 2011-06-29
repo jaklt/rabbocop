@@ -56,7 +56,7 @@ runtest: Test
 	time -p ./Test # ${RUN_PARAMS}
 
 # Additional dependencies
-Test: libs/Test/TestPositions.hs
+Test: libs/Test/TestPositions.hs libs/Test/TestBitRepresentation.hs
 libs/Eval/eval.o: ${STATIC_EVAL_TABLES}
 ${LINK_O}: ${LINK_C} ${LINK_H}
 

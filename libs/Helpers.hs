@@ -1,11 +1,12 @@
-module Helpers (
-    ltrim,
-    firstWord,
-    justOneMove,
-    manageJustOneMove,
-    showHeader,
-    (~=~)
-) where
+module Helpers
+    ( ltrim
+    , firstWord
+    , justOneMove
+    , manageJustOneMove
+    , showHeader
+    , (~=~)
+    , printBoard
+    ) where
 
 import Bits.BitRepresentation
 
@@ -49,4 +50,7 @@ showHeader h = do
 -- | Are those sets made of lists equal?
 (~=~) :: Eq a => [a] -> [a] -> Bool
 l1 ~=~ l2 = and $ [length l1 == length l2] ++ map (`elem` l1) l2
+
+printBoard :: Board -> IO ()
+printBoard b = putStrLn $ displayBoard b True
 

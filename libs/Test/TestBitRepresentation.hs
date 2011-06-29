@@ -1,0 +1,83 @@
+module Test.TestBitRepresentation
+    ( testSteps
+    ) where
+
+import Control.Monad
+import Prelude
+import Bits.BitRepresentation
+import Helpers
+
+testSteps :: IO ()
+testSteps = do
+        let cases1 =
+                [ ( "Rd4", ["Rd4n", "Rd5n", "Rd6n"], "Rd7")
+                , ( "Rb3 Ra3 Mf4 dg4 db2 re8"
+                  , ["Rb3e", "db2n"]
+                  , "Ra3 Mf4 dg4 db3 re8")
+                ]
+
+        putStr "- test makeMove"
+        forM_ cases1 (\a@(b,steps,c) -> do
+                        let b1 = parseBoard Gold b
+                        let b2 = fst $ makeMove b1 $ map parseStep steps
+
+                        when (b2 /= parseBoard Gold c)
+                            (putStrLn $ ", " ++ show a ++ " failed")
+                    )
+        putStrLn "\t- DONE"
+
+        let cases2 =
+                [ ("Rd4", ("Rd4n", ""), True)
+                , ("Ra1 ra2", ("Ra1n", ""), False)
+                , ("", ("Rb2n", ""), False)
+                , ("Rd4 Re3 dd3", ("dd3n", "Re3w"), False)
+                , ("Rd4 Rd3 de3", ("Rd3n", "de3w"), False)
+                , ("Ra3 Rb3 Mf4 dg4 db2 re8" , ("Rb3e", "db2n"), True)
+                , ("Ra3 Rb3 Mf4 dg4 db2 re8" , ("db2e", "Rb3s"), True)
+                , ("Ra1 cb1", ("Ra1n", ""), False) -- frozen
+                , ("Ra1 cb1 Db2", ("Ra1n", "cb1w"), False) -- frozen
+                , ("Ra1 cb1 Db2", ("cb1e", "Ra1e"), False) -- frozen
+                ]
+
+        putStr "- test canMakeStep"
+        forM_ cases2 (\(b,(s1,s2), bo) -> do
+                        let b' = parseBoard Gold b
+                        unless (canMakeStep2 b' (parseStep s1,parseStep s2)
+                                == bo)
+                            (putStrLn (", " ++ show (s1,s2,bo) ++ " failed")
+                             >> printBoard b')
+                    )
+        putStrLn "\t- DONE"
+
+        let cases3 =
+                [ ( "Ra1", [("Ra1n",""), ("Ra1e","")], Gold, True)
+                , ( "Rd5 ce5", [], Gold, True)
+                , ( "Rd5 ce5"
+                  , [("ce5n", ""), ("ce5e", ""), ("ce5s","")]
+                  , Silver, False)
+                , ( "Rd5 ce5"
+                  , [ ("ce5n", ""), ("ce5e", ""), ("ce5s","")
+                    , ("ce5n", "Rd5e"), ("ce5e", "Rd5e"), ("ce5s", "Rd5e")
+                    , ("Rd5n", "ce5w"), ("Rd5s", "ce5w"), ("Rd5w", "ce5w")]
+                  , Silver, True)
+                , ( "Ca1 cb1", [("Ca1n", "")], Gold, True)
+                , ( "Ca1 cb1", [("Ca1n", "")], Gold, False)
+                , ( "Ca1 ra2 cb1", [("ra2n", "Ca1n"), ("ra2e", "Ca1n")]
+                  , Gold, True)
+                , ( "Ca1 ca2 cb1", [], Gold, True)
+                ]
+
+        putStr "- test generateSteps"
+        forM_ cases3 (\(b, ss, pl, bo) -> do
+                        let b' = parseBoard Gold b
+                        let generated = generateSteps b' pl bo
+                        let expected =
+                                map (\(j,k) -> (parseStep j, parseStep k)) ss
+
+                        unless (generated ~=~ expected)
+                            (print generated
+                             >> putStrLn (", " ++ show (ss,pl,bo) ++ " failed")
+                             >> printBoard b')
+                    )
+        putStrLn "\t- DONE"
+
