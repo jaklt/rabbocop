@@ -35,17 +35,16 @@ alphaBeta' :: Board
            -> Int             -- ^ depth remaining
            -> MovePhase
            -> IO (DMove, Int, KMoves) -- ^ (steps to go, best value, killers)
-alphaBeta' !board tt !sugg aB@(!alpha, !beta) !remDepth mp@(!pl, !stepCount) = do
-
-        inTranspositionTable <- findHash tt ((hash board),remDepth,mp)
-        (ttBounds@(al', bet'), maybeBest) <- if inTranspositionTable
-            then do
-                (ttMove, lowerBound, upperBound)
-                    <- getHash tt ((hash board),remDepth,mp)
-                return ( (lowerBound, upperBound)
-                       , maybeResult lowerBound upperBound ttMove)
-            else
-                return (aB, Nothing)
+alphaBeta' !board tt !sugg aB@(!alpha, !beta) !remDepth mp@(!pl, !stepCount)
+    = do
+        fromTT <- getHash tt ((hash board),remDepth,mp)
+        let (ttBounds@(al', bet'), maybeBest) =
+                case fromTT of
+                    Just (ttMove, lowerBound, upperBound) ->
+                        ( (lowerBound, upperBound)
+                          , maybeResult lowerBound upperBound ttMove)
+                    Nothing ->
+                        (aB, Nothing)
         let newAB = (max alpha al', min beta bet')
         forbidden <- isForbidden board mp
 
@@ -163,7 +162,6 @@ newTT tableSize = do
            , isValid   = isValid'
            , key       = key' ts
            , saveEntry = saveEntry'
-           , empty     = ([], -1, -1)
            }
     where
         -- one entry in table has:
@@ -175,8 +173,8 @@ newTT tableSize = do
         --        = 192B
         ts = (fromIntegral tableSize) * (500000 `div` 200)
 
-isValid' :: HObject -> (Int64, Int, MovePhase) -> Bool
-isValid' e (h,d,mp) = phase e == mp
+isValid' :: (Int64, Int, MovePhase) -> HObject -> Bool
+isValid' (h,d,mp) e = phase e == mp
                    && depth e >= d
                    && hash0 e == h
 

@@ -12,19 +12,10 @@ addHash tt i e = do
         _ <- H.update (table tt) (key tt i) (saveEntry tt e i)
         return ()
 
-findHash :: TTable e o i -> i -> IO Bool
-findHash tt i = do
-        val <- H.lookup (table tt) $ key tt i
-        case val of
-            Nothing -> return False
-            Just v  -> return $ isValid tt v i
-
-getHash :: TTable e o i -> i -> IO e
+getHash :: TTable e o i -> i -> IO (Maybe e)
 getHash tt i = do
     val <- H.lookup (table tt) $ key tt i
-    case val of
-        Nothing -> return $ empty tt
-        Just v  -> return $ getEntry tt v
+    return $ val >>= validate tt i
 
 newHT :: (Int32 -> Int32) -> IO (HTable o)
 newHT = H.new (==)

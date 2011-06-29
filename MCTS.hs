@@ -121,16 +121,15 @@ improveTree mt tt !depth = do
 
 createNode :: MMTree -> Double -> MCTSTable -> Int -> IO ()
 createNode mt val tt depth = do
-        inTranspositionTable <- findHash tt index
+        fromTT <- getHash tt index
 
-        if inTranspositionTable
-            then do
+        case fromTT of
+            Just tn -> do
                 -- update value of the item in TT
-                tn <- getHash tt index
                 changeMVar' (visitCount tn) (+1)
                 changeMVar' (value tn)    (+val)
                 changeMVar  (treeNode mt) (const tn)
-            else do
+            Nothing -> do
                 -- insert new item to TT with right value
                 chls <- mapM (leafFromStep mt) steps
                 newVal <- newMVar val
@@ -242,14 +241,13 @@ newTT tableSize = do
        , isValid   = isValid'
        , key       = key' ts
        , saveEntry = saveEntry'
-       , empty     = Leaf
        }
     where
         ts = (fromIntegral tableSize) * (500000 `div` 200)
 
 
-isValid' :: HObject -> (Board, Int, MovePhase) -> Bool
-isValid' e (b,d,mp) =  phase e == mp
+isValid' :: (Board, Int, MovePhase) -> HObject -> Bool
+isValid' (b,d,mp) e =  phase e == mp
                    && depth0 e == d
                    && hash (board0 e) == hash b
                    && board0 e == b

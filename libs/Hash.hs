@@ -5,8 +5,7 @@
 module Hash
     ( TTable(..)
     , HTable
-    , findHash -- :: TTable e o i -> i -> IO Bool
-    , getHash  -- :: TTable e o i -> i -> IO e
+    , getHash  -- :: TTable e o i -> i -> IO (Maybe e)
     , addHash  -- :: TTable e o i -> i -> e -> IO ()
     , newHT    -- :: (Int32 -> Int32) -> IO (HTable o)
     ) where
@@ -24,13 +23,17 @@ import Data.Int (Int32)
 data TTable e o i
     = TT { table     :: HTable o
          , getEntry  :: o -> e
-         , isValid   :: o -> i -> Bool
+         , isValid   :: i -> o -> Bool
          , key       :: i -> Int32
          , saveEntry :: e -> i -> o
-         , empty     :: e
          }
+
+validate :: TTable e o i -> i -> o -> Maybe e
+validate tt i v = if isValid tt i v
+                    then Just $ getEntry tt v
+                    else Nothing
 
 
 -- TODO add stg like: shouldReplaceWith? :: o -> o -> Bool
 
--- TODO add stg like: getValidHash :: TTable e o i -> i -> IO (Maybe e)
+-- TODO try rewrite validate to point-free style

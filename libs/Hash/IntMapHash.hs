@@ -13,21 +13,11 @@ addHash tt i e = do
         let !im' = I.insert (f $ key tt i) (saveEntry tt e i) im
         modifyMVar_ (table tt) (return . const (im',f))
 
-findHash :: TTable e o i -> i -> IO Bool
-findHash tt i = do
-        (im,f) <- readMVar (table tt)
-        let val = I.lookup (f $ key tt i) im
-        case val of
-            Nothing -> return False
-            Just v  -> return $ isValid tt v i
-
-getHash :: TTable e o i -> i -> IO e
+getHash :: TTable e o i -> i -> IO (Maybe e)
 getHash tt i = do
         (im,f) <- readMVar (table tt)
         let val = I.lookup (f $ key tt i) im
-        case val of
-            Nothing -> return $ empty tt
-            Just v  -> return $ getEntry tt v
+        return $ val >>= validate tt i
 
 newHT :: (Int32 -> Int32) -> IO (HTable o)
 newHT f = newMVar (I.empty, fromIntegral . f)

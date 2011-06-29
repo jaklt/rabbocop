@@ -9,6 +9,7 @@ SRC_Hs = \
 	libs/Eval/BitEval.hs \
 	libs/Eval/MonteCarloEval.hs \
 	libs/Hash/HaskellHash.hs \
+	libs/Hash/IntMapHash.hs \
 	libs/Hash/JudyHash.hs \
 	libs/Hash.hs \
 	libs/Helpers.hs \

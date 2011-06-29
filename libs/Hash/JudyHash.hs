@@ -7,7 +7,7 @@ import Foreign.StablePtr
 
 -------------------------------------------------------------------------
 --  Current implementation of this library is not useful (too slow),   --
---  JudyHash uses less memory (about half)                        --
+--  but JudyHash uses less memory (about half).                        --
 -------------------------------------------------------------------------
 
 -- From Judy documentation:
@@ -18,7 +18,7 @@ import Foreign.StablePtr
 --  --
 
 
-newtype JudyElement e = E e
+newtype JudyElement e = E { getJudyElement :: e }
 type HTable o = (J.JudyL (JudyElement o), Int32 -> Int32)
 
 instance J.JE (JudyElement e) where
@@ -45,19 +45,10 @@ addHash tt i e = do
         -- performGC
         return ()
 
-findHash :: TTable e o i -> i -> IO Bool
-findHash tt i = do
-        val <- J.lookup (jkey tt i) (jtable tt)
-        case val of
-            Nothing    -> return False
-            Just (E v) -> return $ isValid tt v i
-
-getHash :: TTable e o i -> i -> IO e
+getHash :: TTable e o i -> i -> IO (Maybe e)
 getHash tt i = do
     val <- J.lookup (jkey tt i) (jtable tt)
-    case val of
-        Nothing    -> return $ empty tt
-        Just (E v) -> return $ getEntry tt v
+    return $ val >>= (validate tt i . getJudyElement)
 
 newHT :: (Int32 -> Int32) -> IO (HTable o)
 newHT fun = do
