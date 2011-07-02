@@ -19,7 +19,7 @@ getValueByMC b mp = do
 
 -- | Returns pseudorandom move (and (Pass,Pass) if player is immobilised)
 randomStep :: Board -> MovePhase -> IO (Step,Step)
-randomStep b mp@(pl,sc) = do
+randomStep b mp@(pl,_) = do
         r <- randomRIO (0,119)
         return $ findOne moveable (length moveable) r
     where
@@ -36,7 +36,7 @@ randomStep b mp@(pl,sc) = do
 
 randomSimulation :: MovePhase -> Int -> Board -> IO Int
 randomSimulation (pl,_) 0 b = eval b pl
-randomSimulation mp@(pl,sc) d b = do
+randomSimulation mp@(pl,_) d b = do
     case generateSteps b pl (canPushOrPull mp) of
         [] -> evalImmobilised b pl
         _  -> do

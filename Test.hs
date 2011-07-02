@@ -7,7 +7,6 @@ import Control.Concurrent
 import Control.Monad
 import Prelude
 
-
 import AlphaBeta
 import Bits.BitRepresentation
 import Eval.BitEval
@@ -76,15 +75,19 @@ mm2c :: MMTree -> IO (CTree (MovePhase, String, Int, (Step,Step)))
 mm2c mt = do
         tn <- nodeTreeNode mt
         case tn of
-            Leaf -> return $ CT (mp, "Leaf", 0, st) [] 
+            Leaf -> return $ CT (mp, "Leaf", 0, st) []
             _    -> do
                 ch  <- mapM mm2c $ children tn
                 val <- nodeValue mt
                 nb  <- nodeVisitCount mt
-                return $ CT (mp, show val, nb, st) ch 
+                return $ CT (mp, show val, nb, st) $ sortBy cmp' ch
     where
         mp = movePhase mt
         st = step mt
+
+        cmp' :: CTree (MovePhase, String, Int, (Step,Step))
+             -> CTree (MovePhase, String, Int, (Step,Step)) -> Ordering
+        cmp' (CT (_,a,_,_) _) (CT (_,b,_,_) _) = compare a b
 
 
 simpleMMTree :: Board -> IO MMTree
@@ -97,23 +100,27 @@ simpleMMTree b = do
         , step = (Pass, Pass)
         }
 
-{-
 printChildrens :: MMTree -> IO ()
 printChildrens mt = do
         putStrLn "-------------------- (showing averages)"
-        forM_ (sortBy (toOrdered) $ children $ treeNode mt) (\ch -> do
-                putStrLn $ show (val ch, num ch)
-                         ++ "  " ++ show (step ch)
-                         ++ "  " ++ show (valueUCB ch (visitCount $ treeNode mt)))
+        putStrLn "-- value visits step ucb --------------"
+        tn <- nodeTreeNode mt
+        childs <- forM (children tn) (\ch -> do
+            val' <- nodeValue ch
+            num' <- nodeVisitCount ch
+            valueUCB' <- valueUCB ch num' 1
+            let step' = step ch
+            return (valueUCB',(val',num',step')))
+
+        forM_ (sortBy toOrdered childs) $ \(valueUCB',(val',num',step')) ->
+                putStrLn $ show val'
+                         ++ "  " ++ show num'
+                         ++ "  " ++ show step'
+                         ++ "  " ++ show valueUCB'
         putStrLn "--------------------"
     where
-        toOrdered n1 n2 | (val n1) * fromIntegral (num n2)
-                           - (val n2) * fromIntegral (num n2) < 0 = LT
-                        | otherwise = GT
-        val = value  . treeNode
-        num = visitCount . treeNode
--}
-
+        toOrdered (n1,_) (n2,_) | n1 - n2 < 0 = LT
+                                | otherwise   = GT
 
 testMCTS :: IO ()
 testMCTS = do
@@ -130,18 +137,25 @@ testMCTS = do
                 ) tree [1 .. 310 :: Int]
 
         print =<< step <$> descendByUCB1 mt'
-        {-
         printChildrens mt'
-        -- print =<< mm2c mt'
-        (mt'',_) <- improveTree mt'
-        print.step.fst.descendByUCB1 $ mt''
-
-        printChildrens mt''
-        -}
-
+        print =<< mm2c mt'
         printBoard b
+
+        while $ do
+            s <- getLine
+            case ltrim s of
+                "" -> improveTree mt' tt 0 >>= \_ -> return True
+                'c':_ -> printChildrens mt' >> return True
+                't':_ -> mm2c mt' >>= print >> return True
+                'b':_ -> printBoard b >> return True
+                'h':_ -> putStrLn "c childrens, t tree, b board, q quit"
+                         >> return True
+                _ -> return False
     where
         b = parseFlatBoard Silver "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
+
+while :: IO Bool -> IO ()
+while ac = flip when (while ac) =<< ac
 
 {- ------------------------------------------------------- -}
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 source `dirname $0`/basic.sh
-LOG_FILE=`logfile .gittest`
+LOG_FILE=`logfile .gittest.$$`
 
 A_FILE="A-`hostname`-`echo $$`"
 B_FILE="B-`hostname`-`echo $$`"

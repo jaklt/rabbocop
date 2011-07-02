@@ -7,16 +7,16 @@ import AEI
 module MCTS
     ( MMTree(..)
     , TreeNode(..)
-    , newSearch
-    , constructMove
-    , improveTree
-    , descendByUCB1
-    , valueUCB
-    , createNode
-    , nodeValue
-    , nodeVisitCount
-    , nodeTreeNode
-    , newTT
+    , newSearch       -- :: Int -> IO SearchEngine
+    , constructMove   -- :: MMTree -> Int -> IO DMove
+    , improveTree     -- :: MMTree -> MCTSTable -> Int -> IO Double
+    , descendByUCB1   -- :: MMTree -> IO MMTree
+    , valueUCB        -- :: MMTree -> Int -> IO Double
+    , createNode      -- :: MMTree -> Double -> MCTSTable -> Int -> IO ()
+    , nodeValue       -- :: MMTree -> IO Double
+    , nodeVisitCount  -- :: MMTree -> IO Int
+    , nodeTreeNode    -- :: MMTree -> IO TreeNode
+    , newTT           -- :: Int -> IO MCTSTable
     ) where
 
 import AEI (SearchEngine)
@@ -86,6 +86,7 @@ constructMove _ 0 = return []
 constructMove mt n = do
         tn <- nodeTreeNode mt
         case tn of
+            _ | player mt /= mySide (board mt) -> return []
             Leaf -> return []
             _    -> do
                     best <- descendByUCB1 mt
@@ -97,20 +98,15 @@ improveTree mt tt !depth = do
 
         case tn of
             Leaf -> do
-                val <- normaliseValue . (* (mySide (board mt) <#> Gold))
-                       <$> getValueByMC (board mt) (movePhase mt)
+                val <- normaliseValue <$> getValueByMC (board mt) (movePhase mt)
                 createNode mt val tt depth
                 return val
             root -> do
                 if null $ children root
                     -- immobilization
                     then do
-                        inf <- normaliseValue
-                               <$> evalImmobilised (board mt) (player mt)
-                        changeMVar' (value root) (const inf)
                         changeMVar' (visitCount root) (+1)
-                        return inf
-                        -- TODO test +/-
+                        readMVar $ value root
 
                     else do
                         node <- descendByUCB1 mt
@@ -131,9 +127,13 @@ createNode mt val tt depth = do
                 changeMVar  (treeNode mt) (const tn)
             Nothing -> do
                 -- insert new item to TT with right value
-                chls <- mapM (leafFromStep mt) steps
-                newVal <- newMVar val
+                chls <- mapM (leafFromStep brd mp) steps
                 newVisitCount <- newMVar 1
+                newVal <- newMVar =<<
+                            if null chls -- is immobilised?
+                                then normaliseValue
+                                     <$> evalImmobilised (board mt) (player mt)
+                                else return val
 
                 let tn = Node { children   = chls
                               , value      = newVal
@@ -142,16 +142,17 @@ createNode mt val tt depth = do
                 changeMVar (treeNode mt) (const tn)
                 addHash tt index tn
     where
-        steps = generateSteps (board mt) (player mt)
-                (canPushOrPull $ movePhase mt)
-        index = (board mt, depth, movePhase mt)
+        steps = generateSteps brd pl (canPushOrPull mp)
+        index = (brd, depth, mp)
+        brd   = board mt
+        mp@(pl,_) = movePhase mt
 
-leafFromStep :: MMTree -> (Step, Step) -> IO MMTree
-leafFromStep mt s@(s1,s2) = do
+leafFromStep :: Board -> MovePhase -> (Step, Step) -> IO MMTree
+leafFromStep brd mp s@(s1,s2) = do
     newLeaf <- newMVar Leaf
     return $ MT
-        { board = fst $ makeMove (board mt) [s1,s2]
-        , movePhase = stepInMove (movePhase mt) s2
+        { board = fst $ makeMove brd [s1,s2]
+        , movePhase = stepInMove mp s2
         , treeNode = newLeaf
         , step = s
         }
@@ -162,31 +163,32 @@ descendByUCB1 :: MMTree -> IO MMTree
 descendByUCB1 mt = do
         tn <- nodeTreeNode mt
         let chs = children tn
+        let quant = player mt <#> Gold
 
         case chs of
             [] -> return mt -- immobilization
             _  -> do
                 vc <- readMVar $ visitCount tn
-                descendByUCB1' chs vc
+                descendByUCB1' chs vc quant
 
 -- | first argument have to be not empty
-descendByUCB1' :: [MMTree] -> Int -> IO MMTree
-descendByUCB1' mms nb = do
-        valHMms <- valueUCB hMms nb
-        fst <$> foldM (accumUCB nb) (hMms, valHMms) (tail mms)
+descendByUCB1' :: [MMTree] -> Int -> Int -> IO MMTree
+descendByUCB1' mms nb quant = do
+        valHMms <- valueUCB hMms nb quant
+        fst <$> foldM (accumUCB nb quant) (hMms, valHMms) (tail mms)
     where
         hMms = head mms
 
-accumUCB :: Int -> (MMTree, Double) -> MMTree -> IO (MMTree, Double)
-accumUCB count (best, bestValue) mt = do
-        nodeVal <- valueUCB mt count
+accumUCB :: Int -> Int -> (MMTree, Double) -> MMTree -> IO (MMTree, Double)
+accumUCB count quant (best, bestValue) mt = do
+        nodeVal <- valueUCB mt count quant
 
         if nodeVal > bestValue
             then return (mt, nodeVal)
             else return (best, bestValue)
 
-valueUCB :: MMTree -> Int -> IO Double
-valueUCB mt count = do
+valueUCB :: MMTree -> Int -> Int -> IO Double
+valueUCB mt count quant = do
         tn <- nodeTreeNode mt
 
         case tn of
@@ -195,9 +197,10 @@ valueUCB mt count = do
             _ -> do
                 nb <- fromIntegral <$> readMVar (visitCount tn)
                 vl <- readMVar (value tn)
-                return $ (vl / nb) + 0.01 * sqrt (log cn / nb)
+                return $ (quant' * vl / nb) + 0.01 * sqrt (log cn / nb)
     where
         cn = fromIntegral count
+        quant' = fromIntegral quant
 
 normaliseValue :: Int -> Double
 normaliseValue v = 2 / (1 + exp (-0.0003 * fromIntegral v)) - 1

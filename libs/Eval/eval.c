@@ -28,7 +28,6 @@ static int weight_table[6] = {
 #define AROUND_SW_TRAP (AROUND_TRAPS & SW)
 #define AROUND_SE_TRAP (AROUND_TRAPS & SE)
 
-/* TODO make it work */
 void init_eval()
 {
     /* random change pieces weight */

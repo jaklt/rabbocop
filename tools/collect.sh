@@ -8,19 +8,19 @@ function changedirectory() {
     echo $dir
 }
 
-function simpletest() {
+function Fight() {
     cd $1
     all=0
     count=0
     gold=0
     error=0
-    
+
     for i in `ls *.log`; do
         if [ "`tail -n 3 $i | head -n 1`" = "empty move!" ]; then
             error=`expr $error + 1`
             continue
         fi
-    
+
         result=`tail -n 2 $i | head -n 1 | sed -e "s/\w* won //"`
         all=`expr $all + $result`
         count=`expr $count + 1`
@@ -28,7 +28,7 @@ function simpletest() {
             gold=`expr $gold + 1`
         fi
     done
-    
+
     echo "average score: `expr $all / $count`"
     echo "gold won     :  $gold/$count"
     echo "errors count :  $error"
@@ -39,7 +39,7 @@ function aei() {
 }
 
 case $1 in
-    (simpletest) simpletest `changedirectory $2`;;
-    (aei)        aei `changedirectory $2`;;
-    (*)          simpletest `changedirectory $1`;;
+    (Fight) Fight `changedirectory $2`;;
+    (aei)   aei   `changedirectory $2`;;
+    (*)     Fight `changedirectory $1`;;
 esac

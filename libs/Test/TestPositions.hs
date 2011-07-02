@@ -123,8 +123,10 @@ positionCases =
       , Gold)
       -- Can immobilise oponent?
     , ( "[ rrrrrrrR                                                       ]"
-      , (||) <$> moveContainAND ["rb8w", "rc8w", "rb8s"]
-             <*> moveContainAND ["rb8w", "rc8s", "rc7w"]
+      , \ss -> moveContainAND ["rb8w", "rc8w", "rb8s"] ss
+            || moveContainAND ["rb8w", "rc8s", "rc7w"] ss
+            || moveContainAND ["rb8w", "rc8w", "rd8s", "rd7w"] ss -- not immob.
+            || moveContainAND ["rb8w", "rc8w", "rd8w", "rc8s"] ss --  but useful
       , Silver)
       -- Hard example from Kozeleks thesis (page 29)
     , ( "[rrrrrrrrhdcm c h Mx  x   e               Dx dxD H CE C HRRRRRRRR]"
@@ -174,5 +176,31 @@ evalCases =
         ++ " HxE x  "
         ++ "RRMr RHR"
         ++ "RDRCCRDR", Gold) -- than pushing him down (rd3s Ee3w)
+      ]
+
+    , [ ( "[rrrrrrrr"
+        ++ "hdcm c h"
+        ++ " Mx  x  "
+        ++ " e      "
+        ++ "        "
+        ++ " DxE xD "
+        ++ "H C  C H"
+        ++ "RRRRRRRR]", Gold)
+      , ( "[rrrrrrrr"
+        ++ "hdcm c h"
+        ++ " Mx  x  "
+        ++ " e      "
+        ++ "        "
+        ++ " Dx dxDH"
+        ++ "HC E CRR"
+        ++ "RRRRRR  ]", Gold)
+      , ( "[rrrrrrrr"
+        ++ "hdcm c h"
+        ++ " Mx  x  "
+        ++ " e      "
+        ++ "        "
+        ++ " Dx dxD "
+        ++ "H CE C H"
+        ++ "RRRRRRRR]", Gold)
       ]
     ]
