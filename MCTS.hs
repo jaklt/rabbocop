@@ -59,9 +59,9 @@ iNFINITY' = iNFINITY * iNFINITY
 newSearch :: Int -> IO SearchEngine
 newSearch = return . search
 
-search :: Int               -- ^ table size
-       -> Board             -- ^ starting position
-       -> MVar (DMove, Int) -- ^ best results to store here
+search :: Int                  -- ^ table size
+       -> Board                -- ^ starting position
+       -> MVar (DMove, String) -- ^ best results to store here
        -> IO ()
 search tableSize b mv = do
         newLeaf <- newMVar Leaf
@@ -73,11 +73,12 @@ search tableSize b mv = do
                    }
                 mv tt
 
-search' :: MMTree -> MVar (DMove, Int) -> MCTSTable -> IO ()
+search' :: MMTree -> MVar (DMove, String) -> MCTSTable -> IO ()
 search' mt mvar tt = do
         score <- improveTree mt tt 0
         move  <- constructMove mt 4
-        changeMVar mvar (const (move,0))
+        score <- (/) <$> nodeValue mt <*> (fromIntegral <$> nodeVisitCount mt)
+        changeMVar mvar (const (move, show score))
         -- putStrLn $ "info actual " ++ show (move,score)
         search' mt mvar tt
 
@@ -104,8 +105,7 @@ improveTree mt tt !depth = do
             root -> do
                 if null $ children root
                     -- immobilization
-                    then do
-                        changeMVar' (visitCount root) (+1)
+                    then
                         readMVar $ value root
 
                     else do

@@ -49,7 +49,8 @@ moveContainAND :: [String] -> [String] -> Bool
 moveContainAND [] _ = True
 moveContainAND (st:rest) moves = st `elem` moves && moveContainAND rest moves
 
-testSearchFunction :: (Int -> IO (Board -> MVar (DMove, Int) -> IO ())) -> IO ()
+testSearchFunction :: (Int -> IO (Board -> MVar (DMove, String) -> IO ()))
+                   -> IO ()
 testSearchFunction newSrch = go positionCases 1 >> putStrLn ""
     where
         testTime  = 10000000
@@ -59,7 +60,7 @@ testSearchFunction newSrch = go positionCases 1 >> putStrLn ""
         go [] _ = return ()
         go ((brd, positive, pl):rest) i = do
             let board' = parseFlatBoard pl brd
-            mvar <- newMVar ([],0)
+            mvar <- newMVar ([],"0")
             srch <- newSrch tableSize
             thread <- forkIO $ srch board' mvar
             threadDelay testTime

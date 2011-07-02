@@ -17,7 +17,7 @@ import System.IO (hFlush, stdout)
 
 
 newSearch :: Int  -- ^ table size
-          -> IO (Board -> MVar (DMove, Int) -> IO ())
+          -> IO (Board -> MVar (DMove, String) -> IO ())
 newSearch tableSize = iterative <$> newTT tableSize
 
 mtdf :: Board        -- ^ start position
@@ -41,7 +41,7 @@ mtdf !b tt (!best, bestValue) depth !lb !ub = do
              | otherwise       = bestValue
 
 -- | iterative deepening
-iterative :: ABTTable -> Board -> MVar (DMove, Int) -> IO ()
+iterative :: ABTTable -> Board -> MVar (DMove, String) -> IO ()
 iterative tt board mvar = search' 1 ([], 0)
     where
         search' :: Int -> (DMove, Int) -> IO ()
@@ -50,8 +50,8 @@ iterative tt board mvar = search' 1 ([], 0)
             putStrLn $ "info actual " ++ show gues
 #endif
             hFlush stdout
-            !m <- mtdf board tt gues depth (-iNFINITY) iNFINITY
-            _ <- swapMVar mvar m
+            m@(pv,sc) <- mtdf board tt gues depth (-iNFINITY) iNFINITY
+            _ <- swapMVar mvar (pv, show sc)
             search' (depth+1) m
 
 #ifdef ENGINE

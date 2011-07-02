@@ -13,7 +13,7 @@ import Eval.BitEval (forbidBoard)
 import Bits.BitRepresentation
 import Helpers
 
-type SearchEngine = Board -> MVar (DMove, Int) -> IO ()
+type SearchEngine = Board -> MVar (DMove, String) -> IO ()
 
 data Game = Game { timePerMove :: Int
                  , percentUnusedToReserve :: Int
@@ -69,14 +69,14 @@ aeiGo game | board game == EmptyBoard  = do
                 putStrLn ("bestmove " ++ startSilver)
                 return game
            | otherwise = do
-                mvar <- newMVar ([],0)
+                mvar <- newMVar ([],"Nothing computed")
                 forbidBoard $ board game
                 thread <- forkIO $ engine game (board game) mvar
                 threadDelay (3000000 * timePerMove game `div` 4)
                 (pv, val) <- takeMVar mvar
                 killThread thread
 
-                putStrLn $ "info bestscore " ++ show val
+                putStrLn $ "info bestscore " ++ val
                 putStrLn $ "bestmove "
                             ++ unwords (map show $ justOneMove (board game) pv)
                 return game

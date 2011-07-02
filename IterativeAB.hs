@@ -19,11 +19,11 @@ import System.IO (hFlush, stdout)
 
 
 newSearch :: Int  -- ^ table size
-          -> IO (Board -> MVar (DMove, Int) -> IO ())
+          -> IO (Board -> MVar (DMove, String) -> IO ())
 newSearch tableSize = iterative <$> newTT tableSize
 
 -- | iterative deepening
-iterative :: ABTTable -> Board -> MVar (DMove, Int) -> IO ()
+iterative :: ABTTable -> Board -> MVar (DMove, String) -> IO ()
 iterative tt board mvar = search' 1 ([], 0)
     where
         search' :: Int -> (DMove, Int) -> IO ()
@@ -37,15 +37,16 @@ iterative tt board mvar = search' 1 ([], 0)
             let win = (val-WINDOW, val+WINDOW)
             n@(_,val') <- alphaBeta board tt (fst best) win depth (mySide board)
 
-            m <- if val' < fst win || snd win < val'
+            m@(pv,sc) <-
+                if val' < fst win || snd win < val'
                     then alphaBeta board tt (fst best) (-iNFINITY, iNFINITY)
                                    depth (mySide board)
                     else return n
 #else
-            m <- alphaBeta board tt (fst best) (-iNFINITY, iNFINITY)
-                           depth (mySide board)
+            m@(pv,sc) <- alphaBeta board tt (fst best) (-iNFINITY, iNFINITY)
+                                   depth (mySide board)
 #endif
-            _ <- m `seq` swapMVar mvar m
+            _ <- m `seq` swapMVar mvar (pv, show sc)
             search' (depth+1) m
 
 #ifdef ENGINE
