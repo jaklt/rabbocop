@@ -1,3 +1,4 @@
+{-# OPTION  -fenable-rewrite-rules #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 module Bits.BitRepresentation (
     -- * Basic types
@@ -166,6 +167,10 @@ displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
 oponent :: Player -> Player
 oponent Gold = Silver
 oponent Silver = Gold
+{-# RULES
+    "oponent" forall x. oponent (oponent x) = x
+  #-}
+-- enemy of my enemy is my friend, but wait, that's me!
 
 -- | if Step argument is Pass then we count this step as one
 stepInMove :: MovePhase -> Step -> MovePhase
