@@ -16,6 +16,7 @@ getValueByMC b mp = do
 
 
 -- TODO +/- 1 discussion on immobilisation
+-- TODO when player changes, check weather is end of game?
 
 -- | Returns pseudorandom move (and (Pass,Pass) if player is immobilised)
 randomStep :: Board -> MovePhase -> IO (Step,Step)

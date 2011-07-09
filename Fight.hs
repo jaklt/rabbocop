@@ -3,6 +3,7 @@ module Main (main) where
 import System.Environment
 import Control.Concurrent
 import Control.Monad
+import System.Mem (performGC)
 
 import AEI
 import Bits.BitRepresentation
@@ -49,7 +50,8 @@ fight n mv srch1 srch2 = go board Gold
                 putStrLn "Game ended:"
                 print b
             | otherwise = do
-                mvar <- newMVar ([],0)
+                performGC
+                mvar <- newMVar ([],"Nothing computed")
                 forbidBoard board
                 let (engine,n') | pl == Gold = (srch1,1)
                                 | otherwise  = (srch2,n)

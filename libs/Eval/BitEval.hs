@@ -13,11 +13,11 @@ import Data.Int (Int64)
 
 type CBoardFunction a = Int64 -> Int64 -> Int64 -> Int64 -> Int64 -> Int64
                      -> Int64 -> Int64 -> Int64 -> Int64 -> Int64 -> Int64
-                     -> Int -> IO a
+                     -> Int -> a
 
-foreign import ccall "clib.h eval"           c_eval :: CBoardFunction Int
-foreign import ccall "clib.h forbid_board" c_forbid :: CBoardFunction ()
-foreign import ccall "clib.h is_forbidden" c_is_forbidden :: CBoardFunction Bool
+foreign import ccall "clib.h eval"         c_eval   :: CBoardFunction (IO Int)
+foreign import ccall "clib.h forbid_board" c_forbid :: CBoardFunction (IO ())
+foreign import ccall "clib.h is_forbidden" c_is_forbidden :: CBoardFunction (IO Bool)
 
 
 iNFINITY :: Num a => a
@@ -42,7 +42,7 @@ isForbidden b (pl,0) | pl == mySide b = return False
 isForbidden _ _ = return False
 
 
-boardAsCParameter :: CBoardFunction a -> Board -> Player -> IO a
+boardAsCParameter :: CBoardFunction a -> Board -> Player -> a
 boardAsCParameter cFunction b player =
         cFunction (fg ! Rabbit) (fg ! Cat)   (fg ! Dog)
                   (fg ! Horse)  (fg ! Camel) (fg ! Elephant)
