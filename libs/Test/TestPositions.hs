@@ -107,7 +107,6 @@ testEval' (num,tests) = do
 
         displayResult (>) (iNFINITY * iNFINITY, EmptyBoard) evaluated
 
-
 -- -------------------------------------------
 --            T E S T   C A S E S
 -- -------------------------------------------
@@ -115,12 +114,19 @@ testEval' (num,tests) = do
 positionCases :: [TestCase]
 positionCases =
     [ -- See my goal
-      ( "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
-      , moveContainOR ["re2s"]
+      ( "[rd   rdr"
+      ++ "r  rc  r"
+      ++ " h    h "
+      ++ "  cE    "
+      ++ " M r r  "
+      ++ " H    H "
+      ++ "RReR RDR"
+      ++ "  DC CRR]"
+      , moveContainAND ["re2s", "re3s", "re4s", "rf4w"]
       , Silver)
       -- See oponents goal
     , ( "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
-      , moveContainOR ["Cd1e", "Cf1w", "re2n", "re2w", "re2e"]
+      , moveContainOR ["Cd1e", "Cf1w", "re2n", "re2e"]
       , Gold)
       -- Can immobilise oponent?
     , ( "[ rrrrrrrR                                                       ]"
