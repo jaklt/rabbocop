@@ -19,7 +19,7 @@ import Foreign.StablePtr
 
 
 newtype JudyElement e = E { getJudyElement :: e }
-type HTable o = (J.JudyL (JudyElement o), Int32 -> Int32)
+type HTable' o = (J.JudyL (JudyElement o), Int32 -> Int32)
 
 instance J.JE (JudyElement e) where
     toWord b = do
@@ -36,7 +36,7 @@ instance J.JE (JudyElement e) where
 
 -- TODO consider wheather is better always rewrite HT entry, or it is
 --      necessary to check and compare depths
-addHash :: TTable e o i
+addHash :: HTable e o i
         -> i
         -> e
         -> IO ()
@@ -45,18 +45,18 @@ addHash tt i e = do
         -- performGC
         return ()
 
-getHash :: TTable e o i -> i -> IO (Maybe e)
+getHash :: HTable e o i -> i -> IO (Maybe e)
 getHash tt i = do
     val <- J.lookup (jkey tt i) (jtable tt)
     return $ val >>= (validate tt i . getJudyElement)
 
-newHT :: (Int32 -> Int32) -> IO (HTable o)
+newHT :: (Int32 -> Int32) -> IO (HTable' o)
 newHT fun = do
         j <- J.new
         return (j,fun)
 
-jtable :: TTable e o i -> JudyL (JudyElement o)
+jtable :: HTable e o i -> JudyL (JudyElement o)
 jtable = fst . table
 
-jkey :: TTable e o i -> i -> Key
+jkey :: HTable e o i -> i -> Key
 jkey tt = fromIntegral . (snd $ table tt) . (key tt)

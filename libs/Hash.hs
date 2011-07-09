@@ -3,11 +3,11 @@
 {-# LANGUAGE MagicHash    #-}
 
 module Hash
-    ( TTable(..)
-    , HTable
-    , getHash  -- :: TTable e o i -> i -> IO (Maybe e)
-    , addHash  -- :: TTable e o i -> i -> e -> IO ()
-    , newHT    -- :: (Int32 -> Int32) -> IO (HTable o)
+    ( HTable(..)
+    , HTable'
+    , getHash  -- :: HTable e o i -> i -> IO (Maybe e)
+    , addHash  -- :: HTable e o i -> i -> e -> IO ()
+    , newHT    -- :: (Int32 -> Int32) -> IO (HTable' o)
     ) where
 
 import Data.Int (Int32)
@@ -20,20 +20,18 @@ import Data.Int (Int32)
 #include "Hash/IntMapHash.hs"
 #endif
 
-data TTable e o i
-    = TT { table     :: HTable o
+data HTable e o i
+    = HT { table     :: HTable' o
          , getEntry  :: o -> e
          , isValid   :: i -> o -> Bool
          , key       :: i -> Int32
          , saveEntry :: e -> i -> o
          }
 
-validate :: TTable e o i -> i -> o -> Maybe e
+validate :: HTable e o i -> i -> o -> Maybe e
 validate tt i v = if isValid tt i v
                     then Just $ getEntry tt v
                     else Nothing
 
 
 -- TODO add stg like: shouldReplaceWith? :: o -> o -> Bool
-
--- TODO try rewrite validate to point-free style

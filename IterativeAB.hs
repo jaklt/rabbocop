@@ -20,7 +20,7 @@ import System.IO (hFlush, stdout)
 
 newSearch :: Int  -- ^ table size
           -> IO (Board -> MVar (DMove, String) -> IO ())
-newSearch tableSize = iterative <$> newTT tableSize
+newSearch tableSize = iterative <$> newHTables tableSize
 
 -- | iterative deepening
 iterative :: ABTTable -> Board -> MVar (DMove, String) -> IO ()

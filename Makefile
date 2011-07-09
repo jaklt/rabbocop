@@ -32,19 +32,18 @@ SRC = ${SRC_Hs} ${LINK_C} ${LINK_H}
 
 HC = ghc
 HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap -threaded -ilibs -rtsopts
-# HFLAGS += -prof -auto-all
-#        -fhpc -funbox-strict-fields
+# HFLAGS += -fhpc -funbox-strict-fields
 CC = gcc
 CFLAGS = -O2 -std=c99 -Wall -pedantic
+SHELL = /usr/bin/env bash
 
-ENABLED_DEFINES = JUDY HASKELL_HASH VERBOSE WINDOW
+HH ?= 1  # enabled history heuristic?
+ENABLED_DEFINES = JUDY HASKELL_HASH VERBOSE WINDOW HH
 HFLAGS += $(foreach v, $(ENABLED_DEFINES), $(if $($(v)), -D$(v)=$($(v))))
 
 ifdef PROF
 	HFLAGS += -prof -fforce-recomp -auto-all
 endif
-
-SHELL = /usr/bin/env bash
 
 
 all: IterativeAB MCTS MTDf

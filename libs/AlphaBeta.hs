@@ -2,7 +2,7 @@
 module AlphaBeta
     ( ABTTable
     , alphaBeta
-    , newTT
+    , newHTables
     ) where
 
 import Bits.BitRepresentation
@@ -139,10 +139,10 @@ makeTriple :: (a,b) -> c -> (a,b,c)
 makeTriple (a,b) c = (a,b,c)
 
 
-type ABTTable = TTable (DMove, Int, Int) HObject (Int64, Int, MovePhase)
+type ABTTable = HTable (DMove, Int, Int) HObject (Int64, Int, MovePhase)
 
 {-|
- - Implementing object for TTable, where we match type parameters as:
+ - Implementing object for HTable, where we match type parameters as:
  -  e ~ (DMove, Int, Int) { for (PV, lower bound, upper bound) }
  -  o ~ HObject
  -  i ~ (Int64, Int, MovePhase)  { for hash, depth, move phase }
@@ -153,10 +153,10 @@ data HObject = HO { hash0 :: Int64
                   , phase :: MovePhase
                   } deriving (Eq)
 
-newTT :: Int -> IO ABTTable
-newTT tableSize = do
+newHTables :: Int -> IO ABTTable
+newHTables tableSize = do
         ht <- newHT (`mod` ts)
-        return TT
+        return HT
            { table     = ht
            , getEntry  = best
            , isValid   = isValid'

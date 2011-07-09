@@ -41,8 +41,8 @@ testTiming = do
         killThread thread
         -- -}
         -- {-
-        tt <- AlphaBeta.newTT 200
-        best <- alphaBeta testBoard' tt [] (-iNFINITY, iNFINITY) 7 pl
+        tables <- AlphaBeta.newHTables 200
+        best <- alphaBeta testBoard' tables [] (-iNFINITY, iNFINITY) 7 pl
         print best
         -- -}
         printBoard testBoard'
@@ -100,15 +100,15 @@ simpleMMTree b = do
         , step = (Pass, Pass)
         }
 
-printChildrens :: MMTree -> IO ()
-printChildrens mt = do
+printChildrens :: MCTSTables -> MMTree -> IO ()
+printChildrens tables mt = do
         putStrLn "-------------------- (showing averages)"
         putStrLn "-- value visits step ucb --------------"
         tn <- nodeTreeNode mt
         childs <- forM (children tn) (\ch -> do
             val' <- nodeValue ch
             num' <- nodeVisitCount ch
-            valueUCB' <- valueUCB ch num' 1
+            valueUCB' <- valueUCB tables ch num' 1
             let step' = step ch
             return (valueUCB',(val',num',step')))
 
@@ -130,24 +130,24 @@ testMCTS = do
 
         showHeader "starting MCTS test:"
         tree <- simpleMMTree b
-        tt   <- MCTS.newTT 200
+        tables <- MCTS.newHTables 200
         mt' <- foldM (\mt _ -> do
-                _ <- improveTree mt tt 0
+                _ <- improveTree tables mt 0
                 return mt
                 ) tree [1 .. 310 :: Int]
 
-        print =<< step <$> descendByUCB1 mt'
-        printChildrens mt'
+        print =<< step <$> descendByUCB1 tables mt'
+        printChildrens tables mt'
         print =<< mm2c mt'
         printBoard b
 
         while $ do
             s <- getLine
             case ltrim s of
-                "" -> improveTree mt' tt 0 >>= \_ -> return True
-                'c':_ -> printChildrens mt' >> return True
-                't':_ -> mm2c mt' >>= print >> return True
-                'b':_ -> printBoard b >> return True
+                ""    -> improveTree tables mt' 0  >> return True
+                'c':_ -> printChildrens tables mt' >> return True
+                't':_ -> mm2c mt' >>= print        >> return True
+                'b':_ -> printBoard b              >> return True
                 'h':_ -> putStrLn "c childrens, t tree, b board, q quit"
                          >> return True
                 _ -> return False

@@ -1,4 +1,4 @@
-{-# OPTION  -fenable-rewrite-rules #-}
+{-# OPTIONS -fenable-rewrite-rules #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 module Bits.BitRepresentation (
     -- * Basic types
@@ -47,12 +47,14 @@ module Bits.BitRepresentation (
     pieceFromChar,       -- :: Char -> Piece
     playerToInt,         -- :: Player -> Int
     positionToStep,      -- :: (Player, Piece, Position) -> Step
+    stepToInt,           -- :: Step -> Int32
+    dStepToInt,          -- :: (Step, Step) -> Int32
 ) where
 
 import Data.Array
-import Data.Bits ((.&.), (.|.), xor, complement, bit)
+import Data.Bits ((.&.), (.|.), xor, complement, bit, shiftL)
 import Data.Char (digitToInt, isUpper, toLower)
-import Data.Int (Int64)
+import Data.Int (Int64, Int32)
 import Data.List (foldl')
 import Bits.MyBits
 
@@ -160,7 +162,7 @@ displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
                                         ++ [c| c <- "|\n", n `mod` 8 == 0]
                                         ++ ys
                                   , n+1))
-                    (" +------------------------+\n   a  b  c  d  e  f  g  h"
+                    (" +------------------------+\n   a  b  c  d  e  f  g  h  "
                     , 0 :: Int) xs
                   | otherwise = "[" ++ xs ++ "]"
 
@@ -437,3 +439,19 @@ hashPiece :: Player -> Piece -> Position -> Int64
 hashPiece _ _ 0 = 0
 hashPiece pl pie pos = c_hashPiece (playerToInt pl) (pieceToInt pie) pos
 {-# INLINE hashPiece #-}
+
+-- | Encode step as 16bit number:
+--   1 bit - player, 5 bits - from, 5 bits - to, 3 bits - piece
+stepToInt :: Step -> Int32
+stepToInt Pass = 0
+stepToInt (Step pie pl from to) =
+        shiftL pl' 13 .|. shiftL from' 8 .|. shiftL to' 3 .|. pie'
+    where
+        pie'  = fromIntegral $ pieceToInt pie + 1
+        pl'   = fromIntegral $ playerToInt pl
+        from' = fromIntegral $ bitIndex from
+        to'   = fromIntegral $ bitIndex to
+
+-- | Encode two steps as 32bit number using schema from stepToInt.
+dStepToInt :: (Step, Step) -> Int32
+dStepToInt (s1,s2) = stepToInt s1 .|. shiftL (stepToInt s2) 16
