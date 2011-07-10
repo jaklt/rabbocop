@@ -72,14 +72,17 @@ instance Show a => Show (CTree a) where
 
 
 mm2c :: MMTree -> IO (CTree (MovePhase, String, Int, (Step,Step)))
-mm2c mt = do
+mm2c mt = mm2c' 1 mt
+
+mm2c' :: Int -> MMTree -> IO (CTree (MovePhase, String, Int, (Step,Step)))
+mm2c' d mt = do
         tn <- nodeTreeNode mt
-        case tn of
-            Leaf -> return $ CT (mp, "Leaf", 0, st) []
-            _    -> do
-                ch  <- mapM mm2c $ children tn
-                val <- nodeValue mt
-                nb  <- nodeVisitCount mt
+        let val = value tn
+        let nb  = visitCount tn
+        if isLeaf d tn
+            then return $ CT (mp, "Leaf " ++ show val, nb, st) []
+            else do
+                ch  <- mapM (mm2c' (d+1)) $ children tn
                 return $ CT (mp, show val, nb, st) $ sortBy cmp' ch
     where
         mp = movePhase mt
@@ -92,7 +95,7 @@ mm2c mt = do
 
 simpleMMTree :: Board -> IO MMTree
 simpleMMTree b = do
-    newLeaf <- newMVar Leaf
+    newLeaf <- newMVar leaf
     return $ MT
         { board = b
         , movePhase = (mySide b, 0)
@@ -100,15 +103,15 @@ simpleMMTree b = do
         , step = (Pass, Pass)
         }
 
-printChildrens :: MCTSTables -> MMTree -> IO ()
-printChildrens tables mt = do
+printChildren :: MCTSTables -> MMTree -> IO ()
+printChildren tables mt = do
         putStrLn "-------------------- (showing averages)"
         putStrLn "-- value visits step ucb --------------"
         tn <- nodeTreeNode mt
         childs <- forM (children tn) (\ch -> do
             val' <- nodeValue ch
             num' <- nodeVisitCount ch
-            valueUCB' <- valueUCB tables ch num' 1
+            valueUCB' <- valueUCB tables ch num' 1 2
             let step' = step ch
             return (valueUCB',(val',num',step')))
 
@@ -136,8 +139,8 @@ testMCTS = do
                 return mt
                 ) tree [1 .. 310 :: Int]
 
-        print =<< step <$> descendByUCB1 tables mt'
-        printChildrens tables mt'
+        print =<< step <$> descendByUCB1 tables mt' 1
+        printChildren tables mt'
         print =<< mm2c mt'
         printBoard b
 
@@ -145,10 +148,10 @@ testMCTS = do
             s <- getLine
             case ltrim s of
                 ""    -> improveTree tables mt' 0  >> return True
-                'c':_ -> printChildrens tables mt' >> return True
+                'c':_ -> printChildren tables mt'  >> return True
                 't':_ -> mm2c mt' >>= print        >> return True
                 'b':_ -> printBoard b              >> return True
-                'h':_ -> putStrLn "c childrens, t tree, b board, q quit"
+                'h':_ -> putStrLn "c children, t tree, b board, q quit"
                          >> return True
                 _ -> return False
     where

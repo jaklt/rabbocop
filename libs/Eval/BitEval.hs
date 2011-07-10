@@ -17,7 +17,8 @@ type CBoardFunction a = Int64 -> Int64 -> Int64 -> Int64 -> Int64 -> Int64
 
 foreign import ccall "clib.h eval"         c_eval   :: CBoardFunction (IO Int)
 foreign import ccall "clib.h forbid_board" c_forbid :: CBoardFunction (IO ())
-foreign import ccall "clib.h is_forbidden" c_is_forbidden :: CBoardFunction (IO Bool)
+foreign import ccall "clib.h is_forbidden"
+                           c_is_forbidden :: CBoardFunction (IO Bool)
 
 
 iNFINITY :: Num a => a
@@ -26,6 +27,8 @@ iNFINITY = 100000
 eval :: Board -> Player -> IO Int
 eval = boardAsCParameter c_eval
 
+-- | Evaluate board, where given player is immobilised.
+-- Final result is also from this player perspective.
 evalImmobilised :: Board -> Player -> IO Int
 evalImmobilised b pl = do
     e <- eval b pl

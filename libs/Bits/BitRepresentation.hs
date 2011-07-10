@@ -83,7 +83,7 @@ data Board = Board { hash    :: !Int64
            | EmptyBoard deriving (Eq)
 
 data Step = Step !Piece !Player {- from: -} !Int64 {- to: -} !Int64 | Pass
-            deriving (Eq)
+            deriving (Eq, Ord)
 
 type Move = [Step]
 type DMove = [(Step,Step)]

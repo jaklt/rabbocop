@@ -11,13 +11,15 @@ module MCTS
     , newSearch       -- :: Int -> IO SearchEngine
     , constructMove   -- :: MMTree -> Int -> IO DMove
     , improveTree     -- :: MCTSTables -> MMTree -> Int -> IO Double
-    , descendByUCB1   -- :: MCTSTables -> MMTree -> IO MMTree
+    , descendByUCB1   -- :: MCTSTables -> MMTree -> Int -> IO MMTree
     , valueUCB        -- :: MCTSTables -> MMTree -> Int -> Int -> IO Double
     , createNode      -- :: MCTSTables -> MMTree -> Double -> Int -> IO ()
     , nodeValue       -- :: MMTree -> IO Double
     , nodeVisitCount  -- :: MMTree -> IO Int
     , nodeTreeNode    -- :: MMTree -> IO TreeNode
     , newHTables      -- :: Int -> IO MCTSTables
+    , leaf            -- :: TreeNode
+    , isLeaf          -- :: Int -> TreeNode -> Bool
     ) where
 
 import AEI (SearchEngine)
@@ -53,15 +55,17 @@ data MMTree = MT { board     :: !Board
                  , step      :: (Step, Step)
                  }
 
-data TreeNode = Leaf
-              | Node { children   :: [MMTree]    -- ^ steps from this
-                     , value      :: MVar Double -- ^ actual value of node
-                     , visitCount :: MVar Int
+data TreeNode = Node { children   :: ![MMTree] -- ^ steps from this
+                     , value      :: !Double   -- ^ actual value of node
+                     , visitCount :: !Int
                      }
 
 
 iNFINITY' :: Double
 iNFINITY' = 0.9
+
+thresholdMaternity :: Int
+thresholdMaternity = 5
 
 newSearch :: Int -> IO SearchEngine
 newSearch = return . search
@@ -71,7 +75,7 @@ search :: Int                  -- ^ table size
        -> MVar (DMove, String) -- ^ best results to store here
        -> IO ()
 search tableSize b mv = do
-        newLeaf <- newMVar Leaf
+        newLeaf <- newMVar leaf
         tables <- newHTables tableSize
         search' MT { board = b
                    , movePhase = (mySide b, 0)
@@ -83,7 +87,7 @@ search tableSize b mv = do
 search' :: MMTree -> MCTSTables -> MVar (DMove, String) -> Int -> IO ()
 search' mt tables mvar !count = do
         void $ improveTree tables mt 0
-        move  <- constructMove tables mt 4
+        move  <- constructMove tables mt 0
         score <- (/) <$> nodeValue mt <*> (fromIntegral <$> nodeVisitCount mt)
         changeMVar mvar (const (move, show score ++ " " ++ show count))
 #ifdef VERBOSE
@@ -93,128 +97,147 @@ search' mt tables mvar !count = do
         search' mt tables mvar (count+1)
 
 constructMove :: MCTSTables -> MMTree -> Int -> IO DMove
-constructMove _ _ 0 = return []
+constructMove _ _ 4 = return []
 constructMove tables mt n = do
         tn <- nodeTreeNode mt
-        case tn of
-            _ | player mt /= mySide (board mt) -> return []
-            Leaf -> return []
-            _    -> do
-                    best <- descendByUCB1 tables mt
-                    ((step best) :) <$> constructMove tables best (n-1)
+
+        if player mt /= mySide (board mt) || isLeaf n tn
+            then return []
+            else do
+                best <- descendByUCB1 tables mt n
+                ((step best) :) <$> constructMove tables best (n+1)
+
+leaf :: TreeNode
+leaf = Node { children   = []
+            , value      = 0
+            , visitCount = 0
+            }
+
+isLeaf :: Int -> TreeNode -> Bool
+isLeaf depth (Node { visitCount = vc }) = vc < thresholdMaternity + depth
+
+isMature :: Int -> TreeNode -> Bool
+isMature depth tn = not $ isLeaf (depth-1) tn
 
 improveTree :: MCTSTables -> MMTree -> Int -> IO Double
 improveTree tables mt !depth = do
         tn <- nodeTreeNode mt
 
-        case tn of
-            Leaf -> do
-                val <- normaliseValue <$> getValueByMC (board mt) (movePhase mt)
-                createNode tables mt val depth
+        if isLeaf depth tn
+            then do
+                val <- normaliseValue
+                   <$> getValueByMC (board mt) (movePhase mt)
+
+                if isMature depth tn
+                    then modifyMVar_ (treeNode mt)
+                       $ createNode tables mt val depth
+                    else changeMVar (treeNode mt)
+                       $ improveTreeNode val
+
                 improveStep tables (step mt) val
                 return val
-            root -> do
-                if null $ children root
+            else do
+                if null $ children tn
                     -- immobilization
                     then
-                        readMVar $ value root
+                        return $ value tn
 
                     else do
-                        node <- descendByUCB1 tables mt
-                        improvement <- improveTree tables node (depth + 1)
+                        node <- descendByUCB1 tables mt depth
+                        impr <- improveTree tables node (depth + 1)
 
-                        improveStep tables (step mt) improvement
-                        changeMVar' (value root) (+ improvement)
-                        changeMVar' (visitCount root) (+1)
-                        return improvement
+                        improveStep tables (step mt) impr
+                        changeMVar (treeNode mt) $ improveTreeNode impr
+                        return impr
 
-createNode :: MCTSTables -> MMTree -> Double -> Int -> IO ()
-createNode tables mt val depth = do
-        fromTT <- getHash tt index
+improveTreeNode :: Double -> TreeNode -> TreeNode
+improveTreeNode impr tn@(Node { value = val, visitCount = vc }) =
+        tn { value      = val + impr
+           , visitCount = vc  + 1
+           }
 
-        case fromTT of
-            Just tn -> do
-                -- update value of the item in TT
-                changeMVar' (visitCount tn) (+1)
-                changeMVar' (value tn)    (+val)
-                changeMVar  (treeNode mt) (const tn)
-            Nothing -> do
-                -- insert new item to TT with right value
-                chls <- mapM (leafFromStep brd mp) steps
-                newVisitCount <- newMVar 1
-                newVal <- newMVar =<<
-                            if null chls -- is immobilised?
-                                then normaliseValue
-                                     <$> evalImmobilised (board mt) (player mt)
-                                else return val
+createNode :: MCTSTables -> MMTree -> Double -> Int -> TreeNode
+           -> IO TreeNode
+createNode tables mt impr depth (Node { value = val, visitCount = vc }) = do
+        -- generate steps
+        chls <- mapM (leafFromStep tables brd mp depth) steps
 
-                let tn = Node { children   = chls
-                              , value      = newVal
-                              , visitCount = newVisitCount
-                              }
-                changeMVar (treeNode mt) (const tn)
-                addHash tt index tn
+        newVal <- if null steps -- is immobilised?
+                    then normaliseValue <$> evalImmobilised (board mt) pl
+                    else return $ val + impr
+
+        return Node { children   = chls
+                    , value      = newVal
+                    , visitCount = vc + 1
+                    }
     where
         steps = generateSteps brd pl (canPushOrPull mp)
-        index = (brd, depth, mp)
         brd   = board mt
         mp@(pl,_) = movePhase mt
-        tt    = ttTable tables
 
-leafFromStep :: Board -> MovePhase -> (Step, Step) -> IO MMTree
-leafFromStep brd mp s@(s1,s2) = do
-    newLeaf <- newMVar Leaf
-    return $ MT
-        { board = fst $ makeMove brd [s1,s2]
-        , movePhase = stepInMove mp s2
-        , treeNode = newLeaf
-        , step = s
-        }
+leafFromStep :: MCTSTables -> Board -> MovePhase -> Int -> (Step, Step)
+             -> IO MMTree
+leafFromStep tables brd mp depth s@(s1,s2) = do
+        fromTT <- getHash tt index
 
--- | if immobilised returns first_argument
-descendByUCB1 :: MCTSTables -> MMTree -> IO MMTree
-descendByUCB1 tables mt = do
+        tn <- case fromTT of
+                Just tn -> return tn
+                Nothing -> do
+                    -- insert new item to TT
+                    tn <- newMVar leaf
+                    addHash tt index tn
+                    return tn
+
+        return $ MT
+            { board = brd'
+            , movePhase = mp'
+            , treeNode = tn
+            , step = s
+            }
+    where
+        index@(brd', _, mp') =
+                (fst $ makeMove brd [s1,s2], depth, stepInMove mp s2)
+        tt = ttTable tables
+
+-- | Immobilised position cause fail.
+descendByUCB1 :: MCTSTables -> MMTree -> Int -> IO MMTree
+descendByUCB1 tables mt depth = do
         tn <- nodeTreeNode mt
-        let chs = children tn
-        let quant = player mt <#> Gold
+        let chs   = children tn
+            quant = player mt <#> Gold
 
-        case chs of
-            [] -> return mt -- immobilization
-            _  -> do
-                vc <- readMVar $ visitCount tn
-                descendByUCB1' tables chs vc quant
+        descendByUCB1' tables chs (visitCount tn) quant (depth+1)
 
 -- | first argument have to be not empty
-descendByUCB1' :: MCTSTables -> [MMTree] -> Int -> Int -> IO MMTree
-descendByUCB1' tables mms nb quant = do
-        valHMms <- valueUCB tables hMms nb quant
-        fst <$> foldM (accumUCB tables nb quant) (hMms, valHMms) (tail mms)
-    where
-        hMms = head mms
+descendByUCB1' :: MCTSTables -> [MMTree] -> Int -> Int -> Int -> IO MMTree
+descendByUCB1' tables (hMms:mms) nb quant depth = do
+        valHMms <- valueUCB tables hMms nb quant depth
+        fst <$> foldM (accumUCB tables nb quant depth) (hMms, valHMms) mms
+descendByUCB1' _ _ _ _ _ = error "Given list is empty in descendByUCB1'."
 
-accumUCB :: MCTSTables -> Int -> Int -> (MMTree, Double) -> MMTree
+accumUCB :: MCTSTables -> Int -> Int -> Int -> (MMTree, Double) -> MMTree
          -> IO (MMTree, Double)
-accumUCB tables count quant (best, bestValue) mt = do
-        nodeVal <- valueUCB tables mt count quant
+accumUCB tables count quant depth (best, bestValue) mt = do
+        nodeVal <- valueUCB tables mt count quant depth
 
         if nodeVal > bestValue
             then return (mt, nodeVal)
             else return (best, bestValue)
 
-valueUCB :: MCTSTables -> MMTree -> Int -> Int -> IO Double
-valueUCB tables mt count quant = do
+valueUCB :: MCTSTables -> MMTree -> Int -> Int -> Int -> IO Double
+valueUCB tables mt count quant depth = do
         tn <- nodeTreeNode mt
+        let nb = fromIntegral $ visitCount tn
+        let vl = value tn
 #if HH
         histValPair <- getHash (hhTable tables) $ step mt
         let histVal = fromMaybe 0 $ uncurry (/) <$> histValPair
 #endif
 
-        case tn of
-            Leaf -> return iNFINITY'
-            Node { children = [] } -> nodeValue mt
+        case isLeaf depth tn of
+            True -> return iNFINITY'
+            _ | null $ children tn -> nodeValue mt -- immobilised
             _ -> do
-                nb <- fromIntegral <$> readMVar (visitCount tn)
-                vl <- readMVar (value tn)
                 return $ (quant' * vl / nb) + 0.01 * sqrt (log cn / nb)
 #if HH
                        + (quant' * histVal) / nb
@@ -233,10 +256,10 @@ player :: MMTree -> Player
 player = fst . movePhase
 
 nodeValue :: MMTree -> IO Double
-nodeValue mt = readMVar (treeNode mt) >>= readMVar . value
+nodeValue mt = value <$> readMVar (treeNode mt)
 
 nodeVisitCount :: MMTree -> IO Int
-nodeVisitCount mt = readMVar (treeNode mt) >>= readMVar . visitCount
+nodeVisitCount mt = visitCount <$> readMVar (treeNode mt)
 
 nodeTreeNode :: MMTree -> IO TreeNode
 nodeTreeNode = readMVar . treeNode
@@ -250,10 +273,10 @@ changeMVar' mv f = modifyMVar_ mv $ (seq <$> id <*> return) . f
 
 -- Implementation of Transposition table
 
-type TTable = HTable TreeNode TTObject (Board, Int, MovePhase)
+type TTable = HTable (MVar TreeNode) TTObject (Board, Int, MovePhase)
 
 data TTObject = TTO { board0    :: Board
-                    , treeNode0 :: TreeNode
+                    , treeNode0 :: MVar TreeNode
                     , depth0    :: Int
                     , phase     :: MovePhase
                     }
@@ -283,7 +306,7 @@ ttKey tableSize (b, de, (pl,s)) = fromIntegral . (`mod` tableSize) $
         fromIntegral (hash b) `xor` fromIntegral (playerToInt pl)
         `xor` (fromIntegral s `shift` 4) `xor` (fromIntegral de `shift` 6)
 
-ttSaveEntry :: TreeNode -> (Board, Int, MovePhase) -> TTObject
+ttSaveEntry :: (MVar TreeNode) -> (Board, Int, MovePhase) -> TTObject
 ttSaveEntry tn (b, d, mp) =
         TTO { board0    = b
             , treeNode0 = tn
