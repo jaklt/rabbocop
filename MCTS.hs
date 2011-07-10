@@ -36,6 +36,10 @@ import Eval.BitEval
 import Eval.MonteCarloEval
 import Hash
 
+#ifdef VERBOSE
+import Control.Monad (when)
+#endif
+
 
 #ifdef ENGINE
 main :: IO ()
@@ -56,8 +60,8 @@ data TreeNode = Leaf
                      }
 
 
-iNFINITY' :: Num a => a
-iNFINITY' = iNFINITY * iNFINITY
+iNFINITY' :: Double
+iNFINITY' = 0.9
 
 newSearch :: Int -> IO SearchEngine
 newSearch = return . search
@@ -74,16 +78,19 @@ search tableSize b mv = do
                    , treeNode = newLeaf
                    , step = (Pass, Pass)
                    }
-                tables mv
+                tables mv 1
 
-search' :: MMTree -> MCTSTables -> MVar (DMove, String) -> IO ()
-search' mt tables mvar = do
+search' :: MMTree -> MCTSTables -> MVar (DMove, String) -> Int -> IO ()
+search' mt tables mvar !count = do
         void $ improveTree tables mt 0
         move  <- constructMove tables mt 4
         score <- (/) <$> nodeValue mt <*> (fromIntegral <$> nodeVisitCount mt)
-        changeMVar mvar (const (move, show score))
-        -- putStrLn $ "info actual " ++ show (move,score)
-        search' mt tables mvar
+        changeMVar mvar (const (move, show score ++ " " ++ show count))
+#ifdef VERBOSE
+        when (count `mod` VERBOSE == 0) $
+            putStrLn $ "info actual " ++ show (move,score)
+#endif
+        search' mt tables mvar (count+1)
 
 constructMove :: MCTSTables -> MMTree -> Int -> IO DMove
 constructMove _ _ 0 = return []
@@ -203,7 +210,7 @@ valueUCB tables mt count quant = do
 #endif
 
         case tn of
-            Leaf -> return 0.9 -- INFINITY'
+            Leaf -> return iNFINITY'
             Node { children = [] } -> nodeValue mt
             _ -> do
                 nb <- fromIntegral <$> readMVar (visitCount tn)
