@@ -19,7 +19,7 @@ getValueByMC b mp = do
 -- TODO when player changes, check weather is end of game?
 
 -- | Returns pseudorandom move (and (Pass,Pass) if player is immobilised)
-randomStep :: Board -> MovePhase -> IO (Step,Step)
+randomStep :: Board -> MovePhase -> IO DStep
 randomStep b mp@(pl,_) = do
         r <- randomRIO (0,119)
         return $ findOne moveable (length moveable) r
@@ -41,7 +41,6 @@ randomSimulation mp@(pl,_) d b = do
     case generateSteps b pl (canPushOrPull mp) of
         [] -> evalImmobilised b pl
         _  -> do
-            (s1,s2) <- randomStep b mp
-            randomSimulation (stepInMove mp s2) (d-1)
-                             (fst $ makeMove b [s1,s2])
+            s@(_,s2) <- randomStep b mp
+            randomSimulation (stepInMove mp s2) (d-1) (makeDStep' b s)
 

@@ -9,14 +9,16 @@ import Helpers
 
 testSteps :: IO ()
 testSteps = do
+        putStr "- test makeMove"
         let cases1 =
                 [ ( "Rd4", ["Rd4n", "Rd5n", "Rd6n"], "Rd7")
                 , ( "Rb3 Ra3 Mf4 dg4 db2 re8"
                   , ["Rb3e", "db2n"]
                   , "Ra3 Mf4 dg4 db3 re8")
+                , ( "Rc3 Cc4 rc5 rc6", ["rc5w", "Cc4n"], "rb5 Cc5")
+                , ( "Rc5", ["Rc5n"], "")
                 ]
 
-        putStr "- test makeMove"
         forM_ cases1 (\a@(b,steps,c) -> do
                         let b1 = parseBoard Gold b
                         let b2 = fst $ makeMove b1 $ map parseStep steps
@@ -26,6 +28,7 @@ testSteps = do
                     )
         putStrLn "\t- DONE"
 
+        putStr "- test canMakeStep"
         let cases2 =
                 [ ("Rd4", ("Rd4n", ""), True)
                 , ("Ra1 ra2", ("Ra1n", ""), False)
@@ -39,7 +42,6 @@ testSteps = do
                 , ("Ra1 cb1 Db2", ("cb1e", "Ra1e"), False) -- frozen
                 ]
 
-        putStr "- test canMakeStep"
         forM_ cases2 (\(b,(s1,s2), bo) -> do
                         let b' = parseBoard Gold b
                         unless (canMakeStep2 b' (parseStep s1,parseStep s2)
@@ -49,6 +51,7 @@ testSteps = do
                     )
         putStrLn "\t- DONE"
 
+        putStr "- test generateSteps"
         let cases3 =
                 [ ( "Ra1", [("Ra1n",""), ("Ra1e","")], Gold, True)
                 , ( "Rd5 ce5", [], Gold, True)
@@ -67,7 +70,6 @@ testSteps = do
                 , ( "Ca1 ca2 cb1", [], Gold, True)
                 ]
 
-        putStr "- test generateSteps"
         forM_ cases3 (\(b, ss, pl, bo) -> do
                         let b' = parseBoard Gold b
                         let generated = generateSteps b' pl bo

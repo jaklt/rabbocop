@@ -92,9 +92,9 @@ void init_zobrist()
                         ^ (((uint64_t) random()) << 20) ^ ((uint64_t) random());
 }
 
-uint64_t hash_piece(int player, int piece, int position)
+uint64_t hash_piece(int player, int piece, uint64_t position)
 {
-    return bit_zobrist_table[player][piece][position];
+    return bit_zobrist_table[player][piece][bit_index(position)];
 }
 
 

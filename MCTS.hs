@@ -52,7 +52,7 @@ main = runAEIInterface newSearch
 data MMTree = MT { board     :: !Board
                  , movePhase :: !MovePhase
                  , treeNode  ::  MVar TreeNode
-                 , step      :: (Step, Step)
+                 , step      :: DStep
                  }
 
 data TreeNode = Node { children   :: ![MMTree] -- ^ steps from this
@@ -175,9 +175,9 @@ createNode tables mt impr depth (Node { value = val, visitCount = vc }) = do
         brd   = board mt
         mp@(pl,_) = movePhase mt
 
-leafFromStep :: MCTSTables -> Board -> MovePhase -> Int -> (Step, Step)
+leafFromStep :: MCTSTables -> Board -> MovePhase -> Int -> DStep
              -> IO MMTree
-leafFromStep tables brd mp depth s@(s1,s2) = do
+leafFromStep tables brd mp depth s@(_,s2) = do
         fromTT <- getHash tt index
 
         tn <- case fromTT of
@@ -196,7 +196,7 @@ leafFromStep tables brd mp depth s@(s1,s2) = do
             }
     where
         index@(brd', _, mp') =
-                (fst $ makeMove brd [s1,s2], depth, stepInMove mp s2)
+                (makeDStep' brd s, depth, stepInMove mp s2)
         tt = ttTable tables
 
 -- | Immobilised position cause fail.
@@ -316,10 +316,10 @@ ttSaveEntry tn (b, d, mp) =
 
 -- Implementation of History heuristics table
 
-type HHTable = HTable (Double,Double) HHObject (Step, Step)
+type HHTable = HTable (Double,Double) HHObject DStep
 
 data HHObject = HHO { hhValue :: (Double, Double)
-                    , step0   :: (Step, Step)
+                    , step0   :: DStep
                     }
 
 newHH :: IO HHTable
@@ -333,12 +333,12 @@ newHH = do
        , saveEntry = hhSaveEntry
        }
 
-hhSaveEntry :: (Double, Double) -> (Step, Step) -> HHObject
+hhSaveEntry :: (Double, Double) -> DStep -> HHObject
 hhSaveEntry val st = HHO { hhValue = val
                          , step0   = st
                          }
 
-improveStep :: MCTSTables -> (Step, Step) -> Double -> IO ()
+improveStep :: MCTSTables -> DStep -> Double -> IO ()
 #if HH
 improveStep tables ss val = do
         ho <- getHash hhT ss

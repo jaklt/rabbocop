@@ -9,6 +9,7 @@ module Bits.BitRepresentation (
     Board(..),
     Step(..),
     Move,
+    DStep,
     DMove,
     MovePhase,
 
@@ -33,14 +34,16 @@ module Bits.BitRepresentation (
 
     -- * Stepping
     makeMove,            -- :: Board -> Move -> (Board, Move)
+    makeDStep,           -- :: Board -> DStep -> (Board, Move)
+    makeDStep',          -- :: Board -> DStep -> Board
     makeStep,            -- :: Board -> Step -> (Board, Move)
     generatePiecesSteps, -- :: Board -> Player -> Bool -> [(Piece,Int64)]
                          --          -> DMove
     generateMoveable,    -- :: Board -> Player -> [(Piece, Int64)]
     generateSteps,       -- :: Board -> Player -> Bool -> DMove
     canMakeStep,         -- :: Board -> Step -> Bool
-    canMakeStep2,        -- :: Board -> (Step,Step) -> Bool
-    isStepBy,            -- :: Player -> (Step,Step) -> Bool
+    canMakeStep2,        -- :: Board -> DStep -> Bool
+    isStepBy,            -- :: Player -> DStep -> Bool
 
     -- * Projections
     playerFromChar,      -- :: Char -> Player
@@ -48,9 +51,10 @@ module Bits.BitRepresentation (
     playerToInt,         -- :: Player -> Int
     positionToStep,      -- :: (Player, Piece, Position) -> Step
     stepToInt,           -- :: Step -> Int32
-    dStepToInt,          -- :: (Step, Step) -> Int32
+    dStepToInt,          -- :: DStep -> Int32
 ) where
 
+import Control.Arrow ((***))
 import Data.Array
 import Data.Bits ((.&.), (.|.), xor, complement, bit, shiftL)
 import Data.Char (digitToInt, isUpper, toLower)
@@ -59,7 +63,7 @@ import Data.List (foldl')
 import Bits.MyBits
 
 
-foreign import ccall "clib.h hash_piece" c_hashPiece :: Int -> Int -> Int
+foreign import ccall "clib.h hash_piece" c_hashPiece :: Int -> Int -> Int64
                                                      -> Int64
 foreign import ccall "clib.h steps_from_position"
                             c_stepsFromPosition :: Int -> Int -> Int64 -> Int64
@@ -86,7 +90,8 @@ data Step = Step !Piece !Player {- from: -} !Int64 {- to: -} !Int64 | Pass
             deriving (Eq, Ord)
 
 type Move = [Step]
-type DMove = [(Step,Step)]
+type DStep = (Step, Step)
+type DMove = [DStep]
 type MovePhase = (Player, Int) -- ^ (active player, steps played in move)
 
 traps :: Int64
@@ -247,28 +252,49 @@ createBoard pl xs = fst $ makeMove bo $ map positionToStep xs
 
 ---------------------------------------------------------------------
 
-makeMove :: Board -> Move -> (Board, Move)
+-- | Note: take a look at return value, it is different to return value of
+-- makeStep or makeDStep.
+makeMove :: Board
+         -> Move
+         -> (Board, Move) -- ^ new board position with full steps sequence
+                          --                    (including trapping steps)
 makeMove b = foldl' (\(b1, ss1) s -> case makeStep b1 s of
-                                   (b2, ss2) -> (b2, ss1 ++ ss2)) (b, [])
+                                   (b2, ss2) -> (b2, ss1 ++ s:ss2)) (b, [])
 {-# INLINE makeMove #-}
 
-makeStep :: Board -> Step -> (Board, Move)
+makeDStep :: Board
+          -> DStep
+          -> (Board, Move) -- ^ new board position and trapped pieces
+makeDStep b1 (s1,s2) = id *** (snd m++) $ makeStep (fst m) s2
+    where m = makeStep b1 s1
+{-# INLINE makeDStep #-}
+
+makeDStep' :: Board -> DStep -> Board
+makeDStep' b1 = (fst $) . makeDStep b1
+{-# INLINE makeDStep' #-}
+
+makeStep :: Board
+         -> Step
+         -> (Board, Move) -- ^ new board position and trapped pieces
 makeStep b Pass = (b, [])
 makeStep b s@(Step piece player from to) =
         (b { hash = hash', figures = figures b // boardDiff
-           , whole = accum xor (whole b) wholeDiff }, steps)
+           , whole = accum xor (whole b) wholeDiff }, trapped)
     where
         isTrapped p = adjecent p .&. ((whole b ! player) `xor` from) == 0
-        trapped =  [Step piece player to 0 | to .&. traps /= 0, isTrapped to]
-                ++ [Step pie player tr 0 | tr <- bits $
-                                                (whole b ! player) .&. traps
-                                         , isTrapped tr
-                                         , let pie = findPiece (figures b ! player) tr]
-        steps = s : trapped
+        trapped =
+             -- Stepping to unoccupied trap
+             [Step piece player to 0 | to .&. traps /= 0, isTrapped to]
+             -- Being leaved in trap
+          ++ [Step pie player tr 0 | tr <- bits $
+                                          (whole b ! player) .&. traps
+                                   , isTrapped tr
+                                   , let pie = findPiece (figures b ! player) tr]
+        steps = s:trapped
         diffs = [(pie, f `xor` t) | (Step pie _ f t) <- steps]
         hash' = foldl' (\h (Step pie pl f t) -> h
-                        `xor` hashPiece pl pie (bitIndex f)
-                        `xor` hashPiece pl pie (bitIndex t)) (hash b) steps
+                        `xor` hashPiece pl pie f
+                        `xor` hashPiece pl pie t) (hash b) steps
 
         boardDiff = [(player, accum xor (figures b ! player) diffs)]
         wholeDiff = [( player
@@ -388,7 +414,7 @@ canMakeStep' couldFreeze b (Step pie pl from to) =
 
 -- | See canMakeStep
 -- Note: it don't check validity of double step, it was valid somewhere else
-canMakeStep2 :: Board -> (Step,Step) -> Bool
+canMakeStep2 :: Board -> DStep -> Bool
 canMakeStep2 _ (Pass,_) = False
 canMakeStep2 b (s, Pass) = canMakeStep b s
 canMakeStep2 b (s1@(Step pie1 pl1 f1 _), Step pie2 pl2 f2 _) =
@@ -405,7 +431,7 @@ isFrozen b pie pl pos = immobilised (whole b ! pl) opStronger pos
         opStronger = foldl' (.|.) 0
                    $ map (figures b ! oponent pl !) $ tail [pie .. Elephant]
 
-isStepBy :: Player -> (Step,Step) -> Bool
+isStepBy :: Player -> DStep -> Bool
 isStepBy pl (Step _ pl1 _ _, Pass) = pl == pl1
 isStepBy pl (Step pie1 pl1 _ _, Step pie2 pl2 _ _) = pl == pl1 && pie1 > pie2
                                                   || pl == pl2 && pie1 < pie2
@@ -435,7 +461,8 @@ playerToInt Silver = 1
 positionToStep :: (Player, Piece, Position) -> Step
 positionToStep (pl,pie,pos) = Step pie pl 0 (bit pos)
 
-hashPiece :: Player -> Piece -> Position -> Int64
+-- | Get generated hash number for piece on given position.
+hashPiece :: Player -> Piece -> Int64 -> Int64
 hashPiece _ _ 0 = 0
 hashPiece pl pie pos = c_hashPiece (playerToInt pl) (pieceToInt pie) pos
 {-# INLINE hashPiece #-}
@@ -453,5 +480,5 @@ stepToInt (Step pie pl from to) =
         to'   = fromIntegral $ bitIndex to
 
 -- | Encode two steps as 32bit number using schema from stepToInt.
-dStepToInt :: (Step, Step) -> Int32
+dStepToInt :: DStep -> Int32
 dStepToInt (s1,s2) = stepToInt s1 .|. shiftL (stepToInt s2) 16

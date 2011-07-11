@@ -19,7 +19,7 @@
 
 int bit_index(uint64_t u);
 int bit_count(uint64_t u);
-uint64_t hash_piece(int player, int piece, int position);
+uint64_t hash_piece(int player, int piece, uint64_t position);
 int64_t steps_from_position(int pl, int pie, uint64_t pos);
 int immobilised(uint64_t pl_pieces, uint64_t op_pieces, uint64_t tested);
 void init();

@@ -32,9 +32,9 @@ testTiming :: IO ()
 testTiming = do
         showHeader "testTiming"
         {-
-        mvar <- newMVar ([],0)
+        mvar <- newMVar ([],"Nothing")
         search <- IterativeAB.newSearch 200
-        thread <- forkIO $ search testBoard'  mvar
+        thread <- forkIO $ search testBoard' mvar
         threadDelay 10000000
         (pv, val) <- takeMVar mvar
         print (pv, val)
@@ -71,10 +71,10 @@ instance Show a => Show (CTree a) where
                           ++ "\n" ++ (concat $ map (s (i+1)) subtrs)
 
 
-mm2c :: MMTree -> IO (CTree (MovePhase, String, Int, (Step,Step)))
+mm2c :: MMTree -> IO (CTree (MovePhase, String, Int, DStep))
 mm2c mt = mm2c' 1 mt
 
-mm2c' :: Int -> MMTree -> IO (CTree (MovePhase, String, Int, (Step,Step)))
+mm2c' :: Int -> MMTree -> IO (CTree (MovePhase, String, Int, DStep))
 mm2c' d mt = do
         tn <- nodeTreeNode mt
         let val = value tn
@@ -88,8 +88,8 @@ mm2c' d mt = do
         mp = movePhase mt
         st = step mt
 
-        cmp' :: CTree (MovePhase, String, Int, (Step,Step))
-             -> CTree (MovePhase, String, Int, (Step,Step)) -> Ordering
+        cmp' :: CTree (MovePhase, String, Int, DStep)
+             -> CTree (MovePhase, String, Int, DStep) -> Ordering
         cmp' (CT (_,a,_,_) _) (CT (_,b,_,_) _) = compare a b
 
 
@@ -162,7 +162,7 @@ while ac = flip when (while ac) =<< ac
 
 {- ------------------------------------------------------- -}
 
-showMove :: Show b => ([(Step,Step)], b) -> String
+showMove :: Show b => ([DStep], b) -> String
 showMove ([],a) = show ("Empty Move",a)
 showMove (ss,a) = "( " ++ foldr (\c b -> show c ++ " " ++ b) "" ss' ++ ", " ++ show a ++ ")"
     where
