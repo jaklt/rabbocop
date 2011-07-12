@@ -12,7 +12,6 @@ module MCTS
     , constructMove   -- :: MMTree -> Int -> IO DMove
     , improveTree     -- :: MCTSTables -> MMTree -> Int -> IO Double
     , descendByUCB1   -- :: MCTSTables -> MMTree -> Int -> IO MMTree
-    , valueUCB        -- :: MCTSTables -> MMTree -> Int -> Int -> IO Double
     , createNode      -- :: MCTSTables -> MMTree -> Double -> Int -> IO ()
     , nodeValue       -- :: MMTree -> IO Double
     , nodeVisitCount  -- :: MMTree -> IO Int
@@ -199,36 +198,51 @@ leafFromStep tables brd mp depth s@(_,s2) = do
                 (makeDStep' brd s, depth, stepInMove mp s2)
         tt = ttTable tables
 
+-- U C T   f o r m u l a
+
+type ParentToken = (MCTSTables, Int, Int, Int, MovePhase, DStep, Board)
+
 -- | Immobilised position cause fail.
 descendByUCB1 :: MCTSTables -> MMTree -> Int -> IO MMTree
 descendByUCB1 tables mt depth = do
         tn <- nodeTreeNode mt
         let chs   = children tn
             quant = player mt <#> Gold
+            mp@(_,sc) = movePhase mt
+            token = ( tables
+                    , visitCount tn
+                    , quant
+                    , depth+1
+                    , mp
+                    , if sc == 0 then (Pass,Pass)
+                                 else step mt
+                    , board mt
+                    )
 
-        descendByUCB1' tables chs (visitCount tn) quant (depth+1)
+        descendByUCB1' token chs
 
 -- | first argument have to be not empty
-descendByUCB1' :: MCTSTables -> [MMTree] -> Int -> Int -> Int -> IO MMTree
-descendByUCB1' tables (hMms:mms) nb quant depth = do
-        valHMms <- valueUCB tables hMms nb quant depth
-        fst <$> foldM (accumUCB tables nb quant depth) (hMms, valHMms) mms
-descendByUCB1' _ _ _ _ _ = error "Given list is empty in descendByUCB1'."
+descendByUCB1' :: ParentToken -> [MMTree] -> IO MMTree
+descendByUCB1' token (hMms:mms) = do
+        valHMms <- valueUCB token hMms
+        fst <$> foldM (accumUCB token) (hMms, valHMms) mms
+descendByUCB1' _ _ = error "Given list is empty in descendByUCB1'."
 
-accumUCB :: MCTSTables -> Int -> Int -> Int -> (MMTree, Double) -> MMTree
+accumUCB :: ParentToken -> (MMTree, Double) -> MMTree
          -> IO (MMTree, Double)
-accumUCB tables count quant depth (best, bestValue) mt = do
-        nodeVal <- valueUCB tables mt count quant depth
+accumUCB token (best, bestValue) mt = do
+        nodeVal <- valueUCB token mt
 
         if nodeVal > bestValue
             then return (mt, nodeVal)
             else return (best, bestValue)
 
-valueUCB :: MCTSTables -> MMTree -> Int -> Int -> Int -> IO Double
-valueUCB tables mt count quant depth = do
+valueUCB :: ParentToken -> MMTree -> IO Double
+valueUCB (tables,count,quant,depth,mp,st,board) mt = do
         tn <- nodeTreeNode mt
         let nb = fromIntegral $ visitCount tn
         let vl = value tn
+        let stepVal = evalStep board mp st (step mt)
 #if HH
         histValPair <- getHash (hhTable tables) $ step mt
         let histVal = fromMaybe 0 $ uncurry (/) <$> histValPair
@@ -237,10 +251,10 @@ valueUCB tables mt count quant depth = do
         case isLeaf depth tn of
             True -> return iNFINITY'
             _ | null $ children tn -> nodeValue mt -- immobilised
-            _ -> do
-                return $ (quant' * vl / nb) + 0.01 * sqrt (log cn / nb)
+            _ -> return $ (quant' * vl / nb) + 0.01 * sqrt (log cn / nb)
+                        + stepVal / nb
 #if HH
-                       + (quant' * histVal) / nb
+                        + (quant' * histVal) / nb
 #endif
     where
         cn = fromIntegral count

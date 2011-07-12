@@ -111,7 +111,7 @@ printChildren tables mt = do
         childs <- forM (children tn) (\ch -> do
             val' <- nodeValue ch
             num' <- nodeVisitCount ch
-            valueUCB' <- valueUCB tables ch num' 1 2
+            let valueUCB' = val' / fromIntegral num' :: Double
             let step' = step ch
             return (valueUCB',(val',num',step')))
 
