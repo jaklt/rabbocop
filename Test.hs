@@ -9,19 +9,20 @@ import Prelude
 
 import AlphaBeta
 import Bits.BitRepresentation
+import Bits.MyBits
 import Eval.BitEval
 import Eval.MonteCarloEval
 import Helpers
-import MTDf
-import MCTS
 import IterativeAB
-import Bits.MyBits
-import Test.TestPositions
+import MCTS
+import MTDf
 import Test.TestBitRepresentation
+import Test.TestPositions
 
 
-testMyBits :: Bool
-testMyBits = and [bitIndex (bit i) == i | i <- [0..63]]
+testMyBits :: IO ()
+testMyBits = putStrLn $ "- testMyBits\t- " ++ show basicBitIndexTest
+    where basicBitIndexTest = and [bitIndex (bit i) == i | i <- [0..63]]
 
 
 {- -------------------------------------------------------
@@ -170,7 +171,7 @@ showMove (ss,a) = "( " ++ foldr (\c b -> show c ++ " " ++ b) "" ss' ++ ", " ++ s
 
 main :: IO ()
 main = do
-    putStrLn $ "- testMyBits\t- " ++ show testMyBits
+    testMyBits
     testSteps
     testEval
 

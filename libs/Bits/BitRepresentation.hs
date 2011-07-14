@@ -1,5 +1,6 @@
-{-# OPTIONS -fenable-rewrite-rules #-}
+{-# OPTIONS -fenable-rewrite-rules    #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE BangPatterns             #-}
 module Bits.BitRepresentation (
     -- * Basic types
     Player(..),
@@ -12,6 +13,7 @@ module Bits.BitRepresentation (
     DStep,
     DMove,
     MovePhase,
+    PiecePosition,
 
     -- * Species lists
     pieces,              -- :: [Piece]
@@ -19,6 +21,7 @@ module Bits.BitRepresentation (
 
     -- * Other helper functions
     (<#>),               -- :: Num a => Player -> Player -> a
+    whole,               -- :: Board -> Player -> Int64
     displayBoard,        -- :: Board -> Bool -> String
     oponent,             -- :: Player -> Player
     stepInMove,          -- :: MovePhase -> Step -> MovePhase
@@ -54,14 +57,13 @@ module Bits.BitRepresentation (
     dStepToInt,          -- :: DStep -> Int32
 ) where
 
-import Control.Arrow ((***))
+import Control.Arrow ((***),(&&&))
 import Data.Array
 import Data.Bits ((.&.), (.|.), xor, complement, bit, shiftL)
 import Data.Char (digitToInt, isUpper, toLower)
 import Data.Int (Int64, Int32)
 import Data.List (foldl')
 import Bits.MyBits
-
 
 foreign import ccall "clib.h hash_piece" c_hashPiece :: Int -> Int -> Int64
                                                      -> Int64
@@ -71,19 +73,22 @@ foreign import ccall "clib.h steps_from_position"
 foreign import ccall "clib.h immobilised"
                             immobilised :: Int64 -> Int64 -> Int64 -> Bool
 
+
 data Player = Gold | Silver
               deriving (Eq, Ord, Enum, Ix, Show)
 
 data Piece = Rabbit | Cat | Dog | Horse | Camel | Elephant
              deriving (Eq, Ord, Enum, Ix, Show)
 
-type Position = Int -- in [0..63]
+type Position = Int -- ^ number from [0..63]
 type PlayerBoard = Array Piece Int64
 
-data Board = Board { hash    :: !Int64
-                   , figures :: Array Player PlayerBoard
-                   , whole   :: Array Player Int64
-                   , mySide  :: Player }
+data Board = Board { hash        :: !Int64
+                   , figures     :: Array Player PlayerBoard
+                   , wholeGold   :: !Int64
+                   , wholeSilver :: !Int64
+                   , mySide      :: Player
+                   }
            | EmptyBoard deriving (Eq)
 
 data Step = Step !Piece !Player {- from: -} !Int64 {- to: -} !Int64 | Pass
@@ -93,6 +98,8 @@ type Move = [Step]
 type DStep = (Step, Step)
 type DMove = [DStep]
 type MovePhase = (Player, Int) -- ^ (active player, steps played in move)
+data PiecePosition = PP !Piece !Int64
+
 
 traps :: Int64
 traps = 0x0000240000240000
@@ -136,6 +143,10 @@ pieces = [Rabbit .. Elephant]
 p1 <#> p2 | p1 == p2  =  1
           | otherwise = -1
 
+whole :: Board -> Player -> Int64
+whole b Gold   = wholeGold b
+whole b Silver = wholeSilver b
+
 showPiece :: Player -> Piece -> Char
 showPiece Gold Camel   = 'M'
 showPiece Silver Camel = 'm'
@@ -146,8 +157,8 @@ showPiece col piece    = (if col == Gold then id else toLower)
 displayBoard :: Board -> Bool -> String
 displayBoard EmptyBoard _ = "<EmptyBoard>"
 displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
-        , let pp | i .&. whole b ! Gold   /= 0 = g Gold i
-                 | i .&. whole b ! Silver /= 0 = g Silver i
+        , let pp | i .&. whole b Gold   /= 0 = g Gold i
+                 | i .&. whole b Silver /= 0 = g Silver i
                  | i .&. traps /= 0 = 'x'
                  | otherwise = empty]
     where
@@ -174,9 +185,11 @@ displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
 oponent :: Player -> Player
 oponent Gold = Silver
 oponent Silver = Gold
+{-
 {-# RULES
     "oponent" forall x. oponent (oponent x) = x
   #-}
+-}
 -- enemy of my enemy is my friend, but wait, that's me!
 
 -- | if Step argument is Pass then we count this step as one
@@ -247,8 +260,8 @@ createBoard pl xs = fst $ makeMove bo $ map positionToStep xs
         sb = array (Rabbit, Elephant) [(i,0 :: Int64) | i <- pieces]
 
         fi = array (Gold, Silver) [(Gold, gb), (Silver, sb)]
-        wh = array (Gold, Silver) [(Gold, 0),  (Silver, 0)]
-        bo = Board { hash=0, figures=fi, whole=wh, mySide=pl }
+        bo = Board { hash=0, figures=fi, wholeGold=0, wholeSilver=0
+                   , mySide=pl }
 
 ---------------------------------------------------------------------
 
@@ -278,73 +291,102 @@ makeStep :: Board
          -> (Board, Move) -- ^ new board position and trapped pieces
 makeStep b Pass = (b, [])
 makeStep b s@(Step piece player from to) =
-        (b { hash = hash', figures = figures b // boardDiff
-           , whole = accum xor (whole b) wholeDiff }, trapped)
+        ( b { hash    = hash'
+            , figures = figures b // boardDiff
+            , wholeGold   = wholeGold'
+            , wholeSilver = wholeSilver'
+            }
+        , trapped)
     where
-        isTrapped p = adjecent p .&. ((whole b ! player) `xor` from) == 0
+        wholePlayer = whole b player
+
+        nearByTraps = wholePlayer `xor` from
+        isTrapped p = adjecent p .&. nearByTraps == 0
+
         trapped =
              -- Stepping to unoccupied trap
              [Step piece player to 0 | to .&. traps /= 0, isTrapped to]
              -- Being leaved in trap
-          ++ [Step pie player tr 0 | tr <- bits $
-                                          (whole b ! player) .&. traps
+          ++ [Step pie player tr 0 | tr <- bits $ (wholePlayer) .&. traps
                                    , isTrapped tr
                                    , let pie = findPiece (figures b ! player) tr]
         steps = s:trapped
-        diffs = [(pie, f `xor` t) | (Step pie _ f t) <- steps]
-        hash' = foldl' (\h (Step pie pl f t) -> h
-                        `xor` hashPiece pl pie f
-                        `xor` hashPiece pl pie t) (hash b) steps
+        (diffs,hash',wholeDiff) = case steps of
+                [Step pie _ f t] -> ( [(pie, f `xor` t)]
+                                    , hashHelp pie f t h
+                                    , wholePlayer `xor` f `xor` t)
+                [Step pie1 _ f1 t1, Step pie2 _ f2 t2]
+                         -> ( [(pie1, f1 `xor` t1), (pie2, f2 `xor` t2)]
+                            , hashHelp pie1 f1 t1 $ hashHelp pie2 f2 t2 h
+                            , wholePlayer `xor` f1 `xor` t1 `xor` f2 `xor` t2)
+                _ -> error "makeStep causes three pieces to move"
+        h = hash b
 
+        hashHelp pie f t h'=
+            h' `xor` hashPiece player pie f `xor` hashPiece player pie t
+
+        -- Step of some piece affects only other pieces this player has.
         boardDiff = [(player, accum xor (figures b ! player) diffs)]
-        wholeDiff = [( player
-                     , foldl' (\x (Step _ _ f t) -> x `xor` f `xor` t) 0 steps)]
 
-generateMoveable :: Board -> Player -> [(Piece, Int64)]
+        (wholeGold', wholeSilver')
+                | player == Gold = (wholeDiff, wholeSilver b)
+                | otherwise      = (wholeGold b, wholeDiff)
+
+
+generateMoveable :: Board -> Player -> [PiecePosition]
 generateMoveable b pl =
-    notImmobilised (allPieces b pl) (allPieces b (oponent pl)) (whole b ! pl) 0
-
-allPieces :: Board -> Player -> [(Piece, Int64)]
-allPieces b pl = zip pieces' $ map ((!) (figures b ! pl)) pieces'
+        notFrozen (allPieces pl) (allPieces (oponent pl)) (whole b pl) 0
     where
-        pieces' = [Elephant, Camel .. Rabbit]
+        allPieces pl' = map (\pie -> PP pie (bb pie)) pieces'
+            where
+                pieces' = [Elephant, Camel .. Rabbit]
+                bb = (!) (figures b ! pl')
 
 -- Filter not immobilised pieces
 -- Lists of pieces needs to be sorted by stronger
-notImmobilised :: [(Piece, Int64)] -- ^ players pieces to check
-               -> [(Piece, Int64)] -- ^ all oponents pieces
-               -> Int64            -- ^ positions of all player pieces
-               -> Int64            -- ^ positions of oponents stronger pieces
-               -> [(Piece,Int64)]
-notImmobilised [] _ _ _ = []
-notImmobilised ((pie,poss):plPieRest) ops relatives stronger =
-        [(pie,b) | b <- bits poss
-                 , not $ immobilised relatives stronger' b]
+notFrozen :: [PiecePosition] -- ^ players pieces to check
+          -> [PiecePosition] -- ^ all oponents pieces
+          -> Int64           -- ^ positions of all player pieces
+          -> Int64           -- ^ positions of oponents stronger pieces
+          -> [PiecePosition]
+notFrozen [] _ _ _ = []
+notFrozen ((PP pie poss):plPieRest) ops relatives stronger =
+        [(PP pie b) | b <- bits poss
+                    , not $ immobilised relatives stronger' b]
 
-        ++ notImmobilised plPieRest ops' relatives stronger'
+        ++ notFrozen plPieRest ops' relatives stronger'
     where
-        (ops1,ops2) = span ((> pie) . fst) ops
-        bitSum = foldr (.|.) 0 $ map snd ops1
-        (ops',stronger') = (ops2, stronger .|. bitSum)
+        stronger' = stronger .|. bitSum
+
+        !(!bitSum, !ops') = go 0 ops
+
+        go :: Int64 -> [PiecePosition] -> (Int64, [PiecePosition])
+        go !sum' [] = (sum', [])
+        go !sum' allOpt2@((PP pie' poss'):ops2)
+                | pie' > pie = go (sum' .|. poss') ops2
+                | otherwise  = (sum', allOpt2)
+
 
 -- | It doesn't check wheather pieces can move.
--- in (piece,position) - position can contain multiple figures
-generatePiecesSteps :: Board -> Player -> Bool -> [(Piece,Int64)] -> DMove
+-- in PiecePosition - position can contain multiple figures
+generatePiecesSteps :: Board -> Player -> Bool -> [PiecePosition] -> DMove
 generatePiecesSteps b pl canPP pies =
-        genPiecesSteps' b pl canPP pies opPie empty
+        genPiecesSteps' b pl canPP pies opPie empty oArr
     where
-        opPie = whole b ! oponent pl
-        empty = complement $ whole b ! Gold .|. whole b ! Silver
+        opPie = whole b (oponent pl)
+        empty = complement $ whole b Gold .|. whole b Silver
+        oArr = figures b ! oponent pl
 
 genPiecesSteps' :: Board
                 -> Player
                 -> Bool            -- ^ can push/pull
-                -> [(Piece,Int64)] -- ^ pieces to move
+                -> [PiecePosition] -- ^ pieces to move
                 -> Int64           -- ^ weaker oponents peaces
                 -> Int64           -- ^ empty places
+                -> PlayerBoard
                 -> DMove
-genPiecesSteps' _ _ _ [] _ _ = []
-genPiecesSteps' b pl canPullPush ((pie,pos):rest) opWeak empty =
+genPiecesSteps' _ _ _ [] _ _ _ = []
+genPiecesSteps' b pl canPullPush ((PP pie pos):rest) opWeak empty oArr =
         -- pulls
         [(cStep w, Step (findPiece oArr pull) op pull pos)
             | canPullPush
@@ -359,21 +401,17 @@ genPiecesSteps' b pl canPullPush ((pie,pos):rest) opWeak empty =
             , to <- bits $! empty .&. adjecent w]
 
         -- simple steps
-        ++ zip
-            (map cStep $ bits $!
+        ++ (map (cStep &&& const Pass) $ bits $
                 empty .&. stepsFromPosition pl pie pos)
-            [Pass, Pass, Pass, Pass]
 
-        ++ genPiecesSteps' b pl canPullPush rest opWeak empty
+        ++ genPiecesSteps' b pl canPullPush rest opWeak empty oArr
     where
         cStep = Step pie pl pos
-        oArr = figures b ! op
         op = oponent pl
 
         opStrPies = foldr (.|.) 0 $ map (oArr !) [pie .. Elephant]
         opWeak' = opWeak .&. complement opStrPies
 
--- TODO better ordering
 generateSteps :: Board -> Player -> Bool -> DMove
 generateSteps b pl canPP =
         generatePiecesSteps b pl canPP $ generateMoveable b pl
@@ -408,8 +446,8 @@ canMakeStep' :: Bool -> Board -> Step -> Bool
 canMakeStep' _ _ Pass = False
 canMakeStep' couldFreeze b (Step pie pl from to) =
         figures b ! pl ! pie .&. from /= 0
-        && whole b ! Gold   .&. to == 0
-        && whole b ! Silver .&. to == 0
+        && whole b Gold   .&. to == 0
+        && whole b Silver .&. to == 0
         && (not couldFreeze || not (isFrozen b pie pl from))
 
 -- | See canMakeStep
@@ -426,7 +464,7 @@ canMakeStep2 b (s1@(Step pie1 pl1 f1 _), Step pie2 pl2 f2 _) =
                    | otherwise   = (pie2,pl2,f2)
 
 isFrozen :: Board -> Piece -> Player -> Int64 -> Bool
-isFrozen b pie pl pos = immobilised (whole b ! pl) opStronger pos
+isFrozen b pie pl pos = immobilised (whole b pl) opStronger pos
     where
         opStronger = foldl' (.|.) 0
                    $ map (figures b ! oponent pl !) $ tail [pie .. Elephant]
@@ -470,11 +508,11 @@ hashPiece pl pie pos = c_hashPiece (playerToInt pl) (pieceToInt pie) pos
 -- | Encode step as 16bit number:
 --   1 bit - player, 5 bits - from, 5 bits - to, 3 bits - piece
 stepToInt :: Step -> Int32
-stepToInt Pass = 0
+stepToInt Pass = 0x00000007
 stepToInt (Step pie pl from to) =
         shiftL pl' 13 .|. shiftL from' 8 .|. shiftL to' 3 .|. pie'
     where
-        pie'  = fromIntegral $ pieceToInt pie + 1
+        pie'  = fromIntegral $ pieceToInt pie
         pl'   = fromIntegral $ playerToInt pl
         from' = fromIntegral $ bitIndex from
         to'   = fromIntegral $ bitIndex to

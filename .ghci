@@ -1,4 +1,4 @@
-:set -Wall -XForeignFunctionInterface
+:set -Wall -XForeignFunctionInterface -ilibs
 -- :load Main
 
 -- let cmdTest _ = return ":main test"

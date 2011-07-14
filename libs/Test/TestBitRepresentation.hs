@@ -11,12 +11,13 @@ testSteps :: IO ()
 testSteps = do
         putStr "- test makeMove"
         let cases1 =
-                [ ( "Rd4", ["Rd4n", "Rd5n", "Rd6n"], "Rd7")
+                [ ( "Rh1 rg1", [], "rg1 Rh1")
+                , ( "Rd4", ["Rd4n", "Rd5n", "Rd6n"], "Rd7")
+                , ( "Rc5", ["Rc5n"], "")
                 , ( "Rb3 Ra3 Mf4 dg4 db2 re8"
                   , ["Rb3e", "db2n"]
                   , "Ra3 Mf4 dg4 db3 re8")
                 , ( "Rc3 Cc4 rc5 rc6", ["rc5w", "Cc4n"], "rb5 Cc5")
-                , ( "Rc5", ["Rc5n"], "")
                 ]
 
         forM_ cases1 (\a@(b,steps,c) -> do

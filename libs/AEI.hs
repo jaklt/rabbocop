@@ -5,7 +5,6 @@ module AEI
 
 import Control.Concurrent
 import Control.Monad (unless)
-import Data.Array ((!))
 import System.IO (hFlush, stdout)
 import System.Mem (performGC)
 
@@ -45,7 +44,7 @@ aeiMakemove :: Game -> String -> Game
 aeiMakemove game move
         | board game == EmptyBoard = game { board = parseBoard Silver move }
         | (hash.board) game == 0   = game { board = parseBoard   Gold move }
-        | whole (board game) ! Silver == 0 = game { board = fst board2 }
+        | whole (board game) Silver == 0 = game { board = fst board2 }
         | otherwise =  game { board = fst board1 }
     where
         board1 = makeMove (board game) $ filter notTrapping
@@ -65,7 +64,7 @@ aeiGo :: Game -> IO Game
 aeiGo game | board game == EmptyBoard  = do
                 putStrLn ("bestmove " ++ startGold)
                 return game { board = parseBoard Gold "" }
-           | whole (board game) ! Silver == 0 = do
+           | whole (board game) Silver == 0 = do
                 putStrLn ("bestmove " ++ startSilver)
                 return game
            | otherwise = do
