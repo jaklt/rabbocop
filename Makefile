@@ -37,8 +37,8 @@ CC = gcc
 CFLAGS = -O2 -std=c99 -Wall -pedantic
 SHELL = /usr/bin/env bash
 
-HH ?= 1  # enabled history heuristic?
-ENABLED_DEFINES = JUDY HASKELL_HASH VERBOSE WINDOW HH
+
+ENABLED_DEFINES = JUDY HASKELL_HASH VERBOSE WINDOW noHH
 HFLAGS += $(foreach v, $(ENABLED_DEFINES), $(if $($(v)), -D$(v)=$($(v))))
 
 ifdef PROF

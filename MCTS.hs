@@ -245,7 +245,7 @@ valueUCB (tables,count,quant,depth,mp,st,board) mt = do
         let nb = fromIntegral $ visitCount tn
         let vl = value tn
         let stepVal = evalStep board mp st (step mt)
-#if HH
+#ifndef noHH
         histValPair <- getHash (hhTable tables) $ step mt
         let histVal = fromMaybe 0 $ uncurry (/) <$> histValPair
 #endif
@@ -257,7 +257,7 @@ valueUCB (tables,count,quant,depth,mp,st,board) mt = do
                     nodeValue mt -- immobilised
             _ -> return $ (quant' * vl / nb) + 0.01 * sqrt (log cn / nb)
                         + stepVal / nb
-#if HH
+#ifndef noHH
                         + (quant' * histVal) / nb
 #endif
     where
@@ -357,7 +357,7 @@ hhSaveEntry val st = HHO { hhValue = val
                          }
 
 improveStep :: MCTSTables -> DStep -> Double -> IO ()
-#if HH
+#ifndef noHH
 improveStep tables ss val = do
         ho <- getHash hhT ss
         addHash hhT ss $
