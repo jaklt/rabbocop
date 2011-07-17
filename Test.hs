@@ -37,8 +37,7 @@ testTiming = do
         search <- IterativeAB.newSearch 200
         thread <- forkIO $ search testBoard' mvar
         threadDelay 10000000
-        (pv, val) <- takeMVar mvar
-        print (pv, val)
+        print =<< takeMVar mvar
         killThread thread
         -- -}
         -- {-
@@ -133,26 +132,27 @@ testMCTS = do
         putStrLn $ "iNFINITY:\t" ++ show (iNFINITY :: Int)
 
         showHeader "starting MCTS test:"
-        tree <- simpleMMTree b
+        mt <- simpleMMTree b
         tables <- MCTS.newHTables 200
-        mt' <- foldM (\mt _ -> do
-                _ <- improveTree tables mt 0
-                return mt
-                ) tree [1 .. 310 :: Int]
+        foldM_ (\mt' _ -> do
+                _ <- improveTree tables mt' 0
+                return mt'
+                ) mt [1 .. 310 :: Int]
 
-        print =<< step <$> descendByUCB1 tables mt' 1
-        printChildren tables mt'
-        print =<< mm2c mt'
+        -- print =<< step <$> descendByUCB1 tables mt 1
+        printChildren tables mt
+        print =<< mm2c mt
         printBoard b
 
         while $ do
             s <- getLine
             case ltrim s of
-                ""    -> improveTree tables mt' 0  >> return True
-                'c':_ -> printChildren tables mt'  >> return True
-                't':_ -> mm2c mt' >>= print        >> return True
-                'b':_ -> printBoard b              >> return True
-                'h':_ -> putStrLn "c children, t tree, b board, q quit"
+                ""    -> improveTree tables mt 0  >> return True
+                'c':_ -> printChildren tables mt  >> return True
+                't':_ -> mm2c mt >>= print        >> return True
+                'm':_ -> constructMove tables mt 0 >>= print >> return True
+                'b':_ -> printBoard b             >> return True
+                'h':_ -> putStrLn "c children, t tree, b board, q quit, m construct move"
                          >> return True
                 _ -> return False
     where

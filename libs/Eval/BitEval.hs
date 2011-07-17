@@ -105,3 +105,4 @@ evalStep b (pl,_) s1@(s11,s12) s2@(s21,s22)
 
         -- TODO steps close to previous step should be promoted
         --      (including stepping with the same piece)
+        -- TODO rabbit going to goalline bonus

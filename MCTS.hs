@@ -9,7 +9,7 @@ module MCTS
     , MCTSTables
     , TreeNode(..)
     , newSearch       -- :: Int -> IO SearchEngine
-    , constructMove   -- :: MMTree -> Int -> IO DMove
+    , constructMove   -- :: MCTSTables -> MMTree -> Int -> IO DMove
     , improveTree     -- :: MCTSTables -> MMTree -> Int -> IO Double
     , descendByUCB1   -- :: MCTSTables -> MMTree -> Int -> IO MMTree
     , createNode      -- :: MCTSTables -> MMTree -> Double -> Int -> IO ()
@@ -38,6 +38,7 @@ import Eval.MonteCarloEval
 import Hash
 
 #ifdef VERBOSE
+import System.IO (hFlush, stdout)
 import Control.Monad (when)
 #endif
 
@@ -91,7 +92,8 @@ search' mt tables mvar !count = do
         changeMVar mvar (const (move, show score ++ " " ++ show count))
 #ifdef VERBOSE
         when (count `mod` VERBOSE == 0) $
-            putStrLn $ "info actual " ++ show (move,score)
+            putStrLn ("info actual " ++ show (move,score))
+            >> hFlush stdout
 #endif
         search' mt tables mvar (count+1)
 
@@ -248,9 +250,11 @@ valueUCB (tables,count,quant,depth,mp,st,board) mt = do
         let histVal = fromMaybe 0 $ uncurry (/) <$> histValPair
 #endif
 
-        case isLeaf depth tn of
-            True -> return iNFINITY'
-            _ | null $ children tn -> nodeValue mt -- immobilised
+        case tn of
+            Node { visitCount = 0 } ->
+                    return $ iNFINITY' + stepVal/(nb+1)
+            _ | null (children tn) && not (isLeaf depth tn) ->
+                    nodeValue mt -- immobilised
             _ -> return $ (quant' * vl / nb) + 0.01 * sqrt (log cn / nb)
                         + stepVal / nb
 #if HH
