@@ -73,8 +73,8 @@ alphaBeta' !board tt !sugg aB@(!alpha, !beta) !remDepth mp@(!pl, !stepCount)
                             (a:as, [])   -> ([a],   (as,[]))
                             (a:as, b:bs) -> ([a,b], (as,bs))
                             _            -> ([],    emptyKM)
-        headKM' = filter ((&&) <$> canMakeStep2 board <*> isStepBy pl) headKM
-        steps = headPV ++ headKM' ++ generateSteps board pl (canPushOrPull mp)
+        headKM' = filter ((&&) <$> canMakeDStep board <*> isStepBy pl) headKM
+        steps = headPV ++ headKM' ++ generateSteps board mp
 
         maybeResult low upp mv | low >= beta  = Just (mv, low, emptyKM)
                                | upp <= alpha = Just (mv, upp, emptyKM)
@@ -111,7 +111,7 @@ findBest :: Board
          -> IO (DMove, Int, DMove) -- ^ (PV, score, killer move)
 findBest _ _ _ _ _ _ bestResult [] = return $ makeTriple bestResult []
 findBest !board tt !sugg bounds@(!a,!b) !remDepth mp@(!pl,_)
-             best0@(!_, !bestValue) ((!s1,!s2):ss)
+             best0@(!_, !bestValue) (s@(!_,!s2):ss)
     = do
         (!childPV, !childValue, childKM) <-
             alphaBeta' board' tt sugg bounds remDepth' mp'
@@ -119,17 +119,17 @@ findBest !board tt !sugg bounds@(!a,!b) !remDepth mp@(!pl,_)
         let bestValue' = cmp bestValue childValue
         let !bounds' | isMaxNode = (max a childValue, b)
                      | otherwise = (a, min b childValue)
-        let !best' | bestValue /= bestValue' = ((s1,s2):childPV, childValue)
+        let !best' | bestValue /= bestValue' = (s:childPV, childValue)
                    | otherwise               = best0
 
         if boundsOK bounds' then findBest board tt ([],childKM) bounds'
                                           remDepth mp best' ss
                             -- Cut off
-                            else return $ makeTriple best' ((s1,s2):fst childKM)
+                            else return $ makeTriple best' (s:fst childKM)
     where
-        mp' = stepInMove mp s2
+        mp' = stepInMove mp s
         remDepth' = remDepth - if s2 == Pass then 1 else 2
-        (board', _) = makeMove board [s1,s2]
+        board' = makeDStep' board s
 
         boundsOK (!alpha, !beta) = alpha < beta
         isMaxNode = mySide board == pl

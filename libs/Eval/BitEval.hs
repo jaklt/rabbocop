@@ -61,7 +61,7 @@ boardAsCParameter cFunction b player =
 -- step also.
 evalStep :: Board
          -> MovePhase
-         -> DStep  -- ^ Previous step in the same move
+         -> DStep  -- ^ Previous step in the same move or (Pass,Pass)
          -> DStep  -- ^ Step to make
          -> Double
 evalStep _ _ _ (Pass, _) = 0
@@ -78,7 +78,7 @@ evalStep b (pl,_) s1@(s11,s12) s2@(s21,s22)
                                     _ -> (s22,s21)
 
         -- Count possible bonuses
-        standartBonus = elephantBonus + pushPullBonus + killBonus
+        standartBonus = strongPieceBonus + pushPullBonus + killBonus
                       - suicidePenalty
         extendedBonus | to2 == from1 = -1.0  -- inverse step penalty
                       | to1 == from2 =  0.8  -- continuity bonus
@@ -93,8 +93,8 @@ evalStep b (pl,_) s1@(s11,s12) s2@(s21,s22)
 
         pushPullBonus | s22 /= Pass = 0.5       -- small bonus
                       | otherwise   = 0.0
-        elephantBonus | pie2 == Elephant = 0.5  -- small bonus
-                      | otherwise        = 0.0
+        strongPieceBonus | pie2 == Elephant = 0.5 -- small bonus
+                         | otherwise        = 0.0
 
         oponentsPiece (Step _ pl' _ _) = pl' /= pl
         oponentsPiece _ = False

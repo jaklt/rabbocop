@@ -1,14 +1,20 @@
 module Helpers
-    ( ltrim
-    , firstWord
-    , justOneMove
-    , manageJustOneMove
-    , showHeader
-    , (~=~)
-    , printBoard
+    ( ltrim             -- :: String -> String
+    , firstWord         -- :: String -> (String, String)
+    , justOneMove       -- :: Board -> DMove -> Move
+    , manageJustOneMove -- :: Board -> DMove -> (Board, Move)
+    , showHeader        -- :: String -> IO ()
+    , (~=~)             -- :: Eq a => [a] -> [a] -> Bool
+    , printBoard        -- :: Board -> IO ()
+    , boolToNum         -- :: Num a => Bool -> a
+    , changeMVar        -- :: MVar a -> (a -> a) -> IO ()
+    , changeMVar'       -- :: MVar a -> (a -> a) -> IO ()
     ) where
 
+import Control.Applicative ((<$>), (<*>))
+import Control.Concurrent.MVar (MVar, modifyMVar_)
 import Bits.BitRepresentation
+
 
 ltrim :: String -> String
 ltrim = dropWhile (== ' ')
@@ -38,7 +44,8 @@ manageJustOneMove b pv = makeMove b $ justOneMove' pv 4
                     if (pl1 == pl && pie1 > pie2) || (pl1 /= pl && pie1 < pie2)
                         then [s1,s2] ++ justOneMove' ss (n-2)
                         else []
-                 _ -> error "Inner error in aeiGo"
+                 (Pass, Pass) -> []
+                 _ -> error "Inner error found in manageJustOneMove"
 
         pl = mySide b
 
@@ -54,3 +61,12 @@ l1 ~=~ l2 = and $ [length l1 == length l2] ++ map (`elem` l1) l2
 printBoard :: Board -> IO ()
 printBoard b = putStrLn $ displayBoard b True
 
+boolToNum :: Num a => Bool -> a
+boolToNum True = 1
+boolToNum _    = 0
+
+changeMVar :: MVar a -> (a -> a) -> IO ()
+changeMVar mv f = modifyMVar_ mv $ return . f
+
+changeMVar' :: MVar a -> (a -> a) -> IO ()
+changeMVar' mv f = modifyMVar_ mv $ (seq <$> id <*> return) . f

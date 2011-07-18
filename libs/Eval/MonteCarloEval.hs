@@ -11,7 +11,8 @@ simulations =  10 -- ^ number of simulations
 
 getValueByMC :: Board -> MovePhase -> IO Int
 getValueByMC b mp = do
-    s <- mapM (randomSimulation mp depth) $ replicate simulations b
+    s <- mapM (randomSimulation mp depth)
+       $ replicate simulations b
     return $ sum s `div` simulations
 
 
@@ -32,15 +33,15 @@ randomStep b mp@(pl,_) = do
             | otherwise      = pieSteps !! (r `mod` length pieSteps)
             where
                 (h,t) = splitAt (r `mod` ln) steps
-                pieSteps = generatePiecesSteps b pl (canPushOrPull mp) [head t]
+                pieSteps = generatePiecesSteps b mp [head t]
 
 
 randomSimulation :: MovePhase -> Int -> Board -> IO Int
 randomSimulation (pl,_) 0 b = eval b pl
 randomSimulation mp@(pl,_) d b = do
-    case generateSteps b pl (canPushOrPull mp) of
+    case generateSteps b mp of
         [] -> evalImmobilised b pl
         _  -> do
-            s@(_,s2) <- randomStep b mp
-            randomSimulation (stepInMove mp s2) (d-1) (makeDStep' b s)
+            s <- randomStep b mp
+            randomSimulation (stepInMove mp s) (d-1) (makeDStep' b s)
 

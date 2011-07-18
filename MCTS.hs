@@ -36,6 +36,7 @@ import Bits.BitRepresentation
 import Eval.BitEval
 import Eval.MonteCarloEval
 import Hash
+import Helpers (changeMVar)
 
 #ifdef VERBOSE
 import System.IO (hFlush, stdout)
@@ -172,13 +173,13 @@ createNode tables mt impr depth (Node { value = val, visitCount = vc }) = do
                     , visitCount = vc + 1
                     }
     where
-        steps = generateSteps brd pl (canPushOrPull mp)
+        steps = generateSteps brd mp
         brd   = board mt
         mp@(pl,_) = movePhase mt
 
 leafFromStep :: MCTSTables -> Board -> MovePhase -> Int -> DStep
              -> IO MMTree
-leafFromStep tables brd mp depth s@(_,s2) = do
+leafFromStep tables brd mp depth s = do
         fromTT <- getHash tt index
 
         tn <- case fromTT of
@@ -197,7 +198,7 @@ leafFromStep tables brd mp depth s@(_,s2) = do
             }
     where
         index@(brd', _, mp') =
-                (makeDStep' brd s, depth, stepInMove mp s2)
+                (makeDStep' brd s, depth, stepInMove mp s)
         tt = ttTable tables
 
 -- U C T   f o r m u l a
@@ -240,11 +241,11 @@ accumUCB token (best, bestValue) mt = do
             else return (best, bestValue)
 
 valueUCB :: ParentToken -> MMTree -> IO Double
-valueUCB (tables,count,quant,depth,mp,st,board) mt = do
+valueUCB (tables,count,quant,depth,mp,st,brd) mt = do
         tn <- nodeTreeNode mt
         let nb = fromIntegral $ visitCount tn
         let vl = value tn
-        let stepVal = evalStep board mp st (step mt)
+        let stepVal = evalStep brd mp st (step mt)
 #ifndef noHH
         histValPair <- getHash (hhTable tables) $ step mt
         let histVal = fromMaybe 0 $ uncurry (/) <$> histValPair
@@ -258,7 +259,7 @@ valueUCB (tables,count,quant,depth,mp,st,board) mt = do
             _ -> return $ (quant' * vl / nb) + 0.01 * sqrt (log cn / nb)
                         + stepVal / nb
 #ifndef noHH
-                        + (quant' * histVal) / nb
+                        + (quant' * histVal) / nb -- or "sqrt nb"?
 #endif
     where
         cn = fromIntegral count
@@ -266,9 +267,6 @@ valueUCB (tables,count,quant,depth,mp,st,board) mt = do
 
 normaliseValue :: Int -> Double
 normaliseValue v = 2 / (1 + exp (-0.0003 * fromIntegral v)) - 1
-
-stepCount :: MMTree -> Int
-stepCount = snd . movePhase
 
 player :: MMTree -> Player
 player = fst . movePhase
@@ -281,12 +279,6 @@ nodeVisitCount mt = visitCount <$> readMVar (treeNode mt)
 
 nodeTreeNode :: MMTree -> IO TreeNode
 nodeTreeNode = readMVar . treeNode
-
-changeMVar :: MVar a -> (a -> a) -> IO ()
-changeMVar mv f = modifyMVar_ mv $ return . f
-
-changeMVar' :: MVar a -> (a -> a) -> IO ()
-changeMVar' mv f = modifyMVar_ mv $ (seq <$> id <*> return) . f
 
 
 -- Implementation of Transposition table

@@ -24,7 +24,7 @@ module Bits.BitRepresentation (
     whole,               -- :: Board -> Player -> Int64
     displayBoard,        -- :: Board -> Bool -> String
     oponent,             -- :: Player -> Player
-    stepInMove,          -- :: MovePhase -> Step -> MovePhase
+    stepInMove,          -- :: MovePhase -> DStep -> MovePhase
     canPushOrPull,       -- :: MovePhase -> Bool
     isEnd,               -- :: Board -> Bool
 
@@ -40,12 +40,11 @@ module Bits.BitRepresentation (
     makeDStep,           -- :: Board -> DStep -> (Board, Move)
     makeDStep',          -- :: Board -> DStep -> Board
     makeStep,            -- :: Board -> Step -> (Board, Move)
-    generatePiecesSteps, -- :: Board -> Player -> Bool -> [(Piece,Int64)]
-                         --          -> DMove
+    generatePiecesSteps, -- :: Board -> MovePhase -> [(Piece,Int64)] -> DMove
     generateMoveable,    -- :: Board -> Player -> [(Piece, Int64)]
-    generateSteps,       -- :: Board -> Player -> Bool -> DMove
+    generateSteps,       -- :: Board -> MovePhase -> DMove
     canMakeStep,         -- :: Board -> Step -> Bool
-    canMakeStep2,        -- :: Board -> DStep -> Bool
+    canMakeDStep,        -- :: Board -> DStep -> Bool
     isStepBy,            -- :: Player -> DStep -> Bool
 
     -- * Projections
@@ -185,16 +184,15 @@ displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
 oponent :: Player -> Player
 oponent Gold = Silver
 oponent Silver = Gold
-{-
 {-# RULES
     "oponent" forall x. oponent (oponent x) = x
   #-}
--}
 -- enemy of my enemy is my friend, but wait, that's me!
 
--- | if Step argument is Pass then we count this step as one
-stepInMove :: MovePhase -> Step -> MovePhase
-stepInMove (pl,steps) s = (pl', steps' `mod` 4)
+-- | if DStep argument is (Pass,Pass) then we end this move
+stepInMove :: MovePhase -> DStep -> MovePhase
+stepInMove (pl,_) (Pass,_) = (oponent pl, 0)
+stepInMove (pl,steps) (_,s) = (pl', steps' `mod` 4)
     where
         steps' = steps + if s == Pass then 1 else 2
 
@@ -369,13 +367,14 @@ notFrozen ((PP pie poss):plPieRest) ops relatives stronger =
 
 -- | It doesn't check wheather pieces can move.
 -- in PiecePosition - position can contain multiple figures
-generatePiecesSteps :: Board -> Player -> Bool -> [PiecePosition] -> DMove
-generatePiecesSteps b pl canPP pies =
+generatePiecesSteps :: Board -> MovePhase -> [PiecePosition] -> DMove
+generatePiecesSteps b mp@(pl,sc) pies =
         genPiecesSteps' b pl canPP pies opPie empty oArr
     where
         opPie = whole b (oponent pl)
         empty = complement $ whole b Gold .|. whole b Silver
         oArr = figures b ! oponent pl
+        canPP = canPushOrPull mp
 
 genPiecesSteps' :: Board
                 -> Player
@@ -412,9 +411,9 @@ genPiecesSteps' b pl canPullPush ((PP pie pos):rest) opWeak empty oArr =
         opStrPies = foldr (.|.) 0 $ map (oArr !) [pie .. Elephant]
         opWeak' = opWeak .&. complement opStrPies
 
-generateSteps :: Board -> Player -> Bool -> DMove
-generateSteps b pl canPP =
-        generatePiecesSteps b pl canPP $ generateMoveable b pl
+generateSteps :: Board -> MovePhase -> DMove
+generateSteps b mp@(pl,_) =
+        generatePiecesSteps b mp $ generateMoveable b pl
 
 -- | Find in array of pieces which piece is on given position
 -- | second argument: only one bit number
@@ -452,10 +451,10 @@ canMakeStep' couldFreeze b (Step pie pl from to) =
 
 -- | See canMakeStep
 -- Note: it don't check validity of double step, it was valid somewhere else
-canMakeStep2 :: Board -> DStep -> Bool
-canMakeStep2 _ (Pass,_) = False
-canMakeStep2 b (s, Pass) = canMakeStep b s
-canMakeStep2 b (s1@(Step pie1 pl1 f1 _), Step pie2 pl2 f2 _) =
+canMakeDStep :: Board -> DStep -> Bool
+canMakeDStep _ (Pass,_) = False
+canMakeDStep b (s, Pass) = canMakeStep b s
+canMakeDStep b (s1@(Step pie1 pl1 f1 _), Step pie2 pl2 f2 _) =
         canMakeStep b s1
         && figures b ! pl2 ! pie2 .&. f2 /= 0
         && not (isFrozen b pie pl f)

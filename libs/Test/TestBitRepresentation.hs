@@ -2,6 +2,7 @@ module Test.TestBitRepresentation
     ( testSteps
     ) where
 
+import Control.Arrow
 import Control.Monad
 import Prelude
 import Bits.BitRepresentation
@@ -45,7 +46,7 @@ testSteps = do
 
         forM_ cases2 (\(b,(s1,s2), bo) -> do
                         let b' = parseBoard Gold b
-                        unless (canMakeStep2 b' (parseStep s1,parseStep s2)
+                        unless (canMakeDStep b' (parseStep s1,parseStep s2)
                                 == bo)
                             (putStrLn (", " ++ show (s1,s2,bo) ++ " failed")
                              >> printBoard b')
@@ -73,9 +74,10 @@ testSteps = do
 
         forM_ cases3 (\(b, ss, pl, bo) -> do
                         let b' = parseBoard Gold b
-                        let generated = generateSteps b' pl bo
+                        let generated = generateSteps b' (pl, if bo then 0
+                                                                    else 3)
                         let expected =
-                                map (\(j,k) -> (parseStep j, parseStep k)) ss
+                                map (parseStep *** parseStep) ss
 
                         unless (generated ~=~ expected)
                             (print generated
