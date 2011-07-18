@@ -46,7 +46,7 @@ iterative tt board mvar = search' 1 ([], 0)
             m@(pv,sc) <- alphaBeta board tt (fst best) (-iNFINITY, iNFINITY)
                                    depth (mySide board)
 #endif
-            _ <- m `seq` swapMVar mvar (pv, show sc)
+            _ <- m `seq` swapMVar mvar (pv, show sc ++ " depth:" ++ show depth)
             search' (depth+1) m
 
 #ifdef ENGINE

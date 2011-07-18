@@ -50,8 +50,8 @@ alphaBeta' !board tt !sugg aB@(!alpha, !beta) !remDepth mp@(!pl, !stepCount)
 
         case maybeBest of
             -- to omit repetitions
-            _ | forbidden -> return ([], -iNFINITY, emptyKM)
-            -- TODO +/- if starting aB seach as "oponent (mySide board)"?
+            _ | forbidden ->
+                return ([], mySide board <#> Silver * iNFINITY, emptyKM)
 
             Just bestResult -> return bestResult
             Nothing -> do

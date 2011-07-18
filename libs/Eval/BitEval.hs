@@ -8,9 +8,11 @@ module Eval.BitEval
     , iNFINITY
     ) where
 
-import Bits.BitRepresentation
 import Data.Array ((!))
+import Data.Bits ((.&.))
 import Data.Int (Int64)
+import Bits.MyBits (bitCount)
+import Bits.BitRepresentation
 
 type CBoardFunction a = Int64 -> Int64 -> Int64 -> Int64 -> Int64 -> Int64
                      -> Int64 -> Int64 -> Int64 -> Int64 -> Int64 -> Int64
@@ -73,13 +75,13 @@ evalStep b (pl,_) s1@(s11,s12) s2@(s21,s22)
         (Step _ _ from1 to1, _) = case s1 of
                                     (Step _ pl' _ _, _) | pl == pl' -> s1
                                     _ -> (s12,s11)
-        (Step pie2 _ from2 to2, _) = case s2 of
+        (Step pie2 pl2 from2 to2, _) = case s2 of
                                     (Step _ pl' _ _, _) | pl == pl' -> s2
                                     _ -> (s22,s21)
 
         -- Count possible bonuses
         standartBonus = strongPieceBonus + pushPullBonus + killBonus
-                      - suicidePenalty
+                      + suicidePenalty + goalBonus
         extendedBonus | to2 == from1 = -1.0  -- inverse step penalty
                       | to1 == from2 =  0.8  -- continuity bonus
                       | otherwise    =  0.0
@@ -87,14 +89,25 @@ evalStep b (pl,_) s1@(s11,s12) s2@(s21,s22)
         -- big bonuses
         killBonus      | any oponentsPiece died = 1.5
                        | otherwise              = 0.0
-        suicidePenalty | any myPieces died = 1.5
+        suicidePenalty | any myPieces died = -1.5
                        | otherwise         = 0.0
         died = snd $ makeDStep b s2
 
-        pushPullBonus | s22 /= Pass = 0.5       -- small bonus
+        goalBonus | pie2 /= Rabbit = 0.0
+                  | otherwise =
+                        (2.0 *) . fromIntegral $ bitCount . (to2 .&.) $
+                                case pl2 of
+                                    Gold   -> 0xffff000000000000
+                                    Silver -> 0x000000000000ffff
+
+        -- smal bonuses
+        pushPullBonus | s22 /= Pass = 0.5
                       | otherwise   = 0.0
-        strongPieceBonus | pie2 == Elephant = 0.5 -- small bonus
-                         | otherwise        = 0.0
+        strongPieceBonus = case pie2 of
+                            Elephant -> 0.5
+                            Camel    -> 0.30
+                            Horse    -> 0.20
+                            _        -> 0.0
 
         oponentsPiece (Step _ pl' _ _) = pl' /= pl
         oponentsPiece _ = False
@@ -102,7 +115,4 @@ evalStep b (pl,_) s1@(s11,s12) s2@(s21,s22)
         myPieces _ = False
 
         -- TODO try to rewrite this in C
-
-        -- TODO steps close to previous step should be promoted
-        --      (including stepping with the same piece)
-        -- TODO rabbit going to goalline bonus
+        -- TODO steps near previous step should be promoted
