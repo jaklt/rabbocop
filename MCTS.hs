@@ -30,6 +30,7 @@ import Control.Concurrent.MVar
 import Control.Monad (foldM, void)
 import Data.Bits
 import Data.Int (Int32)
+import Data.List (sortBy)
 import Data.Maybe (fromMaybe)
 
 import Bits.BitRepresentation
@@ -65,8 +66,10 @@ data TreeNode = Node { children   :: ![MMTree] -- ^ steps from this
 iNFINITY' :: Double
 iNFINITY' = 0.9
 
-thresholdMaternity :: Int
+thresholdMaternity, thresholdCacheing, cachedCount :: Int
 thresholdMaternity = 5
+thresholdCacheing  = 50
+cachedCount = 6
 
 newSearch :: Int -> IO SearchEngine
 newSearch = return . search
@@ -106,6 +109,7 @@ constructMove tables mt n = do
         if player mt /= mySide (board mt) || isLeaf n tn
             then return []
             else do
+                -- TODO with children cacheing enabled may find bad result
                 best <- descendByUCB1 tables mt n
                 ((step best) :) <$> constructMove tables best (n+1)
 
@@ -120,6 +124,9 @@ isLeaf depth (Node { visitCount = vc }) = vc < thresholdMaternity + depth
 
 isMature :: Int -> TreeNode -> Bool
 isMature depth tn = not $ isLeaf (depth-1) tn
+
+isOld :: Int -> TreeNode -> Bool
+isOld _ (Node { visitCount = vc }) = vc >= thresholdCacheing
 
 improveTree :: MCTSTables -> MMTree -> Int -> IO Double
 improveTree tables mt !depth = do
@@ -212,8 +219,9 @@ descendByUCB1 tables mt depth = do
         let chs   = children tn
             quant = player mt <#> Gold
             mp@(_,sc) = movePhase mt
+            vc = visitCount tn
             token = ( tables
-                    , visitCount tn
+                    , vc
                     , quant
                     , depth+1
                     , mp
@@ -222,9 +230,27 @@ descendByUCB1 tables mt depth = do
                     , board mt
                     )
 
-        descendByUCB1' token chs
+        if isOld depth tn
+            then cachedByUCB1 token vc mt chs
+            else descendByUCB1' token chs
 
--- | first argument have to be not empty
+
+cachedByUCB1 :: ParentToken -> Int -> MMTree -> [MMTree]
+             -> IO MMTree
+cachedByUCB1 token count mt mss
+        | count `mod` thresholdCacheing == 0 = recacheAndFind
+        | otherwise = descendByUCB1' token $ take cachedCount mss
+    where
+        -- reverse compare for sortBy to create decreasing list
+        cmp x y = compare (snd y) (snd x)
+
+        recacheAndFind = do
+            mssVals <- mapM (valueUCB token) mss
+            let mssSorted = map fst $ sortBy cmp $ zip mss mssVals
+            changeMVar (treeNode mt) $ \tn -> tn { children = mssSorted }
+            return $ head mssSorted
+
+-- | second argument have to be not empty
 descendByUCB1' :: ParentToken -> [MMTree] -> IO MMTree
 descendByUCB1' token (hMms:mms) = do
         valHMms <- valueUCB token hMms
