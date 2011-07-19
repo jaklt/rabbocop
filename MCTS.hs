@@ -12,7 +12,6 @@ module MCTS
     , constructMove   -- :: MCTSTables -> MMTree -> Int -> IO DMove
     , improveTree     -- :: MCTSTables -> MMTree -> Int -> IO Double
     , descendByUCB1   -- :: MCTSTables -> MMTree -> Int -> IO MMTree
-    , createNode      -- :: MCTSTables -> MMTree -> Double -> Int -> IO ()
     , nodeValue       -- :: MMTree -> IO Double
     , nodeVisitCount  -- :: MMTree -> IO Int
     , nodeTreeNode    -- :: MMTree -> IO TreeNode
@@ -128,7 +127,10 @@ isMature depth tn = not $ isLeaf (depth-1) tn
 isOld :: Int -> TreeNode -> Bool
 isOld _ (Node { visitCount = vc }) = vc >= thresholdCacheing
 
-improveTree :: MCTSTables -> MMTree -> Int -> IO Double
+improveTree :: MCTSTables
+            -> MMTree
+            -> Int         -- ^ depth
+            -> IO Double   -- ^ value given by playout simulation
 improveTree tables mt !depth = do
         tn <- nodeTreeNode mt
 
@@ -138,7 +140,7 @@ improveTree tables mt !depth = do
                    <$> getValueByMC (board mt) (movePhase mt)
 
                 if isMature depth tn
-                    then modifyMVar_ (treeNode mt)
+                    then modifyMVar_ (treeNode mt) -- leaf expansion
                        $ createNode tables mt val depth
                     else changeMVar (treeNode mt)
                        $ improveTreeNode val
@@ -213,7 +215,11 @@ leafFromStep tables brd mp depth s = do
 type ParentToken = (MCTSTables, Int, Int, Int, MovePhase, DStep, Board)
 
 -- | Immobilised position cause fail.
-descendByUCB1 :: MCTSTables -> MMTree -> Int -> IO MMTree
+-- Third argument is depth of the node.
+descendByUCB1 :: MCTSTables
+              -> MMTree     -- ^ the node
+              -> Int        -- ^ depth
+              -> IO MMTree  -- ^ nodes 'ucb'-best child
 descendByUCB1 tables mt depth = do
         tn <- nodeTreeNode mt
         let chs   = children tn
@@ -235,20 +241,27 @@ descendByUCB1 tables mt depth = do
             else descendByUCB1' token chs
 
 
-cachedByUCB1 :: ParentToken -> Int -> MMTree -> [MMTree]
+-- | If node is old, we order its children by their UCB values and then when
+-- we want find its best child, we look only in first 'cachedCount'
+-- children.
+cachedByUCB1 :: ParentToken
+             -> Int         -- ^ visitCount of the node
+             -> MMTree      -- ^ the node
+             -> [MMTree]    -- ^ nodes children
              -> IO MMTree
 cachedByUCB1 token count mt mss
-        | count `mod` thresholdCacheing == 0 = recacheAndFind
+        | count `mod` thresholdCacheing == 0 = do
+            -- recache children nodes
+            mssVals <- mapM (valueUCB token) mss
+            let mssSorted = map fst $ sortBy cmp $ zip mss mssVals
+            changeMVar (treeNode mt) $ \tn -> tn { children = mssSorted }
+
+            -- in head is the actual best
+            return $ head mssSorted
         | otherwise = descendByUCB1' token $ take cachedCount mss
     where
         -- reverse compare for sortBy to create decreasing list
         cmp x y = compare (snd y) (snd x)
-
-        recacheAndFind = do
-            mssVals <- mapM (valueUCB token) mss
-            let mssSorted = map fst $ sortBy cmp $ zip mss mssVals
-            changeMVar (treeNode mt) $ \tn -> tn { children = mssSorted }
-            return $ head mssSorted
 
 -- | second argument have to be not empty
 descendByUCB1' :: ParentToken -> [MMTree] -> IO MMTree
@@ -374,6 +387,7 @@ hhSaveEntry val st = HHO { hhValue = val
                          , step0   = st
                          }
 
+-- | Updates statistics for given DStep.
 improveStep :: MCTSTables -> DStep -> Double -> IO ()
 #ifndef noHH
 improveStep tables ss val = do
