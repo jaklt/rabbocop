@@ -43,6 +43,7 @@ module Bits.BitRepresentation (
     generatePiecesSteps, -- :: Board -> MovePhase -> [(Piece,Int64)] -> DMove
     generateMoveable,    -- :: Board -> Player -> [(Piece, Int64)]
     generateSteps,       -- :: Board -> MovePhase -> DMove
+    stepInPiecePosition, -- :: DStep -> PiecePosition -> PiecePosition
     canMakeStep,         -- :: Board -> Step -> Bool
     canMakeDStep,        -- :: Board -> DStep -> Bool
     isStepBy,            -- :: Player -> DStep -> Bool
@@ -414,6 +415,14 @@ genPiecesSteps' b pl canPullPush ((PP pie pos):rest) opWeak empty oArr =
 generateSteps :: Board -> MovePhase -> DMove
 generateSteps b mp@(pl,_) =
         generatePiecesSteps b mp $ generateMoveable b pl
+
+-- | Change PiecePosition by doing step. It doesn't check validity of given
+-- step.
+stepInPiecePosition :: Step -> PiecePosition -> PiecePosition
+stepInPiecePosition Pass piePos = piePos
+stepInPiecePosition (Step _ _ fromS toS) pp@(PP pie pos)
+    | fromS .&. pos /= 0 = PP pie (pos `xor` toS `xor` fromS)
+    | otherwise = pp
 
 -- | Find in array of pieces which piece is on given position
 -- | second argument: only one bit number
