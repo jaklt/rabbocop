@@ -2,6 +2,7 @@ module Helpers
     ( ltrim             -- :: String -> String
     , firstWord         -- :: String -> (String, String)
     , justOneMove       -- :: Board -> DMove -> Move
+    , filterTrapping    -- :: Move -> Move
     , manageJustOneMove -- :: Board -> DMove -> (Board, Move)
     , showHeader        -- :: String -> IO ()
     , (~=~)             -- :: Eq a => [a] -> [a] -> Bool
@@ -48,6 +49,13 @@ manageJustOneMove b pv = makeMove b $ justOneMove' pv 4
                  _ -> error "Inner error found in manageJustOneMove"
 
         pl = mySide b
+
+filterTrapping :: Move -> Move
+filterTrapping = filter nonTrapping
+    where
+        nonTrapping Pass = False
+        nonTrapping (Step _ _ _ 0) = False
+        nonTrapping _ = True
 
 showHeader :: String -> IO ()
 showHeader h = do

@@ -67,7 +67,7 @@ testSearchFunction newSrch = go positionCases 1 >> putStrLn ""
             (pv, sc) <- takeMVar mvar
             killThread thread
             let move = justOneMove board' pv
-            let (board'', _) = makeMove board' move
+            let (board'', _) = makeMove board' $ filterTrapping move
 
             putStr $ show i ++ ". test"
             if positive (map show move)
@@ -87,7 +87,7 @@ testPositions :: IO ()
 testPositions = do
         showHeader "testPositions"
         testSearchFunction IterativeAB.newSearch
-        testSearchFunction MTDf.newSearch
+        -- testSearchFunction MTDf.newSearch
         testSearchFunction MCTS.newSearch
 
 -- | Test if all lists from evalCases are `eval-decreasing'
