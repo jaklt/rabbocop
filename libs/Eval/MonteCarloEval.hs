@@ -1,62 +1,81 @@
+{-# LANGUAGE CPP #-}
 module Eval.MonteCarloEval (getValueByMC) where
 
-import Bits.BitRepresentation
-import Eval.BitEval
+import Control.Applicative ((<$>))
 import System.Random
+import Eval.BitEval
+import Bits.BitRepresentation
+
+#ifndef noHeavyPlayout
+import Data.List (sortBy)
+
+bestOfN :: Int
+bestOfN = 3
+#endif
 
 
 depth, simulations :: Int
 depth       =   4 -- ^ simulation depth in moves
 simulations =  10 -- ^ number of simulations
 
-getValueByMC :: Board -> MovePhase -> IO Int
-getValueByMC b mp = do
-    s <- mapM (randomSimulation mp depth) $ replicate simulations b
+getValueByMC :: Board -> MovePhase -> DStep -> IO Int
+getValueByMC b mp dstep = do
+    s <- mapM (randomSimulation mp depth dstep) $ replicate simulations b
     return $ sum s `div` simulations
 
 
 -- | Returns pseudorandom move (and (Pass,Pass) if player is immobilised)
-randomMove :: Board -> MovePhase -> IO Board
-randomMove b mp@(pl,_) = do
-        -- find random moveable pieces which will move in this step
+randomMove :: Board -> MovePhase -> DStep -> IO Board
+randomMove b mp@(pl,_) dstep = do
+        -- find random moveable pieces with which we will move in this move
         count <- randomRIO (1,3)
         pies <- randomSubList count moveable
 
-        rndMove b mp pies
+        randomMove' b mp pl pies dstep
     where
         moveable = generateMoveable b pl
 
-        rndMove :: Board -> MovePhase -> [PiecePosition] -> IO Board
-        rndMove b' _ [] = return b'
-        rndMove b' mp'@(pl',_) pies
-            | null steps || pl' /= pl = return b'
-            | otherwise  = do
-                rand <- randomRIO (0,ln-1)
-                let randStep@(s1,s2) = steps !! rand
-                    (b'',sts) = makeMove b' [s1,s2]
-                rndMove b'' (stepInMove mp' randStep) (repair pies sts)
-            where
-                steps = generatePiecesSteps b' mp pies
-                ln    = length steps
+randomMove' :: Board -> MovePhase -> Player -> [PiecePosition] -> DStep -> IO Board
+randomMove' b' _ _ [] _ = return b'
+randomMove' b' mp'@(pl',_) pl pies ds
+    | null steps || pl' /= pl = return b'
+    | otherwise  = do
+#ifndef noHeavyPlayout
+        randSteps <- map withEval <$> randomSubList bestOfN steps
+        let randStep@(s1,s2) = fst . head $ sortBy cmp randSteps
+#else
+        let ln = length steps
+        rand <- randomRIO (0,ln-1)
+        let randStep@(s1,s2) = steps !! rand
+#endif
+        let (b'',sts) = makeMove b' [s1,s2]
+        randomMove' b'' (stepInMove mp' randStep) pl (repair pies sts) randStep
+    where
+        steps = generatePiecesSteps b' mp' pies
 
-        repair :: [PiecePosition] -> [Step] -> [PiecePosition]
-        repair piePos [] = piePos
-        repair piePos (st:sts) =
-            repair (map (stepInPiecePosition st) piePos) sts
+#ifndef noHeavyPlayout
+        ds' | snd mp' == 0   = (Pass,Pass)
+            | otherwise      = ds
+
+        cmp a c = compare (snd c) (snd a)
+        withEval s = (s, evalStep b' mp' ds' s)
+#endif
+
+repair :: [PiecePosition] -> [Step] -> [PiecePosition]
+repair piePos [] = piePos
+repair piePos (st:sts) =
+    repair (map (stepInPiecePosition st) piePos) sts
 
 
-randomSimulation :: MovePhase -> Int -> Board -> IO Int
-randomSimulation (pl,_) 0 b = eval b pl
-randomSimulation mp@(pl,_) d b = do
-    case generateSteps b mp of    -- TODO speedup??
-        [] -> evalImmobilised b pl
-        _  -> do
-            b' <- randomMove b mp
-            randomSimulation (oponent pl,0) (d-1) b'
+randomSimulation :: MovePhase -> Int -> DStep -> Board -> IO Int
+randomSimulation (pl,_) 0 _ b = eval b pl
+randomSimulation mp@(pl,_) d dstep b =
+    if null (generateSteps b mp) || isEnd b    -- TODO speedup??
+        then evalImmobilised b pl
+        else do
+            b' <- randomMove b mp dstep
+            randomSimulation (oponent pl,0) (d-1) (Pass,Pass) b'
 
-
--- TODO +/- 1 discussion on immobilisation
--- TODO when player changes, check weather is end of game?
 
 randomSubList :: Int    -- ^ length of sublist
               -> [a]

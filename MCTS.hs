@@ -137,7 +137,7 @@ improveTree tables mt !depth = do
         if isLeaf depth tn
             then do
                 val <- normaliseValue
-                   <$> getValueByMC (board mt) (movePhase mt)
+                   <$> getValueByMC (board mt) (movePhase mt) (step mt)
 
                 if isMature depth tn
                     then modifyMVar_ (treeNode mt) -- leaf expansion

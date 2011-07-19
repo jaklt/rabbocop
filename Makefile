@@ -38,7 +38,7 @@ CFLAGS = -O2 -std=c99 -Wall -pedantic
 SHELL = /usr/bin/env bash
 
 
-ENABLED_DEFINES = JUDY HASKELL_HASH VERBOSE WINDOW noHH
+ENABLED_DEFINES = JUDY HASKELL_HASH VERBOSE WINDOW noHH noHeavyPlayout
 HFLAGS += $(foreach v, $(ENABLED_DEFINES), $(if $($(v)), -D$(v)=$($(v))))
 
 ifdef PROF

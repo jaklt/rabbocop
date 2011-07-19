@@ -131,11 +131,11 @@ positionCases =
       -- Can immobilise oponent?
     , ( "[ rrrrrrrR                                                       ]"
       , \ss ->
-            (  moveContainAND ["rb8w", "rc8w", "rb8s"] ss
-            || moveContainAND ["rb8w", "rc8s", "rc7w"] ss
+            (  moveContainAND ["rb8w", "rb8s"] ss
+            || moveContainAND ["rb8w", "rc7w"] ss
             || moveContainAND ["rb8w", "rc8w", "rd8s", "rd7w"] ss -- not immob.
             || moveContainAND ["rb8w", "rc8w", "rd8w", "rc8s"] ss --  but useful
-            ) && not (moveContainOR ["rb7s"] ss)
+            ) && not (moveContainOR ["rb7s", "rb7e"] ss)
       , Silver)
       -- Hard example from Kozeleks thesis (page 29)
     , ( "[rrrrrrrrhdcm c h Mx  x   e               Dx dxD H CE C HRRRRRRRR]"
