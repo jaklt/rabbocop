@@ -65,10 +65,11 @@ data TreeNode = Node { children   :: ![MMTree] -- ^ steps from this
 iNFINITY' :: Double
 iNFINITY' = 0.9
 
-thresholdMaternity, thresholdCacheing, cachedCount :: Int
+thresholdMaternity, thresholdCacheing, cachedCount, virtualVisits :: Int
 thresholdMaternity = 5
 thresholdCacheing  = 50
-cachedCount = 6
+cachedCount        = 6
+virtualVisits      = 4
 
 newSearch :: Int -> IO SearchEngine
 newSearch = return . search
@@ -115,7 +116,7 @@ constructMove tables mt n = do
 leaf :: TreeNode
 leaf = Node { children   = []
             , value      = 0
-            , visitCount = 0
+            , visitCount = virtualVisits
             }
 
 isLeaf :: Int -> TreeNode -> Bool
@@ -150,8 +151,7 @@ improveTree tables mt !depth = do
             else do
                 if null $ children tn
                     -- immobilization
-                    then
-                        return $ value tn
+                    then return $ value tn
 
                     else do
                         node <- descendByUCB1 tables mt depth
@@ -298,7 +298,7 @@ valueUCB (tables,count,quant,depth,mp,st,brd) mt = do
             _ -> return $ (quant' * vl / nb) + 0.01 * sqrt (log cn / nb)
                         + stepVal / nb
 #ifndef noHH
-                        + (quant' * histVal) / nb -- or "sqrt nb"?
+                        + (quant' * histVal) / nb
 #endif
     where
         cn = fromIntegral count

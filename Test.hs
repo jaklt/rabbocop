@@ -2,7 +2,6 @@ module Main where
 
 import Data.Bits
 import Data.List
-import Control.Applicative
 import Control.Concurrent
 import Control.Monad
 import Prelude
@@ -11,11 +10,9 @@ import AlphaBeta
 import Bits.BitRepresentation
 import Bits.MyBits
 import Eval.BitEval
-import Eval.MonteCarloEval
 import Helpers
 import IterativeAB
 import MCTS
-import MTDf
 import Test.TestBitRepresentation
 import Test.TestPositions
 
@@ -128,7 +125,6 @@ printChildren tables mt = do
 testMCTS :: IO ()
 testMCTS = do
         showHeader "starting MonteCarlo test:"
-        getValueByMC b (Gold, 0) >>= putStrLn.("MonteCarlo:\t"++).show
         putStrLn $ "iNFINITY:\t" ++ show (iNFINITY :: Int)
 
         showHeader "starting MCTS test:"

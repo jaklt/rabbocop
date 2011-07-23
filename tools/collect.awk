@@ -36,7 +36,7 @@ END {
     split("abcdefghijklmnopqrstuvwxyz", A, "")
 
     for (pl=1; pl<=2; pl++) {
-        print name[pl,"name"] " has " name[pl,"wins"] " wins and " name[pl,"timeouts"] " timeouts "
+        print name[pl,"name"] " has " name[pl,"wins"] " wins and " name[pl,"timeouts"] " timeouts"
 
         for (i=1; i<=26; i++) {
             if (name[pl,"by",A[i]] != 0)
