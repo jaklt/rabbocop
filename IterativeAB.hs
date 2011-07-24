@@ -23,7 +23,7 @@ newSearch :: Int  -- ^ table size
 newSearch tableSize = iterative <$> newHTables tableSize
 
 -- | iterative deepening
-iterative :: ABTTable -> Board -> MVar (DMove, String) -> IO ()
+iterative :: ABTables -> Board -> MVar (DMove, String) -> IO ()
 iterative tt board mvar = search' 1 ([], 0)
     where
         search' :: Int -> (DMove, Int) -> IO ()
@@ -35,16 +35,16 @@ iterative tt board mvar = search' 1 ([], 0)
 #ifdef WINDOW
             let val = snd best
             let win = (val-WINDOW, val+WINDOW)
-            n@(_,val') <- alphaBeta board tt (fst best) win depth (mySide board)
+            n@(_,val') <- alphaBeta board tt win depth (mySide board,0)
 
             m@(pv,sc) <-
                 if val' < fst win || snd win < val'
-                    then alphaBeta board tt (fst best) (-iNFINITY, iNFINITY)
-                                   depth (mySide board)
+                    then alphaBeta board tt (-iNFINITY, iNFINITY)
+                                   depth (mySide board, 0)
                     else return n
 #else
-            m@(pv,sc) <- alphaBeta board tt (fst best) (-iNFINITY, iNFINITY)
-                                   depth (mySide board)
+            m@(pv,sc) <- alphaBeta board tt (-iNFINITY, iNFINITY)
+                                   depth (mySide board, 0)
 #endif
             _ <- m `seq` swapMVar mvar (pv, show sc ++ " depth:" ++ show depth)
             search' (depth+1) m

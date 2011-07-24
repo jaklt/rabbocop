@@ -21,14 +21,14 @@ newSearch :: Int  -- ^ table size
 newSearch tableSize = iterative <$> newHTables tableSize
 
 mtdf :: Board        -- ^ start position
-     -> ABTTable
+     -> ABTables
      -> (DMove, Int) -- ^ best value with PV from last time
      -> Int          -- ^ depth
      -> Int          -- ^ lower bound
      -> Int          -- ^ upper bound
      -> IO (DMove, Int) -- ^ IO (steps to go, best value)
-mtdf !b tt (!best, bestValue) depth !lb !ub = do
-        best'@(_, bestV') <- alphaBeta b tt best (beta - 1, beta) depth pl
+mtdf !b tt (_, bestValue) depth !lb !ub = do
+        best'@(_, bestV') <- alphaBeta b tt (beta - 1, beta) depth (pl,0)
 
         let (lb', ub') | bestV' < beta = (lb, bestV')
                        | otherwise     = (bestV', ub)
@@ -41,7 +41,7 @@ mtdf !b tt (!best, bestValue) depth !lb !ub = do
              | otherwise       = bestValue
 
 -- | iterative deepening
-iterative :: ABTTable -> Board -> MVar (DMove, String) -> IO ()
+iterative :: ABTables -> Board -> MVar (DMove, String) -> IO ()
 iterative tt board mvar = search' 1 ([], 0)
     where
         search' :: Int -> (DMove, Int) -> IO ()

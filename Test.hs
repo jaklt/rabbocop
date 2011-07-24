@@ -39,7 +39,7 @@ testTiming = do
         -- -}
         -- {-
         tables <- AlphaBeta.newHTables 200
-        best <- alphaBeta testBoard' tables [] (-iNFINITY, iNFINITY) 7 pl
+        best <- alphaBeta testBoard' tables (-iNFINITY, iNFINITY) 8 (pl,0)
         print best
         -- -}
         printBoard testBoard'

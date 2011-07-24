@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP          #-}
 module AlphaBeta
-    ( ABTTable
+    ( ABTables
     , alphaBeta
     , newHTables
     ) where
@@ -12,76 +13,169 @@ import Control.Applicative ((<$>),(<*>))
 import Data.Bits
 import Data.Int (Int64, Int32)
 
-type KMoves = (DMove, DMove) -- ^ Killer moves
--- TODO make suggestions more general (with mark for Null move)
+#ifdef abHH
+import Data.Maybe (fromMaybe)
+import Data.List (sortBy)
+#endif
+
+type KMoves = (DMove, DMove) -- ^ Last two killer moves
 
 
 alphaBeta :: Board
-          -> ABTTable
-          -> DMove       -- ^ best PV so far
+          -> ABTables
           -> (Int, Int)  -- ^ (alpha, beta)
           -> Int         -- ^ maximal depth
-          -> Player      -- ^ actual player
+          -> MovePhase
           -> IO (DMove, Int) -- ^ (steps to go, best value)
-alphaBeta board tt pv (alpha, beta) maxDepth pl =
-        proj <$> alphaBeta' board tt (pv, emptyKM) (alpha, beta) maxDepth (pl, 0)
+alphaBeta brd tables' bounds' maxDepth mp =
+        proj <$> alphaBeta' T { board = brd
+                              , tables = tables'
+                              , pvMoves = []
+                              , killerMoves = emptyKM
+                              , bounds = bounds'
+                              , actDepth = 1
+                              , remDepth = maxDepth
+                              , movePhase = mp
+                              , nullPossible = True
+                              }
     where
         proj (a,b,_) = (a,b)
 
-alphaBeta' :: Board
-           -> ABTTable
-           -> (DMove, KMoves) -- ^ suggestions: best PV so far, killer moves
-           -> (Int, Int)      -- ^ (alpha, beta)
-           -> Int             -- ^ depth remaining
-           -> MovePhase
-           -> IO (DMove, Int, KMoves) -- ^ (steps to go, best value, killers)
-alphaBeta' !board tt !sugg aB@(!alpha, !beta) !remDepth mp@(!pl, !stepCount)
+data ABToken = T
+    { board        :: !Board
+    , tables       :: !ABTables
+    , pvMoves      :: !DMove         -- ^ best Principal Variation (PV)
+    , killerMoves  :: !KMoves        -- ^ killer moves
+    , bounds       :: !(Int, Int)    -- ^ (alpha, beta)
+    , actDepth     :: !Int           -- ^ actual depth
+    , remDepth     :: !Int           -- ^ depth remaining
+    , movePhase    :: !MovePhase
+    , nullPossible :: !Bool          -- ^ true if is null move possible
+    }
+
+-- | Returns (steps to go, best value, killer moves)
+alphaBeta' :: ABToken -> IO (DMove, Int, KMoves)
+
+alphaBeta' token@T { board=brd, remDepth=rd
+                   , bounds=aB@(alpha,beta), movePhase=mp@(pl,_) }
     = do
-        fromTT <- getHash tt ((hash board),remDepth,mp)
-        let (ttBounds@(al', bet'), maybeBest) =
+        -- Search Transposition tables for entry.
+        fromTT <- getHash (ttTable (tables token)) ((hash brd),mp)
+        let (ttBounds@(al', bet'), maybeBest, ttMove) =
                 case fromTT of
-                    Just (ttMove, lowerBound, upperBound) ->
+                    -- If entry was found, use it's values.
+                    Just (remD, ttMove', lowerBound, upperBound) ->
                         ( (lowerBound, upperBound)
-                          , maybeResult lowerBound upperBound ttMove)
+                        , maybeResult lowerBound upperBound ttMove' remD
+                        , ttMove'
+                        )
+                    -- Otherwise use default.
                     Nothing ->
-                        (aB, Nothing)
+                        (aB, Nothing,[])
         let newAB = (max alpha al', min beta bet')
-        forbidden <- isForbidden board mp
+        forbidden <- isForbidden brd mp
 
         case maybeBest of
-            -- to omit repetitions
+            -- To omit repetitions.
             _ | forbidden ->
-                return ([], mySide board <#> Silver * iNFINITY, emptyKM)
+                return ([], mySide brd <#> Silver * iNFINITY, emptyKM)
 
+            -- What we have found in TT is enought to end computation
+            -- for this node.
             Just bestResult -> return bestResult
+
             Nothing -> do
-                res <- if remDepth <= 0 || isEnd board
-                            then do
-                                e <- eval board pl
-                                return ([], e * Gold <#> mySide board, [])
-                            else findBest board tt (tailPV, tailKM) newAB
-                                          remDepth mp ([], negInf) steps
-                addHash tt ((hash board),remDepth,mp)
-                        (changeTTBounds res ttBounds newAB)
+                -- Prioritise killer moves and previous successful PV.
+                let (headPV,tailPV) = maybeSwapPV ttMove (pvMoves token)
+                    prioritised = headPV ++ nullMove ++ headKM'
+                    generSteps steps' = prioritised
+                                     ++ filter (`notElem` prioritised) steps'
 
-                return $ repairKM (snd sugg) res
+                res <- if rd <= 0 || isEnd brd
+                        then do
+                            -- First check if game has ended or we have
+                            -- reached the leaf, if so run evaluation.
+                            e <- eval brd pl
+                            return ([], e, [])
+                        else do
+                            -- If History heuristics (HH) is set for alpha
+                            -- beta we order generated steps in first few
+                            -- levels.
+#ifdef abHH
+                            sortedSteps <-
+                                    if actDepth token < 4
+                                        then do
+                                            -- Sort steps by HH values.
+                                            evalSteps <- mapM evalS steps
+                                            return $ map fst (sortBy cmpHH evalSteps)
+                                        else return steps
+                            let steps' = generSteps sortedSteps
+#else
+                            -- Otherwise don't change their order.
+                            let steps' = generSteps steps
+#endif
+                            -- Search in children nodes.
+                            findBest token { pvMoves = tailPV
+                                           , killerMoves = tailKM
+                                           , nullPossible = True
+                                           , bounds = newAB }
+                                     ([], negInf) steps'
+
+                -- Save value given by children to transposition table.
+                addHash (ttTable (tables token)) ((hash brd),mp)
+                        (changeTTBounds res rd ttBounds newAB)
+
+                -- Propagate up new killer moves.
+                return $ repairKM (killerMoves token) res
     where
-        negInf = -iNFINITY * mySide board <#> pl
-        (headPV,tailPV) = case fst sugg of (h:t) -> ([h],t); _ -> ([],[])
-        (headKM,tailKM) = case snd sugg of
-                            ([],[])      -> ([],    emptyKM)
-                            (a:as, [])   -> ([a],   (as,[]))
-                            (a:as, b:bs) -> ([a,b], (as,bs))
-                            _            -> ([],    emptyKM)
-        headKM' = filter ((&&) <$> canMakeDStep board <*> isStepBy pl) headKM
-        steps = headPV ++ headKM' ++ generateSteps board mp
+        negInf = -iNFINITY * Gold <#> pl
+        steps = generateSteps brd mp
+        (headKM,tailKM) = headTailKM $ killerMoves token
 
-        maybeResult low upp mv | low >= beta  = Just (mv, low, emptyKM)
-                               | upp <= alpha = Just (mv, upp, emptyKM)
-                               | otherwise    = Nothing
+        -- Use Killer move only if it is valid on given position.
+        headKM' = filter ((&&) <$> canMakeDStep brd <*> isStepBy pl) headKM
+
+
+        -- Check if found result from TT is satisfying.
+        maybeResult low upp mv remDepth'
+               | rd  <= remDepth' = Nothing
+               | low >= beta  = Just (mv, low, emptyKM)
+               | upp <= alpha = Just (mv, upp, emptyKM)
+               | otherwise    = Nothing
+
+#ifdef abHH
+        cmpHH x y = compare (snd y) (snd x)
+
+        -- From given step create pair (step, its value).
+        evalS ds = do
+            maybeE <- getHash (hhTable (tables token)) ds
+            return (ds, fromMaybe 0 maybeE)
+#endif
+#ifdef NULL_MOVE
+        nullMove = [(Pass,Pass) | nullPossible token, snd mp == 0]
+#else
+        nullMove = []
+#endif
+
+        -- If needed use PV found in TT
+        {- (TODO), but it increase computation time, so we don't use it.
+        maybeSwapPV ttM [] = firstAsList ttM -}
+        maybeSwapPV  _   pv = firstAsList pv
+
+        firstAsList x = case x of
+                            (h:t) -> ([h],t)
+                            _     -> ([],[])
+
 
 emptyKM :: KMoves
 emptyKM = ([],[])
+
+headTailKM :: KMoves -> ([DStep], KMoves)
+headTailKM km = case km of
+        ([],[])      -> ([],    emptyKM)
+        (a:as, [])   -> ([a],   (as,[]))
+        (a:as, b:bs) -> ([a,b], (as,bs))
+        _            -> ([],    emptyKM)
 
 repairKM :: KMoves -> (DMove, Int, DMove) -> (DMove, Int, KMoves)
 repairKM (km1,km2) (dm,sc,km') = (dm,sc,kms)
@@ -89,72 +183,93 @@ repairKM (km1,km2) (dm,sc,km') = (dm,sc,kms)
         kms | km' == [] || km1 == km' = (km1,km2)
             | otherwise               = (km',km1)
 
-changeTTBounds :: (DMove, Int, DMove) -- recursively computed or eval result
-               -> (Int, Int)   -- old bounds
-               -> (Int, Int)   -- used alphaBeta window
-               -> (DMove, Int, Int)
-changeTTBounds (mv, score, _) (ttAlpha, ttBeta) (alpha,beta)
-        | score <= alpha = (mv, ttAlpha, score)  -- change upper bound in TT
-        | score >= beta  = (mv, score,  ttBeta)  -- change lower bound in TT
-        | alpha < score && score < beta = (mv, score, score)
-        | otherwise = (mv, ttAlpha, ttBeta)
+-- Prepaire recursively computed or eval result to be stored to TT.
+-- Returns foursome (depth, PV move, alpha, beta).
+changeTTBounds :: (DMove, Int, DMove) -- ^ (PV, value, killer move)
+               -> Int          -- ^ depth
+               -> (Int, Int)   -- ^ old bounds
+               -> (Int, Int)   -- ^ used alphaBeta window
+               -> (Int, DMove, Int, Int)
+changeTTBounds (mv, score, _) d (ttAlpha, ttBeta) (alpha,beta)
+    | score <= alpha = (d, mv, ttAlpha, score)  -- change upper bound in TT
+    | score >= beta  = (d, mv, score,  ttBeta)  -- change lower bound in TT
+    | alpha < score && score < beta = (d, mv, score, score)
+    | otherwise = (d, mv, ttAlpha, ttBeta)
 
 
-findBest :: Board
-         -> ABTTable
-         -> (DMove, KMoves) -- ^ Principal variation, Killer moves
-         -> (Int, Int)   -- ^ Alpha,Beta
-         -> Int          -- ^ remaining depth
-         -> MovePhase
-         -> (DMove, Int)
+-- | Walk through nodes children and either prune or improve bounds and/or
+-- killer moves.
+findBest :: ABToken
+         -> (DMove, Int) -- ^ actual best result
          -> DMove        -- ^ next steps to try
          -> IO (DMove, Int, DMove) -- ^ (PV, score, killer move)
-findBest _ _ _ _ _ _ bestResult [] = return $ makeTriple bestResult []
-findBest !board tt !sugg bounds@(!a,!b) !remDepth mp@(!pl,_)
-             best0@(!_, !bestValue) (s@(!_,!s2):ss)
+findBest _ bestResult [] = return $ makeTriple bestResult []
+findBest token@T { board=brd, bounds=(!a,!b), movePhase=mp }
+         best0@(!_, !bestValue) (s@(!_,!s2):ss)
     = do
+        -- Make step and search from this position.
         (!childPV, !childValue, childKM) <-
-            alphaBeta' board' tt sugg bounds remDepth' mp'
+            alphaBeta' token { board     = makeDStep' brd s
+                             , remDepth  = remDepth token - ch
+                             , movePhase = stepInMove mp s
+                             , nullPossible = s /= (Pass,Pass)
+                             , actDepth  = actDepth token + ch
+                             }
 
+        -- Considering previous result, improve bounds
         let bestValue' = cmp bestValue childValue
         let !bounds' | isMaxNode = (max a childValue, b)
                      | otherwise = (a, min b childValue)
+        -- and value.
         let !best' | bestValue /= bestValue' = (s:childPV, childValue)
                    | otherwise               = best0
 
-        if boundsOK bounds' then findBest board tt ([],childKM) bounds'
-                                          remDepth mp best' ss
+        if boundsOK bounds' then findBest token { pvMoves = []
+                                                , killerMoves = childKM
+                                                , bounds = bounds' }
+                                          best' ss
                             -- Cut off
-                            else return $ makeTriple best' (s:fst childKM)
+                            else do
+#ifdef abHH
+                                -- Increase value in HH table for given
+                                -- step.
+                                let acD = actDepth token
+                                improveStep (tables token) s (acD*acD)
+#endif
+                                return $ makeTriple best' (s:fst childKM)
     where
-        mp' = stepInMove mp s
-        remDepth' = remDepth - if s2 == Pass then 1 else 2
-        board' = makeDStep' board s
-
         boundsOK (!alpha, !beta) = alpha < beta
-        isMaxNode = mySide board == pl
+        isMaxNode = Gold == fst mp
         cmp = if isMaxNode then max else min
+
+        ch = if s2    == Pass then 1 else 2  -- step count change
+#ifdef NULL_MOVE
+           + if fst s == Pass then 0 else 2
+           -- TODO this used alone increases speed, but it's not known if
+           -- results are OK
+#endif
 
 makeTriple :: (a,b) -> c -> (a,b,c)
 makeTriple (a,b) c = (a,b,c)
 
 
-type ABTTable = HTable (DMove, Int, Int) HObject (Int64, Int, MovePhase)
+-- Implementation of Transpositions table
+
+type TTable = HTable (Int, DMove, Int, Int) TTObject (Int64, MovePhase)
 
 {-|
  - Implementing object for HTable, where we match type parameters as:
- -  e ~ (DMove, Int, Int) { for (PV, lower bound, upper bound) }
- -  o ~ HObject
+ -  e ~ (Int, DMove, Int, Int) { for (depth, PV, lower bound, upper bound) }
+ -  o ~ TTObject
  -  i ~ (Int64, Int, MovePhase)  { for hash, depth, move phase }
 |-}
-data HObject = HO { hash0 :: Int64
-                  , best  :: (DMove, Int, Int)
-                  , depth :: Int
-                  , phase :: MovePhase
-                  } deriving (Eq)
+data TTObject = TTO { hash0 :: Int64
+                    , best  :: (Int, DMove, Int, Int)
+                    , phase :: MovePhase
+                    }
 
-newHTables :: Int -> IO ABTTable
-newHTables tableSize = do
+newTT :: Int -> IO TTable
+newTT tableSize = do
         ht <- newHT (`mod` ts)
         return HT
            { table     = ht
@@ -164,7 +279,7 @@ newHTables tableSize = do
            , saveEntry = saveEntry'
            }
     where
-        -- one entry in table has:
+        -- TableSize - one entry in table has:
         --   * cover = 12B
         --   * one value of information = 12B
         --     + cover for each composite entry
@@ -173,26 +288,77 @@ newHTables tableSize = do
         --        = 192B
         ts = (fromIntegral tableSize) * (500000 `div` 200)
 
-isValid' :: (Int64, Int, MovePhase) -> HObject -> Bool
-isValid' (h,d,mp) e = phase e == mp
-                   && depth e >= d
-                   && hash0 e == h
+isValid' :: (Int64, MovePhase) -> TTObject -> Bool
+isValid' (h,mp) e = phase e == mp && hash0 e == h
 
-key' :: Int32 -> (Int64, Int, MovePhase) -> Int32
-key' tableSize (h, _, (pl,s)) = fromIntegral . (`mod` tableSize) $
+key' :: Int32 -> (Int64, MovePhase) -> Int32
+key' tableSize (h, (pl,s)) = fromIntegral . (`mod` tableSize) $
     fromIntegral h `xor` fromIntegral (playerToInt pl)
     `xor` (fromIntegral s `shift` 4)
 
-saveEntry' :: (DMove, Int, Int) -> (Int64, Int, MovePhase) -> HObject
-saveEntry' b (h,d,mp) =
-        HO { hash0 = h
-           , best  = justNeeded b
-           , depth = d
-           , phase = mp
-           }
+saveEntry' :: (Int,DMove, Int, Int) -> (Int64, MovePhase) -> TTObject
+saveEntry' b (h,mp) =
+        TTO { hash0 = h
+            , best  = justNeeded b
+            , phase = mp
+            }
     where
-        justNeeded (!a:(!f):(!c):(!e):_,x,y) = ([a,f,c,e],x,y)
-        justNeeded (!a:(!f):(!c):[],x,y)     = ([a,f,c],x,y)
-        justNeeded (!a:(!f):[],x,y)          = ([a,f],x,y)
-        justNeeded (!a:[],x,y)               = ([a],x,y)
-        justNeeded ([],x,y)                  = ([],x,y)
+        justNeeded (d,!a:(!f):(!c):(!e):_,x,y) = (d,[a,f,c,e],x,y)
+        justNeeded (d,!a:(!f):(!c):[],x,y)     = (d,[a,f,c],x,y)
+        justNeeded (d,!a:(!f):[],x,y)          = (d,[a,f],x,y)
+        justNeeded (d,!a:[],x,y)               = (d,[a],x,y)
+        justNeeded (d,[],x,y)                  = (d,[],x,y)
+
+
+-- Implementation of History heuristics table
+#ifdef abHH
+
+type HHTable = HTable Int HHObject DStep
+
+data HHObject = HHO { hhValue :: !Int
+                    , step0   :: DStep
+                    }
+
+newHH :: IO HHTable
+newHH = do
+    ht <- newHT id
+    return HT
+       { table     = ht
+       , getEntry  = hhValue
+       , isValid   = \_ _ -> True
+       , key       = dStepToInt
+       , saveEntry = hhSaveEntry
+       }
+
+hhSaveEntry :: Int -> DStep -> HHObject
+hhSaveEntry val st = HHO { hhValue = val
+                         , step0   = st
+                         }
+
+-- | Updates statistics for given DStep.
+improveStep :: ABTables -> DStep -> Int -> IO ()
+improveStep tables' ss val = do
+        ho <- getHash hhT ss
+        addHash hhT ss $ fromMaybe 0 ho + val
+    where
+        hhT = hhTable tables'
+#endif
+
+
+-- Structure of Hash Tables
+
+data ABTables = ABTables { ttTable :: TTable
+#ifdef abHH
+                         , hhTable :: HHTable
+#endif
+                         }
+
+newHTables :: Int -> IO ABTables
+newHTables size = do
+        tt <- newTT size
+#ifdef abHH
+        hh <- newHH
+        return ABTables { ttTable = tt, hhTable = hh }
+#else
+        return ABTables { ttTable = tt }
+#endif
