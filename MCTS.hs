@@ -109,9 +109,14 @@ constructMove tables mt n = do
         if player mt /= mySide (board mt) || isLeaf n tn
             then return []
             else do
-                -- TODO with children cacheing enabled may find bad result
-                best <- descendByUCB1 tables mt n
+                chs <- mapM vcPair (children tn)
+                let best = fst . head $ sortBy cmp chs
+
                 ((step best) :) <$> constructMove tables best (n+1)
+    where
+        cmp x y = compare (snd y) (snd x)
+        vcPair mt' = do vc <- nodeVisitCount mt'
+                        return (mt', vc)
 
 leaf :: TreeNode
 leaf = Node { children   = []
@@ -137,12 +142,13 @@ improveTree tables mt !depth = do
 
         if isLeaf depth tn
             then do
+                -- Value given by Monte Carlo simulation
                 val <- normaliseValue
                    <$> getValueByMC (board mt) (movePhase mt) (step mt)
 
                 if isMature depth tn
                     then modifyMVar_ (treeNode mt) -- leaf expansion
-                       $ createNode tables mt val depth
+                       $ expandNode tables mt val depth
                     else changeMVar (treeNode mt)
                        $ improveTreeNode val
 
@@ -154,11 +160,15 @@ improveTree tables mt !depth = do
                     then return $ value tn
 
                     else do
+                        -- Find best node
                         node <- descendByUCB1 tables mt depth
+
+                        -- And traverse throught it
                         impr <- improveTree tables node (depth + 1)
 
-                        improveStep tables (step mt) impr
+                        -- Backpropagate result to node and history heuristic
                         changeMVar (treeNode mt) $ improveTreeNode impr
+                        improveStep tables (step mt) impr
                         return impr
 
 improveTreeNode :: Double -> TreeNode -> TreeNode
@@ -167,9 +177,9 @@ improveTreeNode impr tn@(Node { value = val, visitCount = vc }) =
            , visitCount = vc  + 1
            }
 
-createNode :: MCTSTables -> MMTree -> Double -> Int -> TreeNode
+expandNode :: MCTSTables -> MMTree -> Double -> Int -> TreeNode
            -> IO TreeNode
-createNode tables mt impr depth (Node { value = val, visitCount = vc }) = do
+expandNode tables mt impr depth (Node { value = val, visitCount = vc }) = do
         -- generate steps
         chls <- mapM (leafFromStep tables brd mp depth) steps
 
@@ -191,6 +201,7 @@ leafFromStep :: MCTSTables -> Board -> MovePhase -> Int -> DStep
 leafFromStep tables brd mp depth s = do
         fromTT <- getHash tt index
 
+        -- Do we have this node in transposition tables?
         tn <- case fromTT of
                 Just tn -> return tn
                 Nothing -> do
