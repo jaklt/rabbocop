@@ -12,7 +12,6 @@ import Eval.BitEval
 import IterativeAB
 import Helpers
 import MCTS
-import MTDf
 
 
 type TestCase = (String, [String] -> Bool, Player)
@@ -87,7 +86,6 @@ testPositions :: IO ()
 testPositions = do
         showHeader "testPositions"
         testSearchFunction IterativeAB.newSearch
-        -- testSearchFunction MTDf.newSearch
         testSearchFunction MCTS.newSearch
 
 -- | Test if all lists from evalCases are `eval-decreasing'

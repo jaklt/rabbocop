@@ -1,6 +1,7 @@
 {-# OPTIONS -fenable-rewrite-rules    #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE BangPatterns             #-}
+{-# LANGUAGE CPP                      #-}
 module Bits.BitRepresentation (
     -- * Basic types
     Player(..),
@@ -384,7 +385,10 @@ notFrozen ((PP pie poss):plPieRest) ops relatives stronger =
 -- | It doesn't check wheather pieces can move.
 -- in PiecePosition - position can contain multiple figures
 generatePiecesSteps :: Board -> MovePhase -> [PiecePosition] -> DMove
-generatePiecesSteps b mp@(pl,sc) pies =
+generatePiecesSteps b mp@(pl,_) pies =
+#ifdef canPass
+        [dPass | snd mp /= 0] ++
+#endif
         genPiecesSteps' b pl canPP pies opPie empty oArr
     where
         opPie = whole b (oponent pl)

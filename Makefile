@@ -39,7 +39,7 @@ SHELL = /usr/bin/env bash
 
 
 ENABLED_DEFINES = JUDY HASKELL_HASH VERBOSE WINDOW noHH noHeavyPlayout \
-				  abHH NULL_MOVE
+				  abHH NULL_MOVE canPass
 HFLAGS += $(foreach v, $(ENABLED_DEFINES), $(if $($(v)), -D$(v)=$($(v))))
 
 ifdef PROF
@@ -47,7 +47,7 @@ ifdef PROF
 endif
 
 
-all: IterativeAB MCTS MTDf
+all: IterativeAB MCTS
 
 IterativeAB MCTS MTDf: HFLAGS += -DENGINE
 

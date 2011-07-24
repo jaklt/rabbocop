@@ -82,9 +82,15 @@ evalStep b (pl,_) s1@(s11,s12) s2@(s21,s22)
         -- Count possible bonuses
         standartBonus = strongPieceBonus + pushPullBonus + killBonus
                       + suicidePenalty + goalBonus
-        extendedBonus | to2 == from1 = -1.0  -- inverse step penalty
-                      | to1 == from2 =  0.8  -- continuity bonus
-                      | otherwise    =  0.0
+        extendedBonus
+            | isContinue && to2 == from1 = -1.0  -- inverse step penalty
+            | isContinue =  0.8  -- continuity bonus
+            | isNear     =  0.4
+            | otherwise  =  0.0
+        isContinue = to1 == from2
+        isNear = abs ((to1 `div` 8) - (from2 `div` 8))
+               + abs ((to1 `mod` 8) - (from2 `mod` 8))
+               <= 3     -- locality bound
 
         -- big bonuses
         killBonus      | any oponentsPiece died = 1.5

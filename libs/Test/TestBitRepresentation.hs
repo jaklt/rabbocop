@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                      #-}
 module Test.TestBitRepresentation
     ( testSteps
     ) where
@@ -77,6 +78,9 @@ testSteps = do
                         let generated = generateSteps b' (pl, if bo then 0
                                                                     else 3)
                         let expected =
+#ifdef canPass
+                                [(Pass, Pass) | not bo] ++
+#endif
                                 map (parseStep *** parseStep) ss
 
                         unless (generated ~=~ expected)

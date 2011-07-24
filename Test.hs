@@ -55,7 +55,6 @@ testTiming = do
                         ++ "RR rCRD "
                         ++ "RDR    R]"
 
-
 {- -------------------------------------------------------
  - Testing MCTS
  - ------------------------------------------------------- -}
@@ -101,7 +100,7 @@ simpleMMTree b = do
         }
 
 printChildren :: MCTSTables -> MMTree -> IO ()
-printChildren tables mt = do
+printChildren _ mt = do
         putStrLn "-------------------- (showing averages)"
         putStrLn "-- value visits step ucb --------------"
         tn <- nodeTreeNode mt

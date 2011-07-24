@@ -54,7 +54,7 @@ randomMove' b' mp'@(pl',_) pl pies ds
         steps = generatePiecesSteps b' mp' pies
 
 #ifndef noHeavyPlayout
-        ds' | snd mp' == 0   = (Pass,Pass)
+        ds' | snd mp' == 0   = dPass
             | otherwise      = ds
 
         cmp a c = compare (snd c) (snd a)
@@ -74,7 +74,7 @@ randomSimulation mp@(pl,_) d dstep b =
         then evalImmobilised b pl
         else do
             b' <- randomMove b mp dstep
-            randomSimulation (oponent pl,0) (d-1) (Pass,Pass) b'
+            randomSimulation (oponent pl,0) (d-1) dPass b'
 
 
 randomSubList :: Int    -- ^ length of sublist

@@ -84,7 +84,7 @@ search tableSize b mv = do
         search' MT { board = b
                    , movePhase = (mySide b, 0)
                    , treeNode = newLeaf
-                   , step = (Pass, Pass)
+                   , step = dPass
                    }
                 tables mv 1
 
@@ -242,7 +242,7 @@ descendByUCB1 tables mt depth = do
                     , quant
                     , depth+1
                     , mp
-                    , if sc == 0 then (Pass,Pass)
+                    , if sc == 0 then dPass
                                  else step mt
                     , board mt
                     )
