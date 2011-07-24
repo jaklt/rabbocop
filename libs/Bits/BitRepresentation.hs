@@ -18,6 +18,9 @@ module Bits.BitRepresentation (
     -- * Species lists
     pieces,              -- :: [Piece]
     players,             -- :: [Player]
+    dPass,               -- :: DStep
+    isEmptyBoard,        -- :: Board -> Bool
+    emptyBoard,          -- :: Board
 
     -- * Other helper functions
     (<#>),               -- :: Num a => Player -> Player -> a
@@ -89,7 +92,6 @@ data Board = Board { hash        :: !Int64
                    , wholeSilver :: !Int64
                    , mySide      :: Player
                    }
-           | EmptyBoard deriving (Eq)
 
 data Step = Step !Piece !Player {- from: -} !Int64 {- to: -} !Int64 | Pass
             deriving (Eq, Ord)
@@ -128,6 +130,11 @@ instance Show Step where
 instance Show Board where
     show = ("\n" ++) . (++ "\n") . flip displayBoard True
 
+instance Eq Board where
+    b1 == b2 = hash b1 == hash b2
+            && wholeSilver b1 == wholeSilver b2
+            && wholeGold b1 == wholeGold b2
+
 ---------------------------------------------------------------------
 
 players :: [Player]
@@ -135,6 +142,15 @@ players = [Gold, Silver]
 
 pieces :: [Piece]
 pieces = [Rabbit .. Elephant]
+
+dPass :: DStep
+dPass = (Pass,Pass)
+
+isEmptyBoard :: Board -> Bool
+isEmptyBoard b = wholeGold b == 0 && wholeSilver b == 0
+
+emptyBoard :: Board
+emptyBoard = createBoard Gold []
 
 ---------------------------------------------------------------------
 
@@ -155,7 +171,6 @@ showPiece col piece    = (if col == Gold then id else toLower)
 
 -- | Second argument is: use noflat format or flat.
 displayBoard :: Board -> Bool -> String
-displayBoard EmptyBoard _ = "<EmptyBoard>"
 displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
         , let pp | i .&. whole b Gold   /= 0 = g Gold i
                  | i .&. whole b Silver /= 0 = g Silver i

@@ -115,4 +115,3 @@ evalStep b (pl,_) s1@(s11,s12) s2@(s21,s22)
         myPieces _ = False
 
         -- TODO try to rewrite this in C
-        -- TODO steps near previous step should be promoted

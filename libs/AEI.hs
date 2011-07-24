@@ -42,7 +42,7 @@ aeiSetposition game flatBoard = game { board = newBoard }
 
 aeiMakemove :: Game -> String -> Game
 aeiMakemove game move
-        | board game == EmptyBoard = game { board = parseBoard Silver move }
+        | isEmptyBoard (board game) = game { board = parseBoard Silver move }
         | (hash.board) game == 0   = game { board = parseBoard   Gold move }
         | whole (board game) Silver == 0 = game { board = fst board2 }
         | otherwise =  game { board = fst board1 }
@@ -61,7 +61,7 @@ startSilver = "ra8 db8 rc8 cd8 ce8 rf8 dg8 rh8 ra7 hb7 rc7 ed7 me7 rf7 hg7 rh7 "
 startGold   = "Ra1 Db1 Rc1 Cd1 Ce1 Rf1 Dg1 Rh1 Ra2 Hb2 Rc2 Md2 Ee2 Rf2 Hg2 Rh2 "
 
 aeiGo :: Game -> IO Game
-aeiGo game | board game == EmptyBoard  = do
+aeiGo game | isEmptyBoard (board game) = do
                 putStrLn ("bestmove " ++ startGold)
                 return game { board = parseBoard Gold "" }
            | whole (board game) Silver == 0 = do
@@ -126,7 +126,7 @@ action str line game = case str of
                          return game
             _ -> putStrLn "log Error: corrupted 'setoption name <id> [value <x>]' command"
                  >> return game
-    "newgame"     -> return game { board = EmptyBoard }
+    "newgame"     -> return game { board = emptyBoard }
     "setposition" -> return $ aeiSetposition game line
     "makemove"    -> return $ aeiMakemove game line
     "go" -> if (fst.firstWord) line == "ponder"
@@ -165,7 +165,7 @@ runAEIInterface newSearch = do
              , maxTurns = -1
              , maxTurnTime = -1
              , quit = False
-             , board = EmptyBoard
+             , board = emptyBoard
              , engine = search
              , newEngine = newSearch
              }
