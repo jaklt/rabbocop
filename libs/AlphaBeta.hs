@@ -64,9 +64,13 @@ alphaBeta' token@T { board=brd, remDepth=rd
         let (ttBounds@(al', bet'), maybeBest, ttMove) =
                 case fromTT of
                     -- If entry was found, use it's values.
-                    Just (remD, ttMove', lowerBound, upperBound) ->
+                    -- But if found search result is shallow, don't use it's
+                    -- bounds.
+                    Just (remD, ttMove', _, _) | remD < rd ->
+                        ( aB, Nothing, ttMove')
+                    Just (_, ttMove', lowerBound, upperBound) ->
                         ( (lowerBound, upperBound)
-                        , maybeResult lowerBound upperBound ttMove' remD
+                        , maybeResult lowerBound upperBound ttMove'
                         , ttMove'
                         )
                     -- Otherwise use default.
@@ -137,8 +141,7 @@ alphaBeta' token@T { board=brd, remDepth=rd
 
 
         -- Check if found result from TT is satisfying.
-        maybeResult low upp mv remDepth'
-               | rd  <= remDepth' = Nothing
+        maybeResult low upp mv
                | low >= beta  = Just (mv, low, emptyKM)
                | upp <= alpha = Just (mv, upp, emptyKM)
                | otherwise    = Nothing
@@ -158,8 +161,7 @@ alphaBeta' token@T { board=brd, remDepth=rd
 #endif
 
         -- If needed use PV found in TT
-        {- (TODO), but it increase computation time, so we don't use it.
-        maybeSwapPV ttM [] = firstAsList ttM -}
+        maybeSwapPV ttM [] = firstAsList ttM
         maybeSwapPV  _   pv = firstAsList pv
 
         firstAsList x = case x of
