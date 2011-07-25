@@ -121,7 +121,6 @@ alphaBeta' token@T { board=brd, remDepth=rd
                             -- Search in children nodes.
                             findBest token { pvMoves = tailPV
                                            , killerMoves = tailKM
-                                           , nullPossible = True
                                            , bounds = newAB }
                                      ([], negInf) steps'
 

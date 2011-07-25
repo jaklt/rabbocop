@@ -23,6 +23,7 @@ data Game = Game { timePerMove :: Int
                  , maxTurnTime :: Int
                  , quit        :: Bool
                  , board       :: Board
+                 , sidePicked  :: Bool
                  , engine      :: SearchEngine
                  , newEngine   :: Int -> IO (SearchEngine)
                  }
@@ -41,12 +42,13 @@ aeiSetposition game flatBoard = game { board = newBoard }
         newBoard = parseFlatBoard plCol $ ltrim flatBoard'
 
 aeiMakemove :: Game -> String -> Game
-aeiMakemove game move
-        | isEmptyBoard (board game) = game { board = parseBoard Silver move }
-        | (hash.board) game == 0   = game { board = parseBoard   Gold move }
-        | whole (board game) Silver == 0 = game { board = fst board2 }
-        | otherwise =  game { board = fst board1 }
+aeiMakemove game@Game { sidePicked=sidePicked', board=brd} move
+        | isEmptyBoard brd && not sidePicked' = game { board = newBoard Silver }
+        | isEmptyBoard brd      = game { board = newBoard Gold }
+        | whole brd Silver == 0 = game { board = fst board2 }
+        | otherwise             = game { board = fst board1 }
     where
+        newBoard pl = parseBoard pl move
         board1 = makeMove (board game) $ filter notTrapping
                $ map parseStep $ words move
         board2 = makeMove (board game) $ map (positionToStep.parsePosition)
@@ -55,7 +57,7 @@ aeiMakemove game move
         notTrapping (Step _ _ _ to) = to /= 0
         notTrapping _ = True
 
--- TODO zmenit startovni pozici
+-- TODO change, make it more variable
 startSilver, startGold :: String
 startSilver = "ra8 db8 rc8 cd8 ce8 rf8 dg8 rh8 ra7 hb7 rc7 ed7 me7 rf7 hg7 rh7 "
 startGold   = "Ra1 Db1 Rc1 Cd1 Ce1 Rf1 Dg1 Rh1 Ra2 Hb2 Rc2 Md2 Ee2 Rf2 Hg2 Rh2 "
@@ -63,10 +65,10 @@ startGold   = "Ra1 Db1 Rc1 Cd1 Ce1 Rf1 Dg1 Rh1 Ra2 Hb2 Rc2 Md2 Ee2 Rf2 Hg2 Rh2 "
 aeiGo :: Game -> IO Game
 aeiGo game | isEmptyBoard (board game) = do
                 putStrLn ("bestmove " ++ startGold)
-                return game { board = parseBoard Gold "" }
-           | whole (board game) Silver == 0 = do
+                return game { sidePicked = True }
+           | whole (board game) Silver == 0 && not (sidePicked game) = do
                 putStrLn ("bestmove " ++ startSilver)
-                return game
+                return game { sidePicked = True }
            | otherwise = do
                 mvar <- newMVar ([],"Nothing computed")
                 forbidBoard $ board game
@@ -126,7 +128,7 @@ action str line game = case str of
                          return game
             _ -> putStrLn "log Error: corrupted 'setoption name <id> [value <x>]' command"
                  >> return game
-    "newgame"     -> return game { board = emptyBoard }
+    "newgame"     -> return game { board = emptyBoard, sidePicked = False }
     "setposition" -> return $ aeiSetposition game line
     "makemove"    -> return $ aeiMakemove game line
     "go" -> if (fst.firstWord) line == "ponder"
@@ -166,6 +168,7 @@ runAEIInterface newSearch = do
              , maxTurnTime = -1
              , quit = False
              , board = emptyBoard
+             , sidePicked = False
              , engine = search
              , newEngine = newSearch
              }
