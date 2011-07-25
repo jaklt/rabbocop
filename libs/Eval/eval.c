@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <math.h>
 #include "../clib.h"
 
 extern long int random(void);
@@ -13,7 +14,7 @@ static int weight_table[6] = {
     1600 /* elephant */
 };
 
-#define INFINITY 100000
+#define iNFINITY 100000
 
 #define TRAPS        0x0000240000240000LLU
 #define AROUND_TRAPS 0x00245a24245a2400LLU
@@ -28,17 +29,6 @@ static int weight_table[6] = {
 #define AROUND_SW_TRAP (AROUND_TRAPS & SW)
 #define AROUND_SE_TRAP (AROUND_TRAPS & SE)
 
-void init_eval()
-{
-    /* random change pieces weight */
-    weight_table[0] += random() % 9;
-    weight_table[1] += random() % 20;
-    weight_table[2] += random() % 40;
-    weight_table[3] += random() % 70;
-    weight_table[4] += random() % 110;
-    weight_table[5] += random() % 160;
-}
-
 /* Hexa table:
     .... ....   0 = ....  8 = |...
     .... ....   1 = ...|  9 = |..|
@@ -50,26 +40,89 @@ void init_eval()
     .... ....   7 = .|||  f = ||||
 */
 
-#define BEGIN_material_and_position(col)             \
-    static inline int material_and_position_ ## col( \
-        uint64_t r, uint64_t c, uint64_t d,          \
-        uint64_t h, uint64_t m, uint64_t e,          \
-        const int rabbit_weight)                     \
-    {                                                \
-        int sum = 0;                                 \
+void init_eval()
+{
+    /* random change pieces weight */
+    weight_table[0] += random() % 9;
+    weight_table[1] += random() % 20;
+    weight_table[2] += random() % 40;
+    weight_table[3] += random() % 70;
+    weight_table[4] += random() % 110;
+    weight_table[5] += random() % 160;
+}
+
+/*
+ * Position evaluation.
+ */
+
+#define BEGIN_position(col)                  \
+    static inline int position_ ## col(      \
+        uint64_t r, uint64_t c, uint64_t d,  \
+        uint64_t h, uint64_t m, uint64_t e,  \
+        const int rabbit_weight)             \
+    {                                        \
+        int sum = 0;                         \
         double tmp;
 
-#define END_material_and_position \
-        return sum;               \
+#define END_position \
+        return sum;  \
     }
 
-BEGIN_material_and_position(g)
+BEGIN_position(g)
     #include "../../data/staticeval_g.c"
-END_material_and_position
+END_position
 
-BEGIN_material_and_position(s)
+BEGIN_position(s)
     #include "../../data/staticeval_s.c"
-END_material_and_position
+END_position
+
+/*
+ * FAME: Fritz's Arimaa Material Evaluator.
+ */
+#define L1 256.0
+#define L2 85.0
+#define A 1.5
+#define B 600.0
+#define C 2.0
+#define normal 33.69565217391303
+double msa[8] = { L1, L2, L2/A, L2/(A*A), L2/(A*A*A), L2/(A*A*A*A),
+	              L2/(A*A*A*A*A), L2/(A*A*A*A*A*A) };
+
+int fame(uint64_t figs[2][6], uint64_t whole[2])
+{
+	int mi, g, s, cg, cs;
+
+	int gr = bit_count(figs[  GOLD][RABBIT]);
+	int sr = bit_count(figs[SILVER][RABBIT]);
+	int gl = bit_count(whole[  GOLD]) - gr;
+	int sl = bit_count(whole[SILVER]) - sr;
+	double gs, ss;
+
+	/* Evaluate differences */
+	gs = ss = 0;
+	g = s = ELEPHANT + 1;
+	cg = cs = mi = 0;
+	while (g > RABBIT && s > RABBIT) {
+		while (cg == 0 && g >= RABBIT) cg = bit_count(figs[  GOLD][--g]);
+		while (cs == 0 && s >= RABBIT) cs = bit_count(figs[SILVER][--s]);
+
+		if      (g > s) gs += msa[mi];
+		else if (s > g) ss += msa[mi];
+
+		mi++; cg--; cs--;
+	}
+
+	g = gr-(mi-gl);
+	g = g > gr ? gr : g;
+
+	s = sr-(mi-sl);
+	s = s > sr ? sr : s;
+
+	gs += g * (B / (sr + (C * sl)));
+	ss += s * (B / (gr + (C * gl)));
+
+	return round(((gs-ss)/normal) * 1000);
+}
 
 
 #define RABBIT_WEIGHT(r) \
@@ -88,14 +141,14 @@ static inline uint64_t adjecent(uint64_t pos)
 #define adjecentOne(b) steps_from_position(0,1, (b))
 
 /**
- * Static evaluation functoin.
+ * Static evaluation function.
  * Keep in mind that it doesn't care about immobilization.
  *
  * TODO fix constants
  */
 int eval(BOARD_AS_PARAMETER)
 {
-    int sum = 0, i,j;
+    int sum = 0, i;
     uint64_t figs[2][6] = {{gr, gc, gd, gh, gm, ge}, {sr, sc, sd, sh, sm, se}};
     uint64_t whole[2] = {gr|gc|gd|gh|gm|ge, sr|sc|sd|sh|sm|se};
     uint64_t tmpG, tmpS, tmpG2, tmpS2, tmp1, tmp2;
@@ -103,28 +156,21 @@ int eval(BOARD_AS_PARAMETER)
 
     /* Win or Loose */
     if (player == GOLD) {
-        if ((gr &  UPPER_SIDE) || !sr) return  INFINITY;
-        if ((sr & BOTTOM_SIDE) || !gr) return -INFINITY;
+        if ((gr &  UPPER_SIDE) || !sr) return  iNFINITY;
+        if ((sr & BOTTOM_SIDE) || !gr) return -iNFINITY;
     } else {
-        if ((sr & BOTTOM_SIDE) || !gr) return -INFINITY;
-        if ((gr &  UPPER_SIDE) || !sr) return  INFINITY;
+        if ((sr & BOTTOM_SIDE) || !gr) return -iNFINITY;
+        if ((gr &  UPPER_SIDE) || !sr) return  iNFINITY;
     }
 
-    /* Material and position */
-    sum += material_and_position_g(gr,gc,gd,gh,gm,ge, RABBIT_WEIGHT(gr))
-         - material_and_position_s(sr,sc,sd,sh,sm,se, RABBIT_WEIGHT(sr));
+    /* Position evaluation */
+    sum += position_g(gr,gc,gd,gh,gm,ge, RABBIT_WEIGHT(gr))
+         - position_s(sr,sc,sd,sh,sm,se, RABBIT_WEIGHT(sr));
 
-    /* Having the strongest & the second strongest piece advantage */
-    for (i=5, j=2; i>0 && j; i--) {
-        /* Only two biggest */
-        j -= !!figs[GOLD][i] | !!figs[SILVER][i];
+	/* Material evaluation */
+	sum += fame(figs, whole);
 
-        /* If one of them has big advantage */
-        if ((!!figs[GOLD][i]) ^ (!!figs[SILVER][i]))
-            sum += (figs[GOLD][i] ? 1 : -1) * weight_table[i];
-    }
-
-    /* Controling traps */
+    /* Controlling traps */
 #define traps_quantity_advantage(n) \
     ( trap_control[bit_count(AROUND_NW_TRAP & whole[n])] \
     + trap_control[bit_count(AROUND_NE_TRAP & whole[n])] \
@@ -143,8 +189,8 @@ int eval(BOARD_AS_PARAMETER)
         tmpS2 ^= figs[SILVER][i];
 
         /* Possibility to be pushed/pulled */
-        sum -= bit_count(adjecent(figs[  GOLD][i]) & tmpS2) * weight_table[i]/15
-             - bit_count(adjecent(figs[SILVER][i]) & tmpG2) * weight_table[i]/15;
+        sum -= bit_count(adjecent(figs[  GOLD][i]) & tmpS2) * weight_table[i]/30
+             - bit_count(adjecent(figs[SILVER][i]) & tmpG2) * weight_table[i]/30;
 
         /* Cannot move */
         tmp1 = adjecent(tmpS2) & figs[  GOLD][i];
@@ -152,13 +198,13 @@ int eval(BOARD_AS_PARAMETER)
 
         while (tmp1) {
             sum -= (!(adjecentOne(tmp1 & (-tmp1)) & whole[GOLD]))
-                 * weight_table[i]/10;
+                 * weight_table[i]/20;
             tmp1 ^= tmp1 & (-tmp1);
         }
 
         while (tmp2) {
             sum += (!(adjecentOne(tmp2 & (-tmp2)) & whole[SILVER]))
-                 * weight_table[i]/10;
+                 * weight_table[i]/20;
             tmp2 ^= tmp2 & (-tmp2);
         }
         /* b & (-b) is right most bit */
