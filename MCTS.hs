@@ -309,7 +309,7 @@ valueUCB (tables,count,quant,depth,mp,st,brd) mt = do
             _ -> return $ (quant' * vl / nb) + 0.01 * sqrt (log cn / nb)
                         + stepVal / nb
 #ifndef noHH
-                        + (quant' * histVal) / nb
+                        + (quant' * histVal * 1.1) / nb
 #endif
     where
         cn = fromIntegral count

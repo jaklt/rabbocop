@@ -37,7 +37,7 @@ static char bit_index_table3[65536];
 static char bit_index_table4[65536];
 
 /*
-   TODO jen asi 45% zrychleni proti switch verzi, zvazit neco z:
+   TODO Look at the following url for further optimisations:
             http://graphics.stanford.edu/~seander/bithacks.html
 */
 
