@@ -8,11 +8,12 @@ import Control.Monad (unless)
 import System.IO (hFlush, stdout)
 import System.Mem (performGC)
 
+import Computation
 import Eval.BitEval (forbidBoard)
 import Bits.BitRepresentation
 import Helpers
 
-type SearchEngine = Board -> MVar (DMove, String) -> IO ()
+type SearchEngine = Board -> MVar (DMove, String) -> IO ComputationToken
 
 data Game = Game { timePerMove :: Int
                  , percentUnusedToReserve :: Int
@@ -72,10 +73,10 @@ aeiGo game | isEmptyBoard (board game) = do
            | otherwise = do
                 mvar <- newMVar ([],"Nothing computed")
                 forbidBoard $ board game
-                thread <- forkIO $ engine game (board game) mvar
+                toStop <- startComputation (engine game) (board game) mvar
                 threadDelay (3000000 * timePerMove game `div` 4)
                 (pv, val) <- takeMVar mvar
-                killThread thread
+                stopComputation toStop
 
                 putStrLn $ "info bestscore " ++ val
                 putStrLn $ "bestmove "
@@ -136,7 +137,7 @@ action str line game = case str of
                     _ <- forkIO performGC
                     return game
                 else aeiGo game
-    -- "stop" -> -- jak?
+    -- "stop" -> -- not now
     "debug" -> case firstWord line of
                 ("board",kind) -> do
                     putStrLn $ unlines $ map ("info board "++) $ lines
@@ -155,7 +156,7 @@ communicate game = game `seq` do
     game' <- action str line game
     unless (quit game') $ communicate game'
 
-runAEIInterface :: (Int -> IO (SearchEngine)) -> IO ()
+runAEIInterface :: (Int -> IO SearchEngine) -> IO ()
 runAEIInterface newSearch = do
     search <- newSearch 1000
     communicate

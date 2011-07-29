@@ -13,6 +13,7 @@ SRC_Hs = \
 	libs/Hash/JudyHash.hs \
 	libs/Hash.hs \
 	libs/Helpers.hs \
+	libs/Computation.hs \
 	IterativeAB.hs \
 	MCTS.hs \
 	MTDf.hs \
@@ -39,11 +40,16 @@ SHELL = /usr/bin/env bash
 
 
 ENABLED_DEFINES = JUDY HASKELL_HASH VERBOSE WINDOW noHH noHeavyPlayout \
-				  abHH NULL_MOVE canPass
+                  abHH NULL_MOVE canPass CORES
 HFLAGS += $(foreach v, $(ENABLED_DEFINES), $(if $($(v)), -D$(v)=$($(v))))
 
 ifdef PROF
 	HFLAGS += -prof -fforce-recomp -auto-all
+endif
+
+ifdef CORES
+	GHCRTS += -N${CORES}
+	export GHCRTS
 endif
 
 

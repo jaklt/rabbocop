@@ -23,10 +23,10 @@ module MCTS
 import AEI (SearchEngine)
 #endif
 
-import Control.Applicative ((<$>), (<*>))
+import Control.Applicative ((<$>))
 import Control.Arrow ((***))
 import Control.Concurrent.MVar
-import Control.Monad (foldM, void)
+import Control.Monad (foldM, void, when)
 import Data.Bits
 import Data.Int (Int32)
 import Data.List (sortBy)
@@ -37,10 +37,10 @@ import Eval.BitEval
 import Eval.MonteCarloEval
 import Hash
 import Helpers (changeMVar)
+import Computation
 
 #ifdef VERBOSE
 import System.IO (hFlush, stdout)
-import Control.Monad (when)
 #endif
 
 
@@ -77,29 +77,40 @@ newSearch = return . search
 search :: Int                  -- ^ table size
        -> Board                -- ^ starting position
        -> MVar (DMove, String) -- ^ best results to store here
-       -> IO ()
+       -> IO ComputationToken
 search tableSize b mv = do
         newLeaf <- newMVar leaf
         tables <- newHTables tableSize
-        search' MT { board = b
-                   , movePhase = (mySide b, 0)
-                   , treeNode = newLeaf
-                   , step = dPass
-                   }
-                tables mv 1
+        let tree = MT { board = b
+                      , movePhase = (mySide b, 0)
+                      , treeNode = newLeaf
+                      , step = dPass
+                      }
+#if CORES > 1
+        let c = CORES
+        newMVar =<< mapM (\_ -> (forkIO $ search' tree tables mv))
+                         [1 .. c :: Int]
+#else
+        search' tree tables mv
+#endif
 
-search' :: MMTree -> MCTSTables -> MVar (DMove, String) -> Int -> IO ()
-search' mt tables mvar !count = do
+search' :: MMTree -> MCTSTables -> MVar (DMove, String) -> IO ()
+search' mt tables mvar = do
         void $ improveTree tables mt 0
-        move  <- constructMove tables mt 0
-        score <- (/) <$> nodeValue mt <*> (fromIntegral <$> nodeVisitCount mt)
-        changeMVar mvar (const (move, show score ++ " " ++ show count))
+
+        count <- nodeVisitCount mt
+
+        when (count `mod` 10 == 0) $ do
+            move  <- constructMove tables mt 0
+            score <- (/ fromIntegral count) <$> nodeValue mt
+            changeMVar mvar (const (move, show score ++ " " ++ show count))
+
 #ifdef VERBOSE
         when (count `mod` VERBOSE == 0) $
             putStrLn ("info actual " ++ show (move,score))
             >> hFlush stdout
 #endif
-        search' mt tables mvar (count+1)
+        search' mt tables mvar
 
 constructMove :: MCTSTables -> MMTree -> Int -> IO DMove
 constructMove _ _ 4 = return []
@@ -112,7 +123,7 @@ constructMove tables mt n = do
                 chs <- mapM vcPair (children tn)
                 let best = fst . head $ sortBy cmp chs
 
-                ((step best) :) <$> constructMove tables best (n+1)
+                (step best :) <$> constructMove tables best (n+1)
     where
         cmp x y = compare (snd y) (snd x)
         vcPair mt' = do vc <- nodeVisitCount mt'
@@ -146,11 +157,12 @@ improveTree tables mt !depth = do
                 val <- normaliseValue
                    <$> getValueByMC (board mt) (movePhase mt) (step mt)
 
-                if isMature depth tn
-                    then modifyMVar_ (treeNode mt) -- leaf expansion
-                       $ expandNode tables mt val depth
-                    else changeMVar (treeNode mt)
-                       $ improveTreeNode val
+                modifyMVar_ (treeNode mt) $ \tn' ->
+                    if isMature depth tn' && isLeaf depth tn'
+                        then -- leaf expansion
+                             expandNode tables mt val depth tn'
+                        else return
+                           $ improveTreeNode val 0 tn'
 
                 improveStep tables (step mt) val
                 return val
@@ -160,6 +172,9 @@ improveTree tables mt !depth = do
                     then return $ value tn
 
                     else do
+                        -- worsten node, to not be used by other threads
+                        changeMVar (treeNode mt) worstenTreeNode
+
                         -- Find best node
                         node <- descendByUCB1 tables mt depth
 
@@ -167,15 +182,24 @@ improveTree tables mt !depth = do
                         impr <- improveTree tables node (depth + 1)
 
                         -- Backpropagate result to node and history heuristic
-                        changeMVar (treeNode mt) $ improveTreeNode impr
+                        changeMVar (treeNode mt) $ improveTreeNode impr wORSTEN
                         improveStep tables (step mt) impr
+
                         return impr
 
-improveTreeNode :: Double -> TreeNode -> TreeNode
-improveTreeNode impr tn@(Node { value = val, visitCount = vc }) =
+-- TODO delete worsting or tune this value
+wORSTEN :: Int
+wORSTEN = 15
+
+improveTreeNode :: Double -> Int ->  TreeNode -> TreeNode
+improveTreeNode impr w tn@(Node { value = val, visitCount = vc }) =
         tn { value      = val + impr
-           , visitCount = vc  + 1
+           , visitCount = vc  + 1 - w
            }
+
+worstenTreeNode :: TreeNode -> TreeNode
+worstenTreeNode tn@(Node { visitCount = vc }) =
+        tn { visitCount = vc + wORSTEN }
 
 expandNode :: MCTSTables -> MMTree -> Double -> Int -> TreeNode
            -> IO TreeNode
@@ -183,7 +207,8 @@ expandNode tables mt impr depth (Node { value = val, visitCount = vc }) = do
         -- generate steps
         chls <- mapM (leafFromStep tables brd mp depth) steps
 
-        newVal <- if null steps -- is immobilised?
+        -- if is immobilised evaluate node
+        newVal <- if null steps
                     then normaliseValue <$> evalImmobilised (board mt) pl
                     else return $ val + impr
 

@@ -8,10 +8,12 @@ import Control.Applicative
 import Control.Monad
 
 import Bits.BitRepresentation
+import Computation
 import Eval.BitEval
 import IterativeAB
 import Helpers
 import MCTS
+import AEI (SearchEngine)
 
 
 type TestCase = (String, [String] -> Bool, Player)
@@ -48,8 +50,7 @@ moveContainAND :: [String] -> [String] -> Bool
 moveContainAND [] _ = True
 moveContainAND (st:rest) moves = st `elem` moves && moveContainAND rest moves
 
-testSearchFunction :: (Int -> IO (Board -> MVar (DMove, String) -> IO ()))
-                   -> IO ()
+testSearchFunction :: (Int -> IO SearchEngine) -> IO ()
 testSearchFunction newSrch = go positionCases 1 >> putStrLn ""
     where
         testTime  = 10000000
@@ -61,10 +62,10 @@ testSearchFunction newSrch = go positionCases 1 >> putStrLn ""
             let board' = parseFlatBoard pl brd
             mvar <- newMVar ([],"0")
             srch <- newSrch tableSize
-            thread <- forkIO $ srch board' mvar
+            toStop <- startComputation srch board' mvar
             threadDelay testTime
             (pv, sc) <- takeMVar mvar
-            killThread thread
+            stopComputation toStop
             let move = justOneMove board' pv
             let (board'', _) = makeMove board' $ filterTrapping move
 

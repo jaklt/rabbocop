@@ -9,6 +9,7 @@ import Prelude
 import AlphaBeta
 import Bits.BitRepresentation
 import Bits.MyBits
+import Computation
 import Eval.BitEval
 import Helpers
 import IterativeAB
@@ -32,10 +33,10 @@ testTiming = do
         {-
         mvar <- newMVar ([],"Nothing")
         search <- IterativeAB.newSearch 200
-        thread <- forkIO $ search testBoard' mvar
+        toStop <- startComputation search testBoard' mvar
         threadDelay 10000000
         print =<< takeMVar mvar
-        killThread thread
+        stopComputation toStop
         -- -}
         -- {-
         tables <- AlphaBeta.newHTables 200
@@ -129,14 +130,15 @@ testMCTS = do
         showHeader "starting MCTS test:"
         mt <- simpleMMTree b
         tables <- MCTS.newHTables 200
-        foldM_ (\mt' _ -> do
-                _ <- improveTree tables mt' 0
-                return mt'
-                ) mt [1 .. 310 :: Int]
+        let comp = mapM_ (\_ -> improveTree tables mt 0)  [1 .. 300 :: Int]
+
+        void $ forkIO comp
+        void $ forkIO comp
+        threadDelay 1000000
 
         -- print =<< step <$> descendByUCB1 tables mt 1
-        printChildren tables mt
         print =<< mm2c mt
+        printChildren tables mt
         printBoard b
 
         while $ do
