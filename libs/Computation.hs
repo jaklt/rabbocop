@@ -1,10 +1,14 @@
 {-# LANGUAGE CPP          #-}
+{-
+ - | Depending on is CORES value we prepare computation for runnning
+ - parallel or sequentially.
+ -}
 module Computation
     ( Stoplight
     , ComputationToken
     , startComputation
     , stopComputation
-#if CORES > 0
+#if CORES > 1
     , module Control.Concurrent
 #endif
     ) where
@@ -22,8 +26,12 @@ type ComputationToken = ()
 #endif
 
 
+-- | Starts computation depending on number of CORES. If there is more than
+-- one core computations called action could run in parallel.
 startComputation :: (a -> MVar b -> IO ComputationToken) -> a -> MVar b
                  -> IO Stoplight
+
+-- | Stops parallel or sequential computation.
 stopComputation :: Stoplight -> IO ()
 
 

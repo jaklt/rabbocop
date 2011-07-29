@@ -280,7 +280,7 @@ createBoard pl xs = fst $ makeMove bo $ map positionToStep xs
 
 ---------------------------------------------------------------------
 
--- | Note: take a look at return value, it is different to return value of
+-- | Note: take a look at return value, it is different from return value of
 -- makeStep or makeDStep.
 makeMove :: Board
          -> Move

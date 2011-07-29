@@ -3,6 +3,9 @@
 module AlphaBeta
     ( ABTables
     , alphaBeta
+#if CORES > 1
+    , alphaBetaParallel
+#endif
     , newHTables
     ) where
 
@@ -12,7 +15,12 @@ import Hash
 import Control.Applicative ((<$>),(<*>))
 import Data.Bits
 import Data.Int (Int64, Int32)
+import Computation
 
+#if CORES > 1
+import Control.Monad (when)
+import Helpers (changeMVar)
+#endif
 #ifdef abHH
 import Data.Maybe (fromMaybe)
 import Data.List (sortBy)
@@ -40,6 +48,107 @@ alphaBeta brd tables' bounds' maxDepth mp =
                               }
     where
         proj (a,b,_) = (a,b)
+
+#if CORES > 1
+-- Perform alphaBeta in parallel with divide and conquer strategy
+alphaBetaParallel :: Board
+                  -> ABTables
+                  -> (Int, Int)  -- ^ (alpha, beta)
+                  -> Int         -- ^ maximal depth
+                  -> MovePhase
+                  -> MVar (DMove, Int) -- ^ (best value, score)
+                  -> MVar [ThreadId]   -- ^ pools of working threads
+                  -> MVar ()           -- ^ to wake up worker
+                  -> IO ()
+alphaBetaParallel brd tables' bounds' maxDepth mp mv threads workerMV = do
+        -- channel to generated steps from root position
+        stepsMV <- newEmptyMVar :: IO (MVar DStep)
+
+        -- thread which will be filling stepsMV
+        fillingThread <- forkIO $ fillWithSteps stepsMV brd mp
+
+        -- mvar for shared token and best score so far
+        tokenMV <- newMVar (token,-iNFINITY * Gold <#> (fst mp))
+
+        -- for each CORES create thread with eager consuming of stepsMV
+        -- and updating tokens killerMoves and bounds
+        modifyMVar_ threads $ const $
+             mapM (\_ -> forkIO $ oneComp tokenMV fillingThread stepsMV
+                                          mv workerMV mp)
+                  [1 .. cores :: Int]
+    where
+        cores = CORES
+        token = T { board = brd
+                  , tables = tables'
+                  , pvMoves = []
+                  , killerMoves = emptyKM
+                  , bounds = bounds'
+                  , actDepth = 1
+                  , remDepth = maxDepth
+                  , movePhase = mp
+                  , nullPossible = True
+                  }
+
+fillWithSteps :: MVar DStep -> Board -> MovePhase -> IO ()
+fillWithSteps mv brd mp = go steps
+    where
+        steps = generateSteps brd mp
+
+        go []     = putMVar mv dPass -- all steps were consumed
+        go (s:ss) = putMVar mv s >> go ss
+
+oneComp :: MVar (ABToken,Int)   -- ^ shared token and best score
+        -> ThreadId             -- ^ fillers thread id
+        -> MVar DStep           -- ^ channel
+        -> MVar (DMove, Int)    -- ^ to store best value
+        -> MVar ()              -- ^ to inform worker about
+        -> MovePhase
+        -> IO ()
+oneComp tokenMV fillerId dsMV bestMV workerMV mp = do
+        -- take new step
+        ds <- takeMVar dsMV
+
+        case ds of
+            -- it's end, so return back dPass as end of computation marker
+            (Pass,Pass) -> putMVar dsMV dPass >> putMVar workerMV ()
+
+            s -> do
+                -- start search with last version of the token
+                (token0,best0) <- readMVar tokenMV
+                res@(pv,score,_) <- findBest token0 ([],best0) [s]
+
+                -- The same procedure as in findBest to update bounds, killer
+                -- move and best value.
+                -- TODO prevent repeating code
+                modifyMVar_ tokenMV $ \(token1,best1) -> do
+                    let (a,b) = bounds token1 -- old bounds
+
+                    -- updated bounds, value and killerMove
+                    let !bounds' | isMaxNode = (max a score, b)
+                                 | otherwise = (a, min b score)
+                    let bestValue' = cmp best1 score
+                    let (_,_,km') = repairKM (killerMoves token1) res
+
+                    -- if we have improved the value, store the result
+                    when (best1 /= bestValue')
+                        $ changeMVar bestMV $ const (pv, score)
+
+                    when (not $ boundsOK bounds') endComp
+                    return ( token1 { bounds = bounds', killerMoves = km' }
+                           , bestValue')
+
+                oneComp tokenMV fillerId dsMV bestMV workerMV mp
+    where
+        isMaxNode = Gold == fst mp
+        cmp = if isMaxNode then max else min
+
+        -- when thread decides to prune, it will also kill fillingThread
+        endComp = do
+            killThread fillerId
+            _ <- takeMVar dsMV -- create mark for other threads to stop
+            putMVar dsMV dPass
+
+#endif
 
 data ABToken = T
     { board        :: !Board
@@ -239,7 +348,6 @@ findBest token@T { board=brd, bounds=(!a,!b), movePhase=mp }
 #endif
                                 return $ makeTriple best' (s:fst childKM)
     where
-        boundsOK (!alpha, !beta) = alpha < beta
         isMaxNode = Gold == fst mp
         cmp = if isMaxNode then max else min
 
@@ -253,6 +361,8 @@ findBest token@T { board=brd, bounds=(!a,!b), movePhase=mp }
 makeTriple :: (a,b) -> c -> (a,b,c)
 makeTriple (a,b) c = (a,b,c)
 
+boundsOK :: (Int, Int) -> Bool
+boundsOK (!alpha, !beta) = alpha < beta
 
 -- Implementation of Transpositions table
 

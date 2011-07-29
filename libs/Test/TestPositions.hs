@@ -6,6 +6,7 @@ module Test.TestPositions
 import Control.Concurrent
 import Control.Applicative
 import Control.Monad
+import System.Mem (performGC)
 
 import Bits.BitRepresentation
 import Computation
@@ -81,6 +82,8 @@ testSearchFunction newSrch = go positionCases 1 >> putStrLn ""
                                             , lines $ displayBoard board'' True
                                             ]
                     putStrLn $ show (pv, sc) ++ "\n"
+
+            performGC
             go rest (i+1)
 
 testPositions :: IO ()
