@@ -44,7 +44,7 @@ alphaBeta brd tables' bounds' maxDepth mp =
                               , actDepth = 1
                               , remDepth = maxDepth
                               , movePhase = mp
-                              , nullPossible = True
+                              , nullPossible = False
                               }
     where
         proj (a,b,_) = (a,b)
@@ -200,7 +200,7 @@ alphaBeta' token@T { board=brd, remDepth=rd
             Nothing -> do
                 -- Prioritise killer moves and previous successful PV.
                 let (headPV,tailPV) = maybeSwapPV ttMove (pvMoves token)
-                    prioritised = headPV ++ nullMove ++ headKM'
+                    prioritised = nullMove ++ headPV ++ headKM'
                     generSteps steps' = prioritised
                                      ++ filter (`notElem` prioritised) steps'
 
@@ -208,7 +208,7 @@ alphaBeta' token@T { board=brd, remDepth=rd
                         then do
                             -- First check if game has ended or we have
                             -- reached the leaf, if so run evaluation.
-                            e <- eval brd pl
+                            e <- eval brd mp
                             return ([], e, [])
                         else do
                             -- If History heuristics (HH) is set for alpha
@@ -313,7 +313,9 @@ findBest :: ABToken
          -> (DMove, Int) -- ^ actual best result
          -> DMove        -- ^ next steps to try
          -> IO (DMove, Int, DMove) -- ^ (PV, score, killer move)
-findBest _ bestResult [] = return $ makeTriple bestResult []
+findBest _ bestResult [] =
+        -- TODO update HH information?
+        return $ makeTriple bestResult []
 findBest token@T { board=brd, bounds=(!a,!b), movePhase=mp }
          best0@(!_, !bestValue) (s@(!_,!s2):ss)
     = do
@@ -345,6 +347,7 @@ findBest token@T { board=brd, bounds=(!a,!b), movePhase=mp }
                                 -- step.
                                 let acD = actDepth token
                                 improveStep (tables token) s (acD*acD)
+                                -- TODO compare perormance with 2^acD
 #endif
                                 return $ makeTriple best' (s:fst childKM)
     where

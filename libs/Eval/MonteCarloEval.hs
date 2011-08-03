@@ -68,7 +68,7 @@ repair piePos (st:sts) =
 
 
 randomSimulation :: MovePhase -> Int -> DStep -> Board -> IO Int
-randomSimulation (pl,_) 0 _ b = eval b pl
+randomSimulation mp 0 _ b = eval b mp
 randomSimulation mp@(pl,_) d dstep b =
     if null (generateSteps b mp) || isEnd b    -- TODO speedup??
         then evalImmobilised b pl

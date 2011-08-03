@@ -31,7 +31,7 @@ void init();
     uint64_t sh, uint64_t sm, uint64_t se, \
     int player
 
-int          eval(BOARD_AS_PARAMETER);
+int          eval(int cl, BOARD_AS_PARAMETER);
 void forbid_board(BOARD_AS_PARAMETER);
 int  is_forbidden(BOARD_AS_PARAMETER);
 

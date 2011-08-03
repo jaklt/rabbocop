@@ -39,6 +39,8 @@ extern void init_steps_table();
 extern void init_zobrist();
 extern void init_eval();
 
+extern void init_stepOffsets();
+
 void __attribute((constructor)) init()
 {
     srandom((unsigned int) time(NULL));
@@ -47,4 +49,6 @@ void __attribute((constructor)) init()
     init_steps_table();
     init_zobrist();
     init_eval();
+
+	init_stepOffsets();
 }

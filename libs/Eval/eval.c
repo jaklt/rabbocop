@@ -2,6 +2,7 @@
 #include "../clib.h"
 
 extern long int random(void);
+extern int const goalCheck(int player, int stepLimit, unsigned long long figures[2][6]);
 
 
 static int weight_table[6] = {
@@ -93,7 +94,8 @@ static inline uint64_t adjecent(uint64_t pos)
  *
  * TODO fix constants
  */
-int eval(BOARD_AS_PARAMETER)
+/* sl == steps left */
+int eval(int sl, BOARD_AS_PARAMETER)
 {
     int sum = 0, i,j;
     uint64_t figs[2][6] = {{gr, gc, gd, gh, gm, ge}, {sr, sc, sd, sh, sm, se}};
@@ -105,9 +107,11 @@ int eval(BOARD_AS_PARAMETER)
     if (player == GOLD) {
         if ((gr &  UPPER_SIDE) || !sr) return  INFINITY;
         if ((sr & BOTTOM_SIDE) || !gr) return -INFINITY;
+		if (sl && goalCheck(player, sl, figs)) return INFINITY;
     } else {
         if ((sr & BOTTOM_SIDE) || !gr) return -INFINITY;
         if ((gr &  UPPER_SIDE) || !sr) return  INFINITY;
+		if (sl && goalCheck(player, sl, figs)) return -INFINITY;
     }
 
     /* Material and position */

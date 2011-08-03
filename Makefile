@@ -27,12 +27,13 @@ ifeq (${EVAL},fairy)
 else
 	LINK_C += libs/Eval/eval.c
 endif
-LINK_O = ${LINK_C:.c=.o}
+LINK_O = ${LINK_C:.c=.o} libs/Eval/akimot-goalCheck.o
 
 SRC = ${SRC_Hs} ${LINK_C} ${LINK_H}
 
+# HC = ghc-core --no-syntax --no-cast --no-asm --
 HC = ghc
-HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap -threaded -ilibs -rtsopts
+HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap -threaded -ilibs -rtsopts -lstdc++
 # HFLAGS += -fhpc -funbox-strict-fields
 CC = gcc
 CFLAGS = -O2 -std=c99 -Wall -pedantic
@@ -61,7 +62,7 @@ $(BINs): % : %.hs ${SRC} ${LINK_O}
 	${HC} --make $@.hs ${LINK_O} ${HFLAGS}
 
 runtest: Test
-	time -p ./Test # ${RUN_PARAMS}
+	time -p ./Test +RTS -A50m # ${RUN_PARAMS}
 
 # Additional dependencies
 Test: libs/Test/TestPositions.hs libs/Test/TestBitRepresentation.hs

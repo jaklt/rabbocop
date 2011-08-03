@@ -105,7 +105,7 @@ testEval' (num,tests) = do
         evaluated <- forM tests $ \(b,pl) -> do
             let brd = parseFlatBoard pl b
             (\e -> if pl == Gold then (1*e,brd) else ((-1)*e, brd))
-                <$> eval brd pl
+                <$> eval brd (pl,0)
 
         displayResult (>) (iNFINITY * iNFINITY, emptyBoard) evaluated
 

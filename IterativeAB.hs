@@ -56,7 +56,7 @@ iterativeP tt board mvar = do
             -- sleep until work is fulfilled
             _ <- takeMVar locker
 
-            -- it is neccessary to save the value before deeper computation
+            -- it is necessary to save the value before deeper computation
             -- starts
             modifyMVar_ mvar $ \_ -> do
                 (pv,sc) <- readMVar mvarInt
