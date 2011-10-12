@@ -1,0 +1,22 @@
+MCTS:
+- Use better random generator maybe from statistics, mersenne-random package or
+  Xorshift package.
+- Try All-Moves-As-First Heuristica (from Bernd Brugmann. Monte carlo go. Technical report, 1993.)
+
+
+AlphaBeta:
+- Add Quiescence search.
+- Add proper History heuristics.
+- Analyse/repaire Null Move.
+- Try different parallelize model.
+
+General:
+- Prevent lost due to third time repetition rule.
+- Support full AEI protocol.
+- Improve evaluate function! (And maybe GoalCheck too)
+- Add Board::trapCheck from Akimot?
+- Try use Vector instead of Lists in basic representations and/or better Array
+  library (http://www.haskell.org/haskellwiki/Arrays).
+- Better collision handling in Hash library.
+- Find faster HashTable library.
+- Rewrite BoardToCode using general haskell parser (to improve readability).
