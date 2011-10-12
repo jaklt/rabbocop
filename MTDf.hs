@@ -1,5 +1,11 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP          #-}
+
+{-
+ - We didn't focused on optimising the MTD(f) algorithm. The code in this file
+ - is left just for an interested reader.
+ -}
+
 #ifdef ENGINE
 module Main (main) where
 import AEI

@@ -17,7 +17,7 @@ rightMostBit :: Int64 -> Int64
 rightMostBit n = n .&. (-n)
 {-# INLINE rightMostBit #-}
 
--- | Spread given number into list of bits.
+-- | Spread given number into list of its bits.
 bits :: Int64 -> [Int64]
 bits 0 = []
 bits n = rightMostBit n : bits (n .&. (n-1))

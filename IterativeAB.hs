@@ -30,31 +30,31 @@ newSearch tableSize = iterative <$> newHTables tableSize
 #endif
 
 #if CORES > 1
-{- | Divide and conquer parallel alphaBeta.
- - We create worker thread which manages work for cores. If any thread ends
- - then into locker MVar is () pushed. This action wakes up worker which new
- - starts deeper searching.
+{- | Divide and conquer parallel alphaBeta with iterative deepening.
+ - We create a worker thread which manages work for cores. If any thread ends
+ - () is pushed into lock (MVar). This action wakes up worker which
+ - starts new deeper searching.
  -}
 iterativeP :: ABTables -> Board -> MVar (DMove, String) -> IO ComputationToken
 iterativeP tt board mvar = do
         -- pool for threads ids
         threads <- newMVar []
 
-        -- if work is done, this locker gets value
-        locker <- newMVar ()
+        -- if work is done, this lock gets value
+        lock <- newMVar ()
 
-        -- place to store final result
+        -- place to store initial final result
         mvarInt <- newMVar ([],0)
 
         -- everything is ready so let the worker begins
-        _ <- forkIO $ worker threads locker 1 mvarInt
+        _ <- forkIO $ worker threads lock 1 mvarInt
 
         -- the Compucation module needs to know all threads Ids
         return threads
     where
-        worker threads locker depth mvarInt = do
+        worker threads lock depth mvarInt = do
             -- sleep until work is fulfilled
-            _ <- takeMVar locker
+            _ <- takeMVar lock
 
             -- it is necessary to save the value before deeper computation
             -- starts
@@ -66,10 +66,12 @@ iterativeP tt board mvar = do
             mapM_ killThread =<< readMVar threads
             alphaBetaParallel board tt (-iNFINITY, iNFINITY)
                               depth (mySide board, 0)
-                              mvarInt threads locker
+                              mvarInt threads lock
 
-            -- everyone is working, I can go sleep!
-            worker threads locker (depth+1) mvarInt
+            -- everyone is working, I can go to sleep!
+            worker threads lock (depth+1) mvarInt
+
+-- CORES == 1:
 #else
 
 -- | iterative deepening

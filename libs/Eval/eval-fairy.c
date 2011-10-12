@@ -1,6 +1,6 @@
 /**
- * This evaluation function comes from bot_Fairy by Ola Hansson, as can be
- * found in arimaa.com, with few modifications.
+ * This evaluation function comes from bot_Fairy by Ola Hansson as can be
+ * found in arimaa.com but with a few modifications.
  */
 #include <stdint.h>
 #include "../clib.h"

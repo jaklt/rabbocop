@@ -89,7 +89,9 @@ testSearchFunction newSrch = go positionCases 1 >> putStrLn ""
 testPositions :: IO ()
 testPositions = do
         showHeader "testPositions"
+        putStrLn "AlphaBeta:"
         testSearchFunction IterativeAB.newSearch
+        putStrLn "MCTS:"
         testSearchFunction MCTS.newSearch
 
 -- | Test if all lists from evalCases are `eval-decreasing'
@@ -126,11 +128,11 @@ positionCases =
       ++ "  DC CRR]"
       , moveContainAND ["re2s", "re3s", "re4s", "rf4w"]
       , Silver)
-      -- See oponents goal
+      -- See opponents goal
     , ( "[rd   rdrr  rc  r h    h   cE     M r     H    H RReRrRDR  DC CRR]"
       , moveContainOR ["Cd1e", "Cf1w", "re2n", "re2e"]
       , Gold)
-      -- Can immobilise oponent?
+      -- Can immobilise opponent?
     , ( "[ rrrrrrrR                                                       ]"
       , \ss ->
             (  moveContainAND ["rb8w", "rb8s"] ss
@@ -165,7 +167,7 @@ evalCases =
         ++ "  DRR D "
         ++ "R R  R  ", Gold) -- it's definitely better to have horse
       ]
-    , [ -- same as previous, but from oponents perspective
+    , [ -- same as previous, but from opponents perspective
         ( "[rrrccrrrr d  dhr hx  x R  e  E          RmxCCxHR  DRR D R R  R  "
         , Silver)
       , ( "[rrrccrrrr d  dhr hx  x   H   E    e    RRmDCCxHR   RR D R R  R  "

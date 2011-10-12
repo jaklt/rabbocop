@@ -15,11 +15,11 @@ import Hash
 import Control.Applicative ((<$>),(<*>))
 import Data.Bits
 import Data.Int (Int64, Int32)
-import Computation
 
 #if CORES > 1
 import Control.Monad (when)
 import Helpers (changeMVar)
+import Computation
 #endif
 #ifdef abHH
 import Data.Maybe (fromMaybe)

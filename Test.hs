@@ -30,7 +30,7 @@ testMyBits = putStrLn $ "- testMyBits\t- " ++ show basicBitIndexTest
 testTiming :: IO ()
 testTiming = do
         showHeader "testTiming"
-        {-
+        -- {-
         mvar <- newMVar ([],"Nothing")
         search <- IterativeAB.newSearch 200
         toStop <- startComputation search testBoard' mvar
@@ -38,9 +38,9 @@ testTiming = do
         print =<< takeMVar mvar
         stopComputation toStop
         -- -}
-        -- {-
+        {-
         tables <- AlphaBeta.newHTables 200
-        best <- alphaBeta testBoard' tables (-iNFINITY, iNFINITY) 8 (pl,0)
+        best <- alphaBeta testBoard' tables (-iNFINITY, iNFINITY) 7 (pl,0)
         print best
         -- -}
         printBoard testBoard'
@@ -55,6 +55,9 @@ testTiming = do
                         ++ "HmxR x R"
                         ++ "RR rCRD "
                         ++ "RDR    R]"
+        -- TODO something is wrong, with NULL_MOVE it finds after 42seconds
+        -- the right move (rd2wn,Ce2ww) and without NULL_MOVE it finds bad
+        -- move in 3.25seconds
 
 {- -------------------------------------------------------
  - Testing MCTS

@@ -1,3 +1,9 @@
+
+{-|
+ - This module was used for plain testing during development. However we
+ - didn't have to finish it, because our testing model had changed.
+ -}
+
 module Main (main) where
 
 import System.Environment
@@ -30,7 +36,7 @@ wait :: Integer -> IO ()
 wait long = mapM_ threadDelay $ map fromIntegral $ divs long
     where
         divs 0 = []
-        divs n = (n `mod` d) : replicate (fromIntegral (n `div` d)) d 
+        divs n = (n `mod` d) : replicate (fromIntegral (n `div` d)) d
         d = 100000000 :: Integer
 
 newEngine :: String -> IO SearchEngine
@@ -67,13 +73,13 @@ fight n mv srch1 srch2 = go board Gold
                 unless quiet (print b'')
 
                 when (pl == Silver)
-                    (return . const () =<< swapMVar mv =<< eval b'' Gold)
+                    (return . const () =<< swapMVar mv =<< eval b'' (Gold,0))
 
                 if pv == []
                     then do
                         _ <- swapMVar mv =<< evalImmobilised b'' pl
                         putStrLn "empty move!"
-                    else go b'' (oponent pl)
+                    else go b'' (opponent pl)
 
 main :: IO ()
 main = do

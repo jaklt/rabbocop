@@ -74,6 +74,7 @@ virtualVisits      = 4
 newSearch :: Int -> IO SearchEngine
 newSearch = return . search
 
+-- | 
 search :: Int                  -- ^ table size
        -> Board                -- ^ starting position
        -> MVar (DMove, String) -- ^ best results to store here
@@ -135,6 +136,7 @@ leaf = Node { children   = []
             , visitCount = virtualVisits
             }
 
+-- Depending on visitCount a Node could be mature, old or an ordinary leaf:
 isLeaf :: Int -> TreeNode -> Bool
 isLeaf depth (Node { visitCount = vc }) = vc < thresholdMaternity + depth
 
@@ -144,6 +146,7 @@ isMature depth tn = not $ isLeaf (depth-1) tn
 isOld :: Int -> TreeNode -> Bool
 isOld _ (Node { visitCount = vc }) = vc >= thresholdCacheing
 
+-- | Run one iteration of the algorithm.
 improveTree :: MCTSTables
             -> MMTree
             -> Int         -- ^ depth

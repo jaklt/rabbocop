@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP          #-}
 {-
- - | Depending on is CORES value we prepare computation for runnning
- - parallel or sequentially.
+ - | Depending on CORES value we prepare computation for runnning
+ - code parallel or sequentially.
  -}
 module Computation
     ( Stoplight
@@ -27,7 +27,7 @@ type ComputationToken = ()
 
 
 -- | Starts computation depending on number of CORES. If there is more than
--- one core computations called action could run in parallel.
+-- one core, computations of called action could run in parallel.
 startComputation :: (a -> MVar b -> IO ComputationToken) -> a -> MVar b
                  -> IO Stoplight
 

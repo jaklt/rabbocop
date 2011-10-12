@@ -11,6 +11,7 @@ AlphaBeta:
 - Try different parallelize model.
 
 General:
+- There may be problems on computers with 64bit architecture -> test/fix.
 - Prevent lost due to third time repetition rule.
 - Support full AEI protocol.
 - Improve evaluate function! (And maybe GoalCheck too)

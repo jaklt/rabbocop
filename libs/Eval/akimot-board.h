@@ -1,3 +1,11 @@
+/**
+ * Distributed under Open Software Licence with agreement of former author.
+ * The original work is avaliable on https://github.com/tomik/akimot
+ *
+ * @author: Tomas Kozelek (tomas(dot)kozelek(at)gmail.com)
+ * @modified: Tomas Jakl
+ */
+
 /** 
  *  @file board.h
  *

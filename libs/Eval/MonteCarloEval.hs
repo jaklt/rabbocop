@@ -18,6 +18,7 @@ depth, simulations :: Int
 depth       =   4 -- ^ simulation depth in moves
 simulations =  10 -- ^ number of simulations
 
+-- | Run `simulations`-times Monte Carlo playouts and return average score.
 getValueByMC :: Board -> MovePhase -> DStep -> IO Int
 getValueByMC b mp dstep = do
     s <- mapM (randomSimulation mp depth dstep) $ replicate simulations b
@@ -41,6 +42,10 @@ randomMove' b' mp'@(pl',_) pl pies ds
     | null steps || pl' /= pl = return b'
     | otherwise  = do
 #ifndef noHeavyPlayout
+        -- Depending on heuristics, prefer steps with higher score.
+        --
+        -- Which means that from N random steps we choose one with highest
+        -- evalStep.
         randSteps <- map withEval <$> randomSubList bestOfN steps
         let randStep@(s1,s2) = fst . head $ sortBy cmp randSteps
 #else
@@ -74,7 +79,7 @@ randomSimulation mp@(pl,_) d dstep b =
         then evalImmobilised b pl
         else do
             b' <- randomMove b mp dstep
-            randomSimulation (oponent pl,0) (d-1) dPass b'
+            randomSimulation (opponent pl,0) (d-1) dPass b'
 
 
 randomSubList :: Int    -- ^ length of sublist

@@ -1,10 +1,16 @@
+/**
+ * Distributed under Open Software Licence with agreement of former author.
+ * The original work is avaliable on https://github.com/tomik/akimot
+ *
+ * @author: Tomas Kozelek (tomas(dot)kozelek(at)gmail.com)
+ * @modified: Tomas Jakl
+ */
 
 #include <cstdlib>
 #include <limits.h>
 #include <math.h>
 
 typedef unsigned long long u64;
-
 typedef unsigned int uint;
 
 
@@ -641,8 +647,3 @@ u64 Board::stronger(player_t player, piece_t piece) const
   }
   return res;
 }
-
-//--------------------------------------------------------------------- 
-
-//--------------------------------------------------------------------- 
-

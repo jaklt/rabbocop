@@ -107,11 +107,15 @@ int eval(int sl, BOARD_AS_PARAMETER)
     if (player == GOLD) {
         if ((gr &  UPPER_SIDE) || !sr) return  INFINITY;
         if ((sr & BOTTOM_SIDE) || !gr) return -INFINITY;
+#ifndef noGoalCheck
 		if (sl && goalCheck(player, sl, figs)) return INFINITY;
+#endif
     } else {
         if ((sr & BOTTOM_SIDE) || !gr) return -INFINITY;
         if ((gr &  UPPER_SIDE) || !sr) return  INFINITY;
+#ifndef noGoalCheck
 		if (sl && goalCheck(player, sl, figs)) return -INFINITY;
+#endif
     }
 
     /* Material and position */

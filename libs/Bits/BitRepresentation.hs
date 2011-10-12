@@ -27,7 +27,7 @@ module Bits.BitRepresentation (
     (<#>),               -- :: Num a => Player -> Player -> a
     whole,               -- :: Board -> Player -> Int64
     displayBoard,        -- :: Board -> Bool -> String
-    oponent,             -- :: Player -> Player
+    opponent,            -- :: Player -> Player
     stepInMove,          -- :: MovePhase -> DStep -> MovePhase
     canPushOrPull,       -- :: MovePhase -> Bool
     isEnd,               -- :: Board -> Bool
@@ -73,7 +73,7 @@ foreign import ccall "clib.h hash_piece" c_hashPiece :: Int -> Int -> Int64
                                                      -> Int64
 foreign import ccall "clib.h steps_from_position"
                             c_stepsFromPosition :: Int -> Int -> Int64 -> Int64
--- | arguments: PlayerPieces OponentsStrongerPieces TestedOne
+-- | arguments: PlayerPieces OpponentsStrongerPieces TestedOne
 foreign import ccall "clib.h immobilised"
                             immobilised :: Int64 -> Int64 -> Int64 -> Bool
 
@@ -84,7 +84,7 @@ data Player = Gold | Silver
 data Piece = Rabbit | Cat | Dog | Horse | Camel | Elephant
              deriving (Eq, Ord, Enum, Ix, Show)
 
-type Position = Int -- ^ number from [0..63]
+type Position = Int -- ^ number from [0..63] represesnting location of a piece
 type PlayerBoard = Array Piece Int64
 
 data Board = Board { hash        :: !Int64
@@ -97,7 +97,7 @@ data Board = Board { hash        :: !Int64
 data Step = Step !Piece !Player {- from: -} !Int64 {- to: -} !Int64 | Pass
             deriving (Eq, Ord)
 
-type Move = [Step]
+type Move = [Step] -- ^ up to 4 steps per turn, a sequence of steps is move
 type DStep = (Step, Step)
 type DMove = [DStep]
 type MovePhase = (Player, Int) -- ^ (active player, steps played in move)
@@ -110,23 +110,24 @@ traps = 0x0000240000240000
 instance Show Step where
     show Pass = "Pass"
     show (Step piece player from to) =
+            -- in form Ea1n for gold elephant going from a1 to a2
             showPiece player piece : (pos from ++ dir)
         where
-             format :: Show a => a -> Char
-             format = toLower.head.show
-             d = bitIndex to - bitIndex from
-             dir | to == 0 = "x"
-                 | d ==  8 = "n"
-                 | d == -8 = "s"
-                 | d ==  1 = "w"
-                 | d == -1 = "e"
-                 | otherwise = error
-                        ( "Impossible move from: " ++ pos from ++ " to: "
-                        ++ pos to
-                        ++ " (with " ++ [showPiece player piece] ++ ")")
+            format :: Show a => a -> Char
+            format = toLower.head.show
+            d = bitIndex to - bitIndex from
+            dir | to == 0 = "x"
+                | d ==  8 = "n"
+                | d == -8 = "s"
+                | d ==  1 = "w"
+                | d == -1 = "e"
+                | otherwise = error
+                       ( "Impossible move from: " ++ pos from ++ " to: "
+                       ++ pos to
+                       ++ " (with " ++ [showPiece player piece] ++ ")")
 
-             pos p = let q = bitIndex p in [ ['a'..'h'] !! (7 - q `mod` 8)
-                                           , format $ q `div` 8 + 1]
+            pos p = let q = bitIndex p in [ ['a'..'h'] !! (7 - q `mod` 8)
+                                          , format $ q `div` 8 + 1]
 
 instance Show Board where
     show = ("\n" ++) . (++ "\n") . flip displayBoard True
@@ -134,7 +135,7 @@ instance Show Board where
 instance Eq Board where
     b1 == b2 = hash b1 == hash b2
             && wholeSilver b1 == wholeSilver b2
-            && wholeGold b1 == wholeGold b2
+            && wholeGold   b1 == wholeGold   b2
 
 ---------------------------------------------------------------------
 
@@ -170,7 +171,7 @@ showPiece Silver Camel = 'm'
 showPiece col piece    = (if col == Gold then id else toLower)
                             $ head $ show piece
 
--- | Second argument is: use noflat format or flat.
+-- | Second argument is: if True use noflat format.
 displayBoard :: Board -> Bool -> String
 displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
         , let pp | i .&. whole b Gold   /= 0 = g Gold i
@@ -198,22 +199,22 @@ displayBoard b nonFlat = format [pp | i <- map bit [63,62..0] :: [Int64]
                     , 0 :: Int) xs
                   | otherwise = "[" ++ xs ++ "]"
 
-oponent :: Player -> Player
-oponent Gold = Silver
-oponent Silver = Gold
+opponent :: Player -> Player
+opponent Gold = Silver
+opponent Silver = Gold
 {-# RULES
-    "oponent" forall x. oponent (oponent x) = x
+    "opponent" forall x. opponent (opponent x) = x
   #-}
 -- enemy of my enemy is my friend, but wait, that's me!
 
 -- | if DStep argument is (Pass,Pass) then we end this move
 stepInMove :: MovePhase -> DStep -> MovePhase
-stepInMove (pl,_) (Pass,_) = (oponent pl, 0)
+stepInMove (pl,_) (Pass,_) = (opponent pl, 0)
 stepInMove (pl,steps) (_,s) = (pl', steps' `mod` 4)
     where
         steps' = steps + if s == Pass then 1 else 2
 
-        pl' = if steps' > 3 then oponent pl
+        pl' = if steps' > 3 then opponent pl
                             else pl
 
 canPushOrPull :: MovePhase -> Bool
@@ -337,7 +338,7 @@ makeStep b s@(Step piece player from to) =
                 _ -> error "makeStep causes three pieces to move"
         h = hash b
 
-        hashHelp pie f t h'=
+        hashHelp pie f t h' =
             h' `xor` hashPiece player pie f `xor` hashPiece player pie t
 
         -- Step of some piece affects only other pieces this player has.
@@ -350,7 +351,7 @@ makeStep b s@(Step piece player from to) =
 
 generateMoveable :: Board -> Player -> [PiecePosition]
 generateMoveable b pl =
-        notFrozen (allPieces pl) (allPieces (oponent pl)) (whole b pl) 0
+        notFrozen (allPieces pl) (allPieces (opponent pl)) (whole b pl) 0
     where
         allPieces pl' = map (\pie -> PP pie (bb pie)) pieces'
             where
@@ -360,9 +361,9 @@ generateMoveable b pl =
 -- Filter not immobilised pieces
 -- Lists of pieces needs to be sorted by stronger
 notFrozen :: [PiecePosition] -- ^ players pieces to check
-          -> [PiecePosition] -- ^ all oponents pieces
+          -> [PiecePosition] -- ^ all opponents pieces
           -> Int64           -- ^ positions of all player pieces
-          -> Int64           -- ^ positions of oponents stronger pieces
+          -> Int64           -- ^ positions of opponents stronger pieces
           -> [PiecePosition]
 notFrozen [] _ _ _ = []
 notFrozen ((PP pie poss):plPieRest) ops relatives stronger =
@@ -391,16 +392,16 @@ generatePiecesSteps b mp@(pl,_) pies =
 #endif
         genPiecesSteps' b pl canPP pies opPie empty oArr
     where
-        opPie = whole b (oponent pl)
+        opPie = whole b (opponent pl)
         empty = complement $ whole b Gold .|. whole b Silver
-        oArr = figures b ! oponent pl
+        oArr = figures b ! opponent pl
         canPP = canPushOrPull mp
 
 genPiecesSteps' :: Board
                 -> Player
                 -> Bool            -- ^ can push/pull
                 -> [PiecePosition] -- ^ pieces to move
-                -> Int64           -- ^ weaker oponents peaces
+                -> Int64           -- ^ weaker opponents peaces
                 -> Int64           -- ^ empty places
                 -> PlayerBoard
                 -> DMove
@@ -426,7 +427,7 @@ genPiecesSteps' b pl canPullPush ((PP pie pos):rest) opWeak empty oArr =
         ++ genPiecesSteps' b pl canPullPush rest opWeak empty oArr
     where
         cStep = Step pie pl pos
-        op = oponent pl
+        op = opponent pl
 
         opStrPies = foldr (.|.) 0 $ map (oArr !) [pie .. Elephant]
         opWeak' = opWeak .&. complement opStrPies
@@ -494,7 +495,7 @@ isFrozen :: Board -> Piece -> Player -> Int64 -> Bool
 isFrozen b pie pl pos = immobilised (whole b pl) opStronger pos
     where
         opStronger = foldl' (.|.) 0
-                   $ map (figures b ! oponent pl !) $ tail [pie .. Elephant]
+                   $ map (figures b ! opponent pl !) $ tail [pie .. Elephant]
 
 isStepBy :: Player -> DStep -> Bool
 isStepBy pl (Step _ pl1 _ _, Pass) = pl == pl1

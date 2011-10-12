@@ -33,7 +33,7 @@ SRC = ${SRC_Hs} ${LINK_C} ${LINK_H}
 
 # HC = ghc-core --no-syntax --no-cast --no-asm --
 HC = ghc
-HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap -threaded -ilibs -rtsopts -lstdc++
+HFLAGS = -O2 -Wall -fexcess-precision -fdicts-cheap -threaded -ilibs -lstdc++ -fspec-constr-count=16 -rtsopts
 # HFLAGS += -fhpc -funbox-strict-fields
 CC = gcc
 CFLAGS = -O2 -std=c99 -Wall -pedantic
@@ -41,11 +41,11 @@ SHELL = /usr/bin/env bash
 
 
 ENABLED_DEFINES = JUDY HASKELL_HASH VERBOSE WINDOW noHH noHeavyPlayout \
-                  abHH NULL_MOVE canPass CORES
+                  abHH NULL_MOVE canPass CORES noGoalCheck
 HFLAGS += $(foreach v, $(ENABLED_DEFINES), $(if $($(v)), -D$(v)=$($(v))))
 
 ifdef PROF
-	HFLAGS += -prof -fforce-recomp -auto-all
+	HFLAGS += -prof -fforce-recomp -auto # -auto-all
 endif
 
 ifdef CORES
@@ -83,16 +83,17 @@ clean:
 	rm -f {,libs/,libs/*/,tools/}{*.o,*.hi}
 	rm -f ${STATIC_EVAL_TABLES}
 
-# Download and instal GUI
-play: IterativeAB aei-1.1/roundrobin.py arimaa-client/gui.py aei-1.1/roundrobin.cfg
+
+playAB playMCTS playMatch: IterativeAB MCTS prepareEnv
+	cp data/roundrobin-$@.cfg aei-1.1/roundrobin.cfg
 	cd aei-1.1; python roundrobin.py
+
+# Download and instal GUI and testing suite
+prepareEnv: aei-1.1/roundrobin.py arimaa-client/gui.py
 
 aei-1.1/roundrobin.py:
 	wget http://arimaa.janzert.com/aei/aei-1.1.zip --directory-prefix=aei-1.1
 	unzip aei-1.1/aei-1.1.zip
-
-aei-1.1/roundrobin.cfg: data/aei-roundrobin.cfg
-	cp data/aei-roundrobin.cfg aei-1.1/roundrobin.cfg
 
 arimaa-client/gui.py:
 	bzr branch lp:arimaa-client

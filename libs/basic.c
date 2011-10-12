@@ -50,5 +50,5 @@ void __attribute((constructor)) init()
     init_zobrist();
     init_eval();
 
-	init_stepOffsets();
+    init_stepOffsets();
 }
